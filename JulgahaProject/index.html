@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Julgaha Cycle Works - Cloud System</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { darkbg: '#0f172a', darkcard: '#1e293b' } } }
+        }
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Mobile Chart Fix: Ensures charts have height on phones */
+        .chart-container { position: relative; height: 100%; width: 100%; min-height: 250px; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <div id="login-section" class="min-h-screen flex items-center justify-center bg-slate-800 dark:bg-black p-4">
+        <div class="bg-white dark:bg-darkcard p-8 rounded-xl shadow-2xl w-full max-w-md fade-in relative">
+            <h1 class="text-2xl font-bold text-center text-slate-800 dark:text-white mb-6">Julgaha Cycle Works</h1>
+            <p id="status-msg" class="text-center text-xs text-blue-500 mb-4 animate-pulse">Connecting...</p>
+            
+            <form onsubmit="window.handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold mb-2">Email</label>
+                    <input id="email" type="email" value="julgahacycleworks@gmail.com" class="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-bold mb-2">Password</label>
+                    <input id="password" type="password" placeholder="********" class="w-full p-2 border rounded dark:bg-slate-700 dark:border-slate-600">
+                </div>
+                <button id="login-btn" class="bg-slate-700 dark:bg-blue-600 text-white font-bold py-2 w-full rounded hover:bg-slate-900 dark:hover:bg-blue-700 transition disabled:opacity-50" disabled>
+                    Loading...
+                </button>
+            </form>
+            <div class="mt-4 text-center">
+                <button onclick="window.handleResetPassword()" class="text-sm text-blue-600 dark:text-blue-400 underline">Forgot Password?</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-section" class="hidden min-h-screen flex flex-col">
+        <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 gap-4">
+            <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center"><i class="fas fa-user-shield"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Logged in</p>
+                        <h2 class="font-bold text-slate-800 dark:text-white text-sm" id="user-display">System Admin</h2>
+                    </div>
+                </div>
+                <button onclick="window.handleNavClick('ai')" class="md:hidden bg-purple-600 hover:bg-purple-700 text-white p-2 rounded shadow animate-pulse">
+                    <i class="fas fa-robot"></i>
+                </button>
+            </div>
+            
+            <div class="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end flex-wrap">
+                <button onclick="window.handleNavClick('ai')" class="hidden md:flex bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded shadow items-center gap-2 text-xs animate-pulse">
+                    <i class="fas fa-robot"></i> <span>CycleSense AI</span>
+                </button>
+
+                <button onclick="window.toggleLang()" class="bg-gray-200 dark:bg-slate-700 px-3 py-1 rounded text-xs font-bold w-12 text-center" id="lang-btn">SIN</button>
+                <button onclick="window.toggleTheme()" class="bg-gray-200 dark:bg-slate-700 p-2 rounded-full w-8 h-8 flex items-center justify-center">
+                    <i id="theme-icon" class="fas fa-moon"></i>
+                </button>
+                
+                <label class="cursor-pointer bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded shadow flex items-center gap-2 text-xs">
+                    <input type="file" class="hidden" accept=".xlsx" onchange="window.uploadToSupabase(this)">
+                    <i class="fas fa-sync-alt"></i> <span class="hidden md:inline">Sync</span>
+                </label>
+
+                <button onclick="window.clearDatabase()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded shadow text-xs flex items-center gap-2" title="Delete All Data">
+                    <i class="fas fa-trash"></i> <span class="hidden md:inline">Reset DB</span>
+                </button>
+
+                <button onclick="window.handleLogout()" class="border border-red-500 text-red-500 px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-xs">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-grow p-4 md:p-6 container mx-auto relative">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                <div id="nav-revenue" onclick="window.switchContext('past')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-slate-800 text-white shadow-md transition-all text-xs md:text-base text-center">
+                    <i class="fas fa-chart-line"></i>
+                    <span id="nav-revenue-text">Financials</span>
+                </div>
+
+                <div id="nav-service" onclick="window.switchContext('service')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center">
+                    <i class="fas fa-tools"></i>
+                    <span id="nav-service-text">Service Cost</span>
+                </div>
+                
+                <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center">
+                    <i class="fas fa-box-open"></i>
+                    <span id="nav-inventory-text">Inventory</span>
+                </div>
+
+                <div id="nav-supplier" onclick="window.handleNavClick('supplier')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center">
+                    <i class="fas fa-truck-loading"></i>
+                    <span id="nav-supplier-text">Procurement</span>
+                </div>
+            </div>
+
+            <div id="controls-section" class="flex flex-col md:flex-row gap-4 mb-6 flex-wrap items-center justify-between">
+                <div class="bg-white dark:bg-darkcard p-1 rounded shadow border dark:border-gray-700 flex w-full md:w-auto justify-center">
+                    <button onclick="window.switchContext('past')" id="btn-past" class="flex-1 md:flex-none px-4 py-1 bg-slate-800 text-white rounded">Past</button>
+                    <button onclick="window.switchContext('predicted')" id="btn-pred" class="flex-1 md:flex-none px-4 py-1 text-gray-600 dark:text-gray-400">Predicted</button>
+                </div>
+                
+                <div class="flex gap-2 w-full md:w-auto">
+                    <select id="slicer-month" onchange="window.handleMonthChange()" class="flex-1 border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Months</option></select>
+                    <select id="slicer-day" onchange="window.updateDashboard()" class="flex-1 border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Days</option></select>
+                </div>
+            </div>
+
+            <div id="kpi-section" class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6">
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-blue-500">
+                    <h3 id="kpi-1-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Revenue</h3>
+                    <p id="val-rev" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-red-500">
+                    <h3 id="kpi-2-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Expenses</h3>
+                    <p id="val-exp" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-green-500">
+                    <h3 id="kpi-3-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Profit</h3>
+                    <p id="val-prof" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+            </div>
+
+            <div id="charts-section-1" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                    <div class="chart-container"><canvas id="mainChart"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                    <div class="chart-container"><canvas id="subChart"></canvas></div>
+                </div>
+            </div>
+            
+            <div id="charts-section-2" class="bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                <div class="chart-container"><canvas id="compChart"></canvas></div>
+            </div>
+            
+            <div id="coming-soon-container"></div>
+        </main>
+
+        <footer class="bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 mt-8 py-6">
+            <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm gap-4">
+                <div class="text-center md:text-left">
+                    <p class="font-bold text-slate-700 dark:text-slate-300">Julgaha Cycle Works</p>
+                    <p class="text-gray-500 dark:text-gray-500">© 2026 All Rights Reserved.</p>
+                </div>
+                <div class="flex items-center gap-6 justify-center">
+                    <div class="text-right hidden md:block">
+                        <p class="text-gray-400 text-xs">Technical Support</p>
+                        <p class="font-bold text-slate-700 dark:text-slate-300">Dinil Randika</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <a href="mailto:Dinil Randika05@gmail.com" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-blue-100 transition"><i class="fas fa-envelope"></i></a>
+                        <a href="tel:0756339536" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-green-100 transition"><i class="fas fa-phone"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        
+        <div id="loader" class="fixed inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center hidden z-50">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
