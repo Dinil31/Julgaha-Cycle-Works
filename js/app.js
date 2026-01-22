@@ -1,4 +1,3 @@
-// js/app.js
 import { initSupabase } from "./config.js";
 import {
   switchContext,
@@ -16,23 +15,19 @@ import {
   checkSession,
 } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js";
+// IMPORT AI FUNCTIONS
+import { toggleAI, handleUserQuery, clearAIChat } from "./ai.js";
 
+// --- NAVIGATION ---
 function setActiveNav(activeId) {
-  const navs = [
-    "nav-revenue",
-    "nav-service",
-    "nav-inventory",
-    "nav-supplier",
-    "nav-ai",
-  ];
+  const navs = ["nav-revenue", "nav-service", "nav-inventory", "nav-supplier"];
   navs.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      // Reset all to default style
       el.className =
         id === activeId
-          ? "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-slate-800 text-white shadow-md transition-all"
-          : "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-transparent";
+          ? "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-slate-800 text-white shadow-md transition-all hover:scale-105"
+          : "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-transparent hover:scale-105";
     }
   });
 }
@@ -52,18 +47,25 @@ window.handleNavClick = function (tabName) {
     setActiveNav("nav-supplier");
     renderComingSoon("Procurement & Supply");
   }
-  // NEW: CycleSense AI Trigger
+  // AI Trigger
   if (tabName === "ai") {
-    // Just unhighlight others, or highlight AI button if you add one to the nav grid
-    // For header button, we just run the function:
-    renderComingSoon("CycleSense AI", "fa-robot");
+    toggleAI();
   }
+};
+
+// --- EXPOSE FUNCTIONS TO HTML ---
+window.toggleAI = toggleAI;
+window.clearAIChat = clearAIChat;
+window.handleAIKey = handleUserQuery;
+window.triggerAISend = function () {
+  handleUserQuery({ key: "Enter" });
 };
 
 window.onload = function () {
   try {
     initSupabase();
 
+    // Attach all global functions
     window.handleLogin = handleLogin;
     window.handleLogout = handleLogout;
     window.handleResetPassword = handleResetPassword;
@@ -72,9 +74,7 @@ window.onload = function () {
     window.toggleTheme = toggleTheme;
     window.toggleLang = toggleLang;
     window.switchCat = switchCat;
-
     window.renderComingSoon = renderComingSoon;
-
     window.handleMonthChange = handleMonthChange;
     window.updateDashboard = updateDashboard;
 
