@@ -9,23 +9,60 @@ export function toggleAI() {
   if (!modal) return;
   modal.classList.toggle("hidden");
 
-  // Greeting if empty
   if (chatHistory && chatHistory.children.length === 0) {
-    addBotMessage(
-      "👋 Hi! I'm CycleSense Pro.<br>Ask me things like:<br>• 'Best month in 2025'<br>• 'Total profit'<br>• 'Most common repair'",
-    );
+    showWelcomeMessage();
   }
 }
 
-// --- CLEAR CHAT (Kept this feature) ---
+function showWelcomeMessage() {
+  const table = getActiveTable();
+  let suggestions = [];
+
+  // Context-aware buttons
+  if (table.includes("financial")) {
+    suggestions = [
+      "Highest revenue month 2025",
+      "Total profit in 2025",
+      "Lowest expense month",
+      "Best day in 2025",
+    ];
+  } else {
+    suggestions = [
+      "Most common bike",
+      "Total repair jobs",
+      "Average service cost",
+      "Recent repairs",
+    ];
+  }
+
+  let buttonsHtml = `<div class="flex flex-wrap gap-2 mt-3">`;
+  suggestions.forEach((s) => {
+    buttonsHtml += `<button onclick="window.triggerAIQuery('${s}')" class="bg-purple-100 dark:bg-slate-600 text-purple-700 dark:text-purple-200 text-xs px-3 py-1.5 rounded-full hover:bg-purple-200 dark:hover:bg-slate-500 transition border border-purple-200 dark:border-slate-500 font-medium">${s}</button>`;
+  });
+  buttonsHtml += `</div>`;
+
+  addBotMessage(
+    `👋 <strong>Hi!</strong> I'm CycleSense AI.<br>Ask me about your data:${buttonsHtml}`,
+  );
+}
+
+// --- CLEAR CHAT ---
 export function clearAIChat() {
   if (chatHistory) {
     chatHistory.innerHTML = "";
-    addBotMessage("Chat history cleared. Ready for new questions! 🗑️");
+    showWelcomeMessage();
   }
 }
 
-// --- HANDLE USER INPUT ---
+// --- CLICK HANDLER ---
+export function triggerAIQuery(text) {
+  const input = document.getElementById("ai-input");
+  if (input) input.value = "";
+  addUserMessage(text);
+  processResponse(text);
+}
+
+// --- TYPING HANDLER ---
 export function handleUserQuery(e) {
   if (e.key === "Enter") {
     const input = document.getElementById("ai-input");
@@ -34,190 +71,303 @@ export function handleUserQuery(e) {
 
     addUserMessage(text);
     input.value = "";
-
-    showTypingIndicator();
-    setTimeout(() => {
-      removeTypingIndicator();
-      const response = generateResponse(text);
-      addBotMessage(response);
-    }, 600);
+    processResponse(text);
   }
 }
 
-// --- LOGIC (REVERTED TO THE "GOOD" VERSION) ---
-function generateResponse(query) {
+// --- PROCESSOR ---
+function processResponse(text) {
+  showTypingIndicator();
+  setTimeout(() => {
+    removeTypingIndicator();
+    const response = generateSmartResponse(text);
+    addBotMessage(response);
+  }, 700);
+}
+
+// --- 🧠 THE SMART BRAIN LOGIC ---
+function generateSmartResponse(query) {
   let data = getRawData();
   const table = getActiveTable();
   const q = query.toLowerCase();
 
+  // 0. DATA CHECK
   if (!data || data.length === 0)
-    return "I don't see any data. Please sync an Excel file first.";
+    return "I don't see any data loaded. Please sync an Excel file first.";
 
-  // 1. INTELLIGENT FILTERING: Check for Year (e.g., "in 2025")
+  // 1. GREETINGS & CLOSINGS
+  const greetings = [
+    "hi",
+    "hello",
+    "hey",
+    "good morning",
+    "good afternoon",
+    "good evening",
+  ];
+  if (greetings.some((g) => q === g || q.startsWith(g + " ")))
+    return "Hello! 👋 I'm ready to analyze your shop's performance.";
+
+  const closings = ["bye", "goodbye", "see ya", "thank you", "thanks"];
+  if (closings.some((c) => q.includes(c)))
+    return "You're welcome! Happy cycling! 🚲";
+
+  // 2. PARSE DATE CONTEXT
+  let targetYear = null;
   const yearMatch = q.match(/\b20\d{2}\b/);
-  if (yearMatch) {
-    const year = parseInt(yearMatch[0]);
-    data = data.filter((r) => r._date && r._date.getFullYear() === year);
-    if (data.length === 0)
-      return `I couldn't find any records for the year ${year}.`;
+  if (yearMatch) targetYear = parseInt(yearMatch[0]);
+
+  let targetMonth = null;
+  const monthsFull = [
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+  ];
+  const monthsShort = [
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
+  ];
+
+  monthsFull.forEach((m, i) => {
+    if (q.includes(m)) targetMonth = i;
+  });
+  if (targetMonth === null)
+    monthsShort.forEach((m, i) => {
+      if (q.includes(m)) targetMonth = i;
+    });
+
+  // 3. INTELLIGENT FILTERING
+  // IMPORTANT: We filter a COPY of the data to answer specific questions,
+  // but we keep the original data for "Best Month" calculations across the whole year.
+  let filteredData = data.filter((r) => {
+    if (!r._date) return false;
+    let match = true;
+    if (targetYear !== null)
+      match = match && r._date.getFullYear() === targetYear;
+    if (targetMonth !== null && !q.includes("month"))
+      match = match && r._date.getMonth() === targetMonth;
+    return match;
+  });
+
+  // --- ERROR HANDLING FOR "NO DATA" ---
+  if ((targetYear || targetMonth !== null) && filteredData.length === 0) {
+    // Smart Hint System
+    const activeIsPast = table.includes("past");
+    if (activeIsPast && targetYear && targetYear > 2025) {
+      return `⚠️ I couldn't find data for **${targetYear}** in the **Past Financials** tab.<br><br>💡 **Tip:** Try switching the dashboard to **'Predicted'** mode to see future forecasts!`;
+    }
+    return `I looked for data in **${targetYear || ""} ${targetMonth !== null ? monthsFull[targetMonth] : ""}** but found nothing matching that date.`;
   }
 
-  // --- FINANCIAL CONTEXT ---
+  // 4. FINANCIAL QUESTIONS
   if (table.includes("financial")) {
-    // Q: Best/Highest Revenue Month? (This logic was missing in the 'bad' version)
-    if (
-      q.includes("month") &&
-      (q.includes("best") ||
-        q.includes("highest") ||
-        q.includes("most") ||
-        q.includes("revenue"))
-    ) {
-      return calculateBestMonth(data, "revenue");
-    }
-
-    // Q: Highest Single Day Revenue?
-    if (
-      q.includes("highest") &&
-      q.includes("revenue") &&
-      !q.includes("month")
-    ) {
-      const max = data.reduce((prev, current) =>
-        prev.revenue > current.revenue ? prev : current,
+    // A. Specific Date (e.g., "Revenue on Jan 5")
+    // Regex looks for "5", "5th", "05" near date words
+    const dayMatch = q.match(/(\d{1,2})(?:st|nd|rd|th)?/);
+    if (targetMonth !== null && dayMatch) {
+      const day = parseInt(dayMatch[1]);
+      // Search in the main data set to be safe
+      const dayRecord = data.find(
+        (r) =>
+          r._date &&
+          r._date.getMonth() === targetMonth &&
+          r._date.getDate() === day &&
+          (targetYear ? r._date.getFullYear() === targetYear : true),
       );
-      return `The single highest revenue day was ${new Date(max.date).toLocaleDateString()} with ${formatCurrency(max.revenue)}.`;
+
+      if (dayRecord) {
+        const p = (dayRecord.revenue || 0) - (dayRecord.expense_amount || 0);
+        if (q.includes("revenue"))
+          return `📅 **${dayRecord._date.toLocaleDateString()}** Revenue: **${formatCurrency(dayRecord.revenue)}**`;
+        if (q.includes("expense"))
+          return `📅 **${dayRecord._date.toLocaleDateString()}** Expenses: **${formatCurrency(dayRecord.expense_amount)}**`;
+        if (q.includes("profit") || q.includes("net"))
+          return `📅 **${dayRecord._date.toLocaleDateString()}** Net Profit: **${formatCurrency(p)}**`;
+        // Default: Show all
+        return `📅 **${dayRecord._date.toLocaleDateString()}**: <br>Revenue: ${formatCurrency(dayRecord.revenue)}<br>Expense: ${formatCurrency(dayRecord.expense_amount)}<br>**Profit: ${formatCurrency(p)}**`;
+      }
     }
 
-    // Q: Total Revenue?
-    if (q.includes("total") && q.includes("revenue")) {
-      const total = data.reduce((sum, r) => sum + (r.revenue || 0), 0);
-      return `Total revenue ${yearMatch ? "for " + yearMatch[0] : ""} is ${formatCurrency(total)}.`;
-    }
-
-    // Q: Highest Expense Category?
+    // B. Extremes (Best/Worst/Highest/Lowest)
     if (
-      q.includes("highest") &&
-      (q.includes("expense") || q.includes("cost")) &&
-      (q.includes("type") || q.includes("category"))
+      q.includes("highest") ||
+      q.includes("most") ||
+      q.includes("best") ||
+      q.includes("lowest") ||
+      q.includes("least") ||
+      q.includes("worst")
     ) {
-      return calculateTopCategory(data, "expense_desc", "expense_amount");
+      const isMax =
+        q.includes("highest") || q.includes("most") || q.includes("best");
+      const type = isMax ? "max" : "min";
+      // Use 'data' (full set filtered by year if specified) instead of 'filteredData' (which might be filtered by month)
+      const analysisData = targetYear
+        ? data.filter((r) => r._date && r._date.getFullYear() === targetYear)
+        : data;
+
+      if (q.includes("category")) return getTopCategory(analysisData);
+      if (q.includes("day"))
+        return getExtremeDay(
+          analysisData,
+          q.includes("expense") ? "expense_amount" : "revenue",
+          type,
+        );
+      // Default to month if not specified or explicitly asked
+      if (
+        q.includes("month") ||
+        (!q.includes("day") && !q.includes("category"))
+      ) {
+        return getExtremeMonth(
+          analysisData,
+          q.includes("expense") ? "expense_amount" : "revenue",
+          type,
+        );
+      }
     }
 
-    // Q: Total Profit?
-    if (q.includes("profit") || q.includes("net")) {
-      const rev = data.reduce((sum, r) => sum + (r.revenue || 0), 0);
-      const exp = data.reduce((sum, r) => sum + (r.expense_amount || 0), 0);
-      return `Net profit is ${formatCurrency(rev - exp)}.`;
+    // C. Totals
+    if (
+      q.includes("total") ||
+      q.includes("how much") ||
+      q.includes("revenue") ||
+      q.includes("profit") ||
+      q.includes("expense")
+    ) {
+      const rev = sum(filteredData, "revenue");
+      const exp = sum(filteredData, "expense_amount");
+      const prof = rev - exp;
+      const context =
+        targetMonth !== null
+          ? monthsFull[targetMonth]
+          : targetYear || "all loaded data";
+
+      if (q.includes("revenue"))
+        return `Total Revenue for **${context}**: **${formatCurrency(rev)}**`;
+      if (q.includes("expense"))
+        return `Total Expenses for **${context}**: **${formatCurrency(exp)}**`;
+      return `Net Profit for **${context}**: **${formatCurrency(prof)}**`;
     }
   }
 
-  // --- SERVICE CONTEXT ---
+  // 5. SERVICE QUESTIONS
   if (table.includes("service")) {
-    // Q: Most Common Repair / Bike?
-    if (
-      q.includes("most") &&
-      (q.includes("common") ||
-        q.includes("popular") ||
-        q.includes("bike") ||
-        q.includes("model"))
-    ) {
-      return calculateMostFrequent(data, "cycle_name");
-    }
-
-    // Q: Total Repairs?
-    if (
-      q.includes("how many") ||
-      q.includes("count") ||
-      q.includes("total repair")
-    ) {
-      return `We performed ${data.length} repairs ${yearMatch ? "in " + yearMatch[0] : ""}.`;
-    }
-
-    // Q: Highest Service Cost?
-    if (q.includes("highest") && q.includes("cost")) {
-      const max = data.reduce((prev, current) =>
-        prev.total_cost > current.total_cost ? prev : current,
-      );
-      return `The most expensive repair was for a ${max.cycle_name} on ${new Date(max.date).toLocaleDateString()} costing ${formatCurrency(max.total_cost)}.`;
+    if (q.includes("most") || q.includes("common"))
+      return getMostCommonBike(filteredData);
+    if (q.includes("total") || q.includes("count"))
+      return `Total repairs in this period: **${filteredData.length}**`;
+    if (q.includes("average")) {
+      const totalCost = sum(filteredData, "total_cost");
+      return `Average repair cost: **${formatCurrency(totalCost / (filteredData.length || 1))}**`;
     }
   }
 
-  // --- GREETINGS ---
-  if (q.includes("hello") || q.includes("hi"))
-    return "Hello! I can analyze your sales and repairs. Try asking 'Best month' or 'Total profit'.";
-  if (q.includes("thank")) return "You're welcome! 🚵";
+  // 6. FALLBACK (Search Text)
+  // If no math logic triggered, try to search for descriptions (e.g. "Mountain Bike")
+  const searchResults = performTextSearch(data, q);
+  if (searchResults) return searchResults;
 
-  return "I'm not sure. Try asking about 'Best month', 'Total profit', 'Most common bike', or include a year like '2025'.";
+  // 7. FINAL FALLBACK
+  return "This is a limited edition AI. 🤖<br>I can answer: 'Total revenue', 'Best month in 2025', 'Profit on Jan 5'.<br>More features coming soon!";
 }
 
-// --- CALCULATION HELPERS (The "Good" Logic) ---
+// --- HELPERS ---
 
-function calculateBestMonth(data, field) {
-  const monthlyTotals = {};
+function performTextSearch(data, query) {
+  const terms = query.split(" ").filter((w) => w.length > 3);
+  if (terms.length === 0) return null;
+  const matches = data.filter((r) => {
+    const str = JSON.stringify(r).toLowerCase();
+    return terms.some((t) => str.includes(t));
+  });
+  if (matches.length > 0) {
+    return `Found **${matches.length} records** matching "${terms[0]}".<br>Example: ${matches[0].expense_desc || matches[0].cycle_name || "Item"}`;
+  }
+  return null;
+}
 
+function getExtremeMonth(data, field, type) {
+  const monthly = {};
   data.forEach((r) => {
     if (!r._date) return;
-    const monthKey = r._date.toLocaleString("default", {
+    const k = r._date.toLocaleString("default", {
       month: "long",
       year: "numeric",
     });
-    monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + (r[field] || 0);
+    monthly[k] = (monthly[k] || 0) + (r[field] || 0);
   });
-
-  let bestMonth = "";
-  let maxVal = -1;
-
-  for (const [month, total] of Object.entries(monthlyTotals)) {
-    if (total > maxVal) {
-      maxVal = total;
-      bestMonth = month;
+  let bestK = "",
+    val = type === "max" ? -Infinity : Infinity;
+  for (const [k, v] of Object.entries(monthly)) {
+    if (type === "max" ? v > val : v < val) {
+      val = v;
+      bestK = k;
     }
   }
-
-  if (maxVal === -1) return "No sufficient data to calculate monthly totals.";
-  return `The best month was **${bestMonth}** with a total of ${formatCurrency(maxVal)}.`;
+  const label = type === "max" ? "Highest" : "Lowest";
+  const fieldName = field === "expense_amount" ? "Expense" : "Revenue";
+  return `The **${label} ${fieldName} Month** was **${bestK}** (${formatCurrency(val)}).`;
 }
 
-function calculateMostFrequent(data, field) {
+function getExtremeDay(data, field, type) {
+  if (data.length === 0) return "No data found for that period.";
+  const sorted = [...data].sort((a, b) =>
+    type === "max" ? b[field] - a[field] : a[field] - b[field],
+  );
+  const best = sorted[0];
+  return `The **${type === "max" ? "Best" : "Lowest"} Day** was **${best._date.toLocaleDateString()}** (${formatCurrency(best[field])}).`;
+}
+
+function getTopCategory(data) {
+  const cats = {};
+  data.forEach((r) => {
+    if (r.expense_amount > 0) {
+      const k = r.expense_desc || "Uncategorized";
+      cats[k] = (cats[k] || 0) + r.expense_amount;
+    }
+  });
+  let bestK = "",
+    max = -1;
+  for (const [k, v] of Object.entries(cats)) {
+    if (v > max) {
+      max = v;
+      bestK = k;
+    }
+  }
+  return `Highest Expense Category: **${bestK}** (${formatCurrency(max)}).`;
+}
+
+function getMostCommonBike(data) {
   const counts = {};
   data.forEach((r) => {
-    const key = r[field] || "Unknown";
-    counts[key] = (counts[key] || 0) + 1;
+    const k = r.cycle_name || "Unknown";
+    counts[k] = (counts[k] || 0) + 1;
   });
-
-  let topItem = "";
-  let maxCount = -1;
-
-  for (const [item, count] of Object.entries(counts)) {
-    if (count > maxCount) {
-      maxCount = count;
-      topItem = item;
-    }
-  }
-
-  return `The most common model is **${topItem}** (seen ${maxCount} times).`;
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return "No data.";
+  return `Most Common Bike: **${entries[0][0]}** (${entries[0][1]} repairs).`;
 }
 
-function calculateTopCategory(data, labelField, valueField) {
-  const totals = {};
-  data.forEach((r) => {
-    const key = r[labelField] || "Other";
-    totals[key] = (totals[key] || 0) + (r[valueField] || 0);
-  });
-
-  let topCat = "";
-  let maxVal = -1;
-
-  for (const [cat, val] of Object.entries(totals)) {
-    if (val > maxVal) {
-      maxVal = val;
-      topCat = cat;
-    }
-  }
-
-  return `The highest expense category is **${topCat}** costing ${formatCurrency(maxVal)}.`;
+function sum(data, field) {
+  return data.reduce((s, r) => s + (r[field] || 0), 0);
 }
-
-// --- UI HELPERS ---
 function formatCurrency(val) {
   return new Intl.NumberFormat("en-LK", {
     style: "currency",
@@ -225,10 +375,11 @@ function formatCurrency(val) {
   }).format(val);
 }
 
+// --- UI HELPERS ---
 function addUserMessage(text) {
   const div = document.createElement("div");
   div.className = "flex justify-end mb-2 fade-in";
-  div.innerHTML = `<div class="bg-blue-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-[80%] shadow-md text-sm">${text}</div>`;
+  div.innerHTML = `<div class="bg-purple-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-[85%] shadow-md text-sm">${text}</div>`;
   chatHistory.appendChild(div);
   chatHistory.scrollTop = chatHistory.scrollHeight;
 }
@@ -237,12 +388,8 @@ function addBotMessage(text) {
   const div = document.createElement("div");
   div.className = "flex justify-start mb-2 fade-in";
   div.innerHTML = `
-        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2 shadow-sm shrink-0">
-            <i class="fas fa-robot text-purple-600 text-xs"></i>
-        </div>
-        <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-2xl rounded-tl-none max-w-[80%] shadow-md text-sm border dark:border-gray-600">
-            ${text}
-        </div>`;
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center mr-2 shadow-sm shrink-0"><i class="fas fa-robot text-purple-600 text-xs"></i></div>
+        <div class="bg-white dark:bg-slate-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-2xl rounded-tl-none max-w-[85%] shadow-md text-sm border dark:border-gray-600 leading-relaxed">${text}</div>`;
   chatHistory.appendChild(div);
   chatHistory.scrollTop = chatHistory.scrollHeight;
 }
