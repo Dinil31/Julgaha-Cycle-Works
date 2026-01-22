@@ -16,7 +16,12 @@ import {
 } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js";
 // IMPORT AI FUNCTIONS
-import { toggleAI, handleUserQuery, clearAIChat } from "./ai.js";
+import {
+  toggleAI,
+  handleUserQuery,
+  clearAIChat,
+  triggerAIQuery,
+} from "./ai.js";
 
 // --- NAVIGATION ---
 function setActiveNav(activeId) {
@@ -57,6 +62,8 @@ window.handleNavClick = function (tabName) {
 window.toggleAI = toggleAI;
 window.clearAIChat = clearAIChat;
 window.handleAIKey = handleUserQuery;
+// This handles the button clicks
+window.triggerAIQuery = triggerAIQuery;
 window.triggerAISend = function () {
   handleUserQuery({ key: "Enter" });
 };
@@ -65,7 +72,6 @@ window.onload = function () {
   try {
     initSupabase();
 
-    // Attach all global functions
     window.handleLogin = handleLogin;
     window.handleLogout = handleLogout;
     window.handleResetPassword = handleResetPassword;
