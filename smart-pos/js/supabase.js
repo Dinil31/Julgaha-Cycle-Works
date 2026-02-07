@@ -1,7 +1,7 @@
 // Supabase connection setup
 // TODO: Replace with your Supabase project URL and anon key.
-const SUPABASE_URL = 'https://your-project.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://nyfspikdefnhazljgtes.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55ZnNwaWtkZWZuaGF6bGpndGVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4MTA4MTksImV4cCI6MjA4NDM4NjgxOX0.w1dHDLxChnJ6zEvtXp3YS-P4pakFeThBraiSbgVwzPo';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
