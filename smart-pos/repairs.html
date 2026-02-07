@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart POS - Repairs</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>Repair Tracking</h1>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="pos.html">POS</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="repairs.html">Repairs</a>
+      <a href="hr.html">HR & Payroll</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="section grid grid-2">
+      <div class="card">
+        <h2>Register New Repair</h2>
+        <form id="repair-form">
+          <div class="grid grid-2">
+            <div>
+              <label for="repair-name">Customer Name</label>
+              <input id="repair-name" name="customer_name" required />
+            </div>
+            <div>
+              <label for="repair-phone">Phone</label>
+              <input id="repair-phone" name="phone" required />
+            </div>
+            <div>
+              <label for="repair-advance">Advance (LKR)</label>
+              <input id="repair-advance" name="advance" type="number" min="0" step="0.01" required />
+            </div>
+            <div>
+              <label for="repair-date">Predicted Completion</label>
+              <input id="repair-date" name="predicted_date" type="date" required />
+            </div>
+          </div>
+          <button type="submit">Generate Repair ID</button>
+          <span id="repair-message"></span>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Public Repair Check</h2>
+        <label for="repair-search">Repair ID</label>
+        <input id="repair-search" placeholder="Enter Repair ID" />
+        <button id="repair-search-btn">Check Status</button>
+        <p id="repair-status"></p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="card">
+        <h2>Active Repairs</h2>
+        <table class="table" id="repairs-table">
+          <thead>
+            <tr>
+              <th>Repair ID</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Advance</th>
+              <th>Predicted Date</th>
+              <th>Status</th>
+              <th>Alerts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>Smart POS &amp; Management System</footer>
+
+  <script src="js/supabase.js"></script>
+  <script src="js/repairs.js"></script>
+</body>
+</html>
