@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart POS - Inventory</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>Inventory Management</h1>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="pos.html">POS</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="repairs.html">Repairs</a>
+      <a href="hr.html">HR & Payroll</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="section grid grid-2">
+      <div class="card">
+        <h2>Add New Product</h2>
+        <form id="product-form">
+          <div class="grid grid-2">
+            <div>
+              <label for="product-code">Product Code</label>
+              <input id="product-code" name="code" required />
+            </div>
+            <div>
+              <label for="product-name">Product Name</label>
+              <input id="product-name" name="name" required />
+            </div>
+            <div>
+              <label for="product-stock">Stock</label>
+              <input id="product-stock" name="stock" type="number" min="0" required />
+            </div>
+            <div>
+              <label for="product-reorder">Reorder Level</label>
+              <input id="product-reorder" name="reorder_level" type="number" min="0" required />
+            </div>
+            <div>
+              <label for="product-price">Unit Price (LKR)</label>
+              <input id="product-price" name="unit_price" type="number" min="0" step="0.01" required />
+            </div>
+          </div>
+          <div class="inline" style="margin-top: 12px;">
+            <button type="submit">Save Product</button>
+            <span id="product-message"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Low Stock Actions</h2>
+        <p class="notice">Products below reorder level are highlighted in red.</p>
+        <button id="low-stock-pdf" class="accent">Generate Low Stock PDF</button>
+        <div style="margin-top: 12px;" id="low-stock-summary"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="card">
+        <h2>Current Stock</h2>
+        <table class="table" id="inventory-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Name</th>
+              <th>Stock</th>
+              <th>Reorder Level</th>
+              <th>Unit Price</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>Smart POS &amp; Management System</footer>
+
+  <script src="js/supabase.js"></script>
+  <script src="js/inventory.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart POS - Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>Smart POS Dashboard</h1>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="pos.html">POS</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="repairs.html">Repairs</a>
+      <a href="hr.html">HR & Payroll</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="metrics">
+        <div class="metric">
+          <span>Today's Sales</span>
+          <strong id="dashboard-sales">LKR 0.00</strong>
+        </div>
+        <div class="metric">
+          <span>Low Stock Count</span>
+          <strong id="dashboard-low-stock">0</strong>
+        </div>
+        <div class="metric">
+          <span>Repairs Pending</span>
+          <strong id="dashboard-repairs">0</strong>
+        </div>
+        <div class="metric">
+          <span>Salary Upcoming</span>
+          <strong id="dashboard-salary">-</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="section grid grid-2">
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <p class="notice">Use the navigation above to manage sales, inventory, repairs, and payroll.</p>
+        <div class="inline">
+          <button onclick="window.location.href='pos.html'">New Sale</button>
+          <button class="secondary" onclick="window.location.href='inventory.html'">Manage Stock</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Business Alerts</h2>
+        <ul id="dashboard-alerts"></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>Smart POS &amp; Management System</footer>
+
+  <script src="js/supabase.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
