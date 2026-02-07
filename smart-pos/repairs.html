@@ -5,79 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart POS - Repairs</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>Repair Tracking</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="pos.html">POS</a>
-      <a href="inventory.html">Inventory</a>
-      <a href="repairs.html">Repairs</a>
-      <a href="hr.html">HR & Payroll</a>
-    </nav>
-  </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-bicycle"></i></span>
+        <div>
+          <div>Cycle Sense</div>
+          <small>Smart POS</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav-link" href="index.html"><i class="fas fa-chart-line"></i>Dashboard</a>
+        <a class="nav-link" href="pos.html"><i class="fas fa-cash-register"></i>POS</a>
+        <a class="nav-link" href="inventory.html"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+        <a class="nav-link active" href="repairs.html"><i class="fas fa-screwdriver-wrench"></i>Repairs</a>
+        <a class="nav-link" href="hr.html"><i class="fas fa-users"></i>HR & Payroll</a>
+      </nav>
+      <div class="sidebar-footer">Smart POS &amp; Management System</div>
+    </aside>
 
-  <main>
-    <section class="section grid grid-2">
-      <div class="card">
-        <h2>Register New Repair</h2>
-        <form id="repair-form">
-          <div class="grid grid-2">
-            <div>
-              <label for="repair-name">Customer Name</label>
-              <input id="repair-name" name="customer_name" required />
-            </div>
-            <div>
-              <label for="repair-phone">Phone</label>
-              <input id="repair-phone" name="phone" required />
-            </div>
-            <div>
-              <label for="repair-advance">Advance (LKR)</label>
-              <input id="repair-advance" name="advance" type="number" min="0" step="0.01" required />
-            </div>
-            <div>
-              <label for="repair-date">Predicted Completion</label>
-              <input id="repair-date" name="predicted_date" type="date" required />
-            </div>
+    <div class="content">
+      <header class="topbar">
+        <div class="page-title">
+          <h1>Repair Tracking</h1>
+          <p>Register and monitor active repair jobs</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" onclick="window.location.href='index.html'">Dashboard</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <section class="section grid grid-2">
+          <div class="card">
+            <h2>Register New Repair</h2>
+            <form id="repair-form">
+              <div class="grid grid-2">
+                <div>
+                  <label for="repair-name">Customer Name</label>
+                  <input id="repair-name" name="customer_name" required />
+                </div>
+                <div>
+                  <label for="repair-phone">Phone</label>
+                  <input id="repair-phone" name="phone" required />
+                </div>
+                <div>
+                  <label for="repair-advance">Advance (LKR)</label>
+                  <input id="repair-advance" name="advance" type="number" min="0" step="0.01" required />
+                </div>
+                <div>
+                  <label for="repair-date">Predicted Completion</label>
+                  <input id="repair-date" name="predicted_date" type="date" required />
+                </div>
+              </div>
+              <button type="submit">Generate Repair ID</button>
+              <span id="repair-message"></span>
+            </form>
           </div>
-          <button type="submit">Generate Repair ID</button>
-          <span id="repair-message"></span>
-        </form>
-      </div>
 
-      <div class="card">
-        <h2>Public Repair Check</h2>
-        <label for="repair-search">Repair ID</label>
-        <input id="repair-search" placeholder="Enter Repair ID" />
-        <button id="repair-search-btn">Check Status</button>
-        <p id="repair-status"></p>
-      </div>
-    </section>
+          <div class="card">
+            <h2>Public Repair Check</h2>
+            <label for="repair-search">Repair ID</label>
+            <input id="repair-search" placeholder="Enter Repair ID" />
+            <button id="repair-search-btn">Check Status</button>
+            <p id="repair-status" class="loading-text"></p>
+          </div>
+        </section>
 
-    <section class="section">
-      <div class="card">
-        <h2>Active Repairs</h2>
-        <table class="table" id="repairs-table">
-          <thead>
-            <tr>
-              <th>Repair ID</th>
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Advance</th>
-              <th>Predicted Date</th>
-              <th>Status</th>
-              <th>Alerts</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <section class="section">
+          <div class="card">
+            <h2>Active Repairs</h2>
+            <table class="table" id="repairs-table">
+              <thead>
+                <tr>
+                  <th>Repair ID</th>
+                  <th>Customer</th>
+                  <th>Phone</th>
+                  <th>Advance</th>
+                  <th>Predicted Date</th>
+                  <th>Status</th>
+                  <th>Alerts</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
 
-  <footer>Smart POS &amp; Management System</footer>
+      <footer>Smart POS &amp; Management System</footer>
+    </div>
+  </div>
 
   <script src="js/supabase.js"></script>
   <script src="js/repairs.js"></script>

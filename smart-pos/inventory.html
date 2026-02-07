@@ -5,83 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart POS - Inventory</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>Inventory Management</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="pos.html">POS</a>
-      <a href="inventory.html">Inventory</a>
-      <a href="repairs.html">Repairs</a>
-      <a href="hr.html">HR & Payroll</a>
-    </nav>
-  </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-bicycle"></i></span>
+        <div>
+          <div>Cycle Sense</div>
+          <small>Smart POS</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav-link" href="index.html"><i class="fas fa-chart-line"></i>Dashboard</a>
+        <a class="nav-link" href="pos.html"><i class="fas fa-cash-register"></i>POS</a>
+        <a class="nav-link active" href="inventory.html"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+        <a class="nav-link" href="repairs.html"><i class="fas fa-screwdriver-wrench"></i>Repairs</a>
+        <a class="nav-link" href="hr.html"><i class="fas fa-users"></i>HR & Payroll</a>
+      </nav>
+      <div class="sidebar-footer">Smart POS &amp; Management System</div>
+    </aside>
 
-  <main>
-    <section class="section grid grid-2">
-      <div class="card">
-        <h2>Add New Product</h2>
-        <form id="product-form">
-          <div class="grid grid-2">
-            <div>
-              <label for="product-code">Product Code</label>
-              <input id="product-code" name="code" required />
-            </div>
-            <div>
-              <label for="product-name">Product Name</label>
-              <input id="product-name" name="name" required />
-            </div>
-            <div>
-              <label for="product-stock">Stock</label>
-              <input id="product-stock" name="stock" type="number" min="0" required />
-            </div>
-            <div>
-              <label for="product-reorder">Reorder Level</label>
-              <input id="product-reorder" name="reorder_level" type="number" min="0" required />
-            </div>
-            <div>
-              <label for="product-price">Unit Price (LKR)</label>
-              <input id="product-price" name="unit_price" type="number" min="0" step="0.01" required />
-            </div>
+    <div class="content">
+      <header class="topbar">
+        <div class="page-title">
+          <h1>Inventory Management</h1>
+          <p>Track stock levels and reorder alerts</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" onclick="window.location.href='index.html'">Dashboard</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <section class="section grid grid-2">
+          <div class="card">
+            <h2>Add New Product</h2>
+            <form id="product-form">
+              <div class="grid grid-2">
+                <div>
+                  <label for="product-code">Product Code</label>
+                  <input id="product-code" name="code" required />
+                </div>
+                <div>
+                  <label for="product-name">Product Name</label>
+                  <input id="product-name" name="name" required />
+                </div>
+                <div>
+                  <label for="product-stock">Stock</label>
+                  <input id="product-stock" name="stock" type="number" min="0" required />
+                </div>
+                <div>
+                  <label for="product-reorder">Reorder Level</label>
+                  <input id="product-reorder" name="reorder_level" type="number" min="0" required />
+                </div>
+                <div>
+                  <label for="product-price">Unit Price (LKR)</label>
+                  <input id="product-price" name="unit_price" type="number" min="0" step="0.01" required />
+                </div>
+              </div>
+              <div class="inline" style="margin-top: 12px;">
+                <button type="submit">Save Product</button>
+                <span id="product-message"></span>
+              </div>
+            </form>
           </div>
-          <div class="inline" style="margin-top: 12px;">
-            <button type="submit">Save Product</button>
-            <span id="product-message"></span>
+
+          <div class="card">
+            <h2>Low Stock Actions</h2>
+            <p class="notice">Products below reorder level are highlighted in red.</p>
+            <button id="low-stock-pdf" class="accent">Generate Low Stock PDF</button>
+            <div style="margin-top: 12px;" id="low-stock-summary" class="loading-text"></div>
           </div>
-        </form>
-      </div>
+        </section>
 
-      <div class="card">
-        <h2>Low Stock Actions</h2>
-        <p class="notice">Products below reorder level are highlighted in red.</p>
-        <button id="low-stock-pdf" class="accent">Generate Low Stock PDF</button>
-        <div style="margin-top: 12px;" id="low-stock-summary"></div>
-      </div>
-    </section>
+        <section class="section">
+          <div class="card">
+            <h2>Current Stock</h2>
+            <table class="table" id="inventory-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Stock</th>
+                  <th>Reorder Level</th>
+                  <th>Unit Price</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
 
-    <section class="section">
-      <div class="card">
-        <h2>Current Stock</h2>
-        <table class="table" id="inventory-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Name</th>
-              <th>Stock</th>
-              <th>Reorder Level</th>
-              <th>Unit Price</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <footer>Smart POS &amp; Management System</footer>
+      <footer>Smart POS &amp; Management System</footer>
+    </div>
+  </div>
 
   <script src="js/supabase.js"></script>
   <script src="js/inventory.js"></script>
