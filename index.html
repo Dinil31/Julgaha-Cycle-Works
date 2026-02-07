@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CycleSense Cloud</title>
+    <title>CycleSense</title>
+    
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚲</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,8 +18,14 @@
             darkMode: 'class',
             theme: { 
                 extend: { 
-                    colors: { darkbg: '#0f172a', darkcard: '#1e293b', brand: '#3b82f6' },
-                    animation: { 'wiggle': 'wiggle 0.5s ease-in-out infinite', 'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards', 'ride': 'ride 8s linear infinite', 'cloud': 'cloud 20s linear infinite', 'bounce-slight': 'bounceSlight 1s infinite' }
+                    colors: { darkbg: '#0f172a', darkcard: '#1e293b' },
+                    animation: { 
+                        'wiggle': 'wiggle 0.5s ease-in-out infinite', 
+                        'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'ride': 'ride 8s linear infinite',
+                        'cloud': 'cloud 20s linear infinite',
+                        'bounce-slight': 'bounceSlight 1s infinite'
+                    }
                 } 
             }
         }
@@ -26,213 +33,324 @@
     <style>
         .fade-in { animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Animations */
         @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
         @keyframes ride { 0% { transform: translateX(-10vw); } 100% { transform: translateX(110vw); } }
         @keyframes bounceSlight { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes cloud { 0% { transform: translateX(110vw); } 100% { transform: translateX(-20vw); } }
+
+        /* Modern Glass Modal Background */
         .glass-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+        
+        /* Chart Container Fix */
         .chart-container { position: relative; height: 100%; width: 100%; min-height: 250px; }
-        .grid-pattern { background-color: #f3f4f6; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; }
-        .dark .grid-pattern { background-color: #0f172a; background-image: radial-gradient(#334155 1px, transparent 1px); }
-        .confetti-piece { position: fixed; width: 10px; height: 10px; background-color: #f2d74e; top: -10px; z-index: 9999; animation: fall linear forwards; }
-        @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
+        
+        /* Login Background Pattern */
+        .grid-pattern {
+            background-color: #f3f4f6;
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .dark .grid-pattern {
+            background-color: #0f172a;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+        }
+        /* ... existing styles ... */
+
+        /* CONFETTI ANIMATION */
+        .confetti-piece {
+            position: fixed;
+            width: 10px; 
+            height: 10px;
+            background-color: #f2d74e;
+            top: -10px;
+            z-index: 9999;
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(720deg); }
+        }
+
+        /* Success Pulse Green */
         .pulse-green { animation: pulseGreen 2s infinite; }
-        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        @keyframes pulseGreen {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        
+        /* Success Pulse Red */
         .pulse-red { animation: pulseRed 2s infinite; }
-        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        @keyframes pulseRed {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
     <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[60]">
         <div id="modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
-            <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4"><i id="modal-icon" class="fas fa-info-circle text-2xl"></i></div>
-            <h3 id="modal-title" class="text-xl font-bold dark:text-white mb-2">Title</h3>
-            <p id="modal-msg" class="text-gray-500 dark:text-gray-400 mb-6">Message</p>
+            <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 animate-bounce">
+                <i id="modal-icon" class="fas fa-info-circle text-2xl text-blue-600"></i>
+            </div>
+            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">Title</h3>
+            <p id="modal-msg" class="text-gray-500 dark:text-gray-400 mb-6">Message goes here...</p>
             <div class="flex gap-3 justify-center">
-                <button id="modal-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 font-bold">Cancel</button>
-                <button id="modal-btn-confirm" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold">Confirm</button>
+                <button id="modal-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition font-bold">Cancel</button>
+                <button id="modal-btn-confirm" class="px-5 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 hover:animate-wiggle transition font-bold shadow-lg shadow-blue-500/30">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="input-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[70]">
+        <div id="input-modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
+            <div class="mx-auto w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mb-4 animate-bounce">
+                <i class="fas fa-key text-2xl text-indigo-600"></i>
+            </div>
+            <h3 id="input-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">Reset Password</h3>
+            <p id="input-msg" class="text-gray-500 dark:text-gray-400 mb-6">Enter your email to receive a magic link.</p>
+            <div class="relative group text-left">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-envelope text-gray-400 group-focus-within:text-indigo-500 transition"></i>
+                </div>
+                <input id="modal-input-field" type="email" class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner" placeholder="name@example.com">
+            </div>
+            <div class="flex gap-3 justify-center mt-6">
+                <button id="input-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition font-bold">Cancel</button>
+                <button id="input-btn-confirm" class="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 hover:animate-wiggle transition font-bold shadow-lg shadow-indigo-500/30">Send Link</button>
             </div>
         </div>
     </div>
 
     <div id="login-section" class="min-h-screen flex flex-col items-center justify-center grid-pattern relative overflow-hidden">
-        <div class="absolute bottom-0 w-full h-32 border-t-4 border-gray-300 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 flex items-end overflow-hidden z-0">
-            <div class="animate-ride absolute bottom-4"><div class="text-6xl text-blue-600 dark:text-blue-400 animate-bounce-slight"><i class="fas fa-bicycle"></i></div></div>
+        
+        <div class="absolute top-20 left-10 text-gray-300 dark:text-slate-800 text-9xl opacity-20 animate-cloud" style="animation-duration: 25s;">
+            <i class="fas fa-cloud"></i>
         </div>
+        <div class="absolute top-40 right-20 text-gray-300 dark:text-slate-800 text-8xl opacity-20 animate-cloud" style="animation-duration: 35s;">
+            <i class="fas fa-cloud"></i>
+        </div>
+
+        <div class="absolute bottom-0 w-full h-32 border-t-4 border-gray-300 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 flex items-end overflow-hidden z-0">
+            <div class="absolute bottom-10 w-full h-2 border-t-2 border-dashed border-gray-400 dark:border-slate-600"></div>
+            <div class="animate-ride absolute bottom-4">
+                <div class="text-6xl text-blue-600 dark:text-blue-400 animate-bounce-slight">
+                    <i class="fas fa-bicycle"></i>
+                </div>
+                <div class="absolute top-2 -left-4 w-6 h-1 bg-gray-400 rounded opacity-50"></div>
+                <div class="absolute top-6 -left-8 w-4 h-1 bg-gray-400 rounded opacity-50"></div>
+            </div>
+        </div>
+
         <div class="z-10 bg-white/90 dark:bg-darkcard/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-gray-100 dark:border-gray-700 transform hover:scale-105 transition duration-500">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-blue-500/50 animate-wiggle"><i class="fas fa-bicycle"></i></div>
+                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-blue-500/50 animate-wiggle">
+                    <i class="fas fa-bicycle"></i>
+                </div>
                 <h1 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">CycleSense Cloud</h1>
+                <p class="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">Smart Workshop System</p>
             </div>
+
             <p id="status-msg" class="text-center text-xs text-blue-500 mb-4 animate-pulse hidden">Connecting...</p>
+            
             <form onsubmit="window.handleLogin(event)" class="space-y-5">
-                <div class="group"><input id="email" type="email" value="julgahacycleworks@gmail.com" class="w-full pl-4 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium shadow-inner" placeholder="Enter email"></div>
-                <div class="group"><input id="password" type="password" placeholder="••••••••" class="w-full pl-4 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium shadow-inner"></div>
-                <button id="login-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transform active:scale-95 transition-all">Let's Ride! <i class="fas fa-arrow-right ml-2"></i></button>
+                <div class="group">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1 group-focus-within:text-blue-500 transition">Email</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 group-focus-within:text-blue-500 transition">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        <input id="email" type="email" value="julgahacycleworks@gmail.com" class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium transition-all shadow-inner" placeholder="Enter email">
+                    </div>
+                </div>
+
+                <div class="group">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1 group-focus-within:text-blue-500 transition">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 group-focus-within:text-blue-500 transition">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input id="password" type="password" placeholder="••••••••" class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium transition-all shadow-inner">
+                    </div>
+                </div>
+
+                <button id="login-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transform active:scale-95 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed">
+                    Let's Ride! <i class="fas fa-arrow-right ml-2"></i>
+                </button>
             </form>
+            
+            <div class="mt-6 text-center border-t border-gray-100 dark:border-gray-700 pt-4">
+                <p class="text-xs text-gray-400 mb-2">Forgot your key?</p>
+                <button onclick="window.handleResetPassword()" class="text-sm font-bold text-blue-500 hover:text-blue-600 hover:underline transition">Reset Password</button>
+            </div>
         </div>
+        
+        <p class="absolute bottom-2 text-[10px] text-gray-400 z-10">© 2026 CycleSense Cloud</p>
     </div>
 
     <div id="dashboard-section" class="hidden min-h-screen flex flex-col fade-in">
-        
-        <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 gap-4 sticky top-0 z-50">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:rotate-12 transition"><i class="fas fa-bicycle"></i></div>
-                <div><h2 class="font-black text-xl text-slate-800 dark:text-white tracking-tight">CycleSense</h2><p class="text-xs text-blue-600 dark:text-blue-400 font-bold" id="user-display">Admin</p></div>
+        <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 gap-4">
+            <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:rotate-12 transition"><i class="fas fa-bicycle"></i></div>
+                    <div>
+                        <h2 class="font-black text-xl text-slate-800 dark:text-white tracking-tight">CycleSense</h2>
+                        <p class="text-xs text-blue-600 dark:text-blue-400 font-bold" id="user-display">Admin</p>
+                    </div>
+                </div>
+                <button onclick="window.handleNavClick('ai')" class="md:hidden bg-purple-600 hover:bg-purple-700 text-white p-2 rounded shadow animate-pulse">
+                    <i class="fas fa-robot"></i>
+                </button>
             </div>
-            <div class="flex gap-2 items-center flex-wrap justify-center">
-                <button onclick="window.handleNavClick('ai')" class="bg-purple-600 hover:bg-purple-700 hover:scale-105 transition text-white px-3 py-2 rounded shadow items-center gap-2 text-xs animate-pulse flex"><i class="fas fa-robot"></i> <span class="hidden md:inline">CycleSense AI</span></button>
-                <button onclick="window.toggleTheme()" class="bg-gray-200 dark:bg-slate-700 p-2 rounded-full w-8 h-8 flex items-center justify-center hover:rotate-180 transition duration-500"><i id="theme-icon" class="fas fa-moon"></i></button>
-                <button onclick="window.handleLogout()" class="border border-red-500 text-red-500 px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-xs hover:scale-110 transition"><i class="fas fa-sign-out-alt"></i></button>
+            
+            <div class="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end flex-wrap">
+                <button onclick="window.handleNavClick('ai')" class="hidden md:flex bg-purple-600 hover:bg-purple-700 hover:scale-105 transition text-white px-3 py-2 rounded shadow items-center gap-2 text-xs animate-pulse">
+                    <i class="fas fa-robot"></i> <span>CycleSense AI 2.0</span>
+                </button>
+
+                <button onclick="window.toggleLang()" class="bg-gray-200 dark:bg-slate-700 px-3 py-1 rounded text-xs font-bold w-12 text-center hover:bg-gray-300 transition" id="lang-btn">SIN</button>
+                <button onclick="window.toggleTheme()" class="bg-gray-200 dark:bg-slate-700 p-2 rounded-full w-8 h-8 flex items-center justify-center hover:rotate-180 transition duration-500">
+                    <i id="theme-icon" class="fas fa-moon"></i>
+                </button>
+                
+                <label class="cursor-pointer bg-green-600 hover:bg-green-700 hover:animate-wiggle text-white px-3 py-2 rounded shadow flex items-center gap-2 text-xs">
+                    <input type="file" class="hidden" accept=".xlsx" onchange="window.uploadToSupabase(this)">
+                    <i class="fas fa-sync-alt"></i> <span class="hidden md:inline">Sync</span>
+                </label>
+
+                <button onclick="window.clearDatabase()" class="bg-red-600 hover:bg-red-700 hover:animate-wiggle text-white px-3 py-2 rounded shadow text-xs flex items-center gap-2" title="Delete All Data">
+                    <i class="fas fa-trash"></i> <span class="hidden md:inline">Reset DB</span>
+                </button>
+
+                <button onclick="window.handleLogout()" class="border border-red-500 text-red-500 px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-xs hover:scale-110 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
             </div>
         </header>
 
-        <div class="bg-gray-100 dark:bg-darkbg p-4 overflow-x-auto">
-            <div class="container mx-auto flex gap-3 min-w-max">
-                <div id="nav-revenue" onclick="window.handleNavClick('dashboard')" class="nav-item flex items-center space-x-2 p-3 rounded-xl cursor-pointer bg-slate-800 text-white shadow-lg"><i class="fas fa-chart-line"></i> <span>Dashboard</span></div>
-                <div id="nav-pos" onclick="window.handleNavClick('pos')" class="nav-item flex items-center space-x-2 p-3 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-white"><i class="fas fa-cash-register"></i> <span>POS</span></div>
-                <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="nav-item flex items-center space-x-2 p-3 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-white"><i class="fas fa-boxes"></i> <span>Inventory</span></div>
-                <div id="nav-repairs" onclick="window.handleNavClick('repairs')" class="nav-item flex items-center space-x-2 p-3 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-white"><i class="fas fa-tools"></i> <span>Repairs</span></div>
-                <div id="nav-hr" onclick="window.handleNavClick('hr')" class="nav-item flex items-center space-x-2 p-3 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-white"><i class="fas fa-users"></i> <span>HR</span></div>
-            </div>
-        </div>
-
         <main class="flex-grow p-4 md:p-6 container mx-auto relative">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                <div id="nav-revenue" onclick="window.switchContext('past')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-slate-800 text-white shadow-md transition-all text-xs md:text-base text-center hover:scale-105">
+                    <i class="fas fa-chart-line"></i>
+                    <span id="nav-revenue-text">Financials</span>
+                </div>
+
+                <div id="nav-service" onclick="window.switchContext('service')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center hover:scale-105">
+                    <i class="fas fa-tools"></i>
+                    <span id="nav-service-text">Service Cost</span>
+                </div>
+                
+                <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center hover:scale-105">
+                    <i class="fas fa-box-open"></i>
+                    <span id="nav-inventory-text">Inventory</span>
+                </div>
+
+                <div id="nav-supplier" onclick="window.handleNavClick('supplier')" class="flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all text-xs md:text-base text-center hover:scale-105">
+                    <i class="fas fa-truck-loading"></i>
+                    <span id="nav-supplier-text">Procurement</span>
+                </div>
+            </div>
+
+            <div id="controls-section" class="flex flex-col md:flex-row gap-4 mb-6 flex-wrap items-center justify-between">
+                <div class="bg-white dark:bg-darkcard p-1 rounded shadow border dark:border-gray-700 flex w-full md:w-auto justify-center">
+                    <button onclick="window.switchContext('past')" id="btn-past" class="flex-1 md:flex-none px-4 py-1 bg-slate-800 text-white rounded transition hover:scale-105">Past</button>
+                    <button onclick="window.switchContext('predicted')" id="btn-pred" class="flex-1 md:flex-none px-4 py-1 text-gray-600 dark:text-gray-400 transition hover:scale-105">Predicted</button>
+                </div>
+                
+                <div class="flex gap-2 w-full md:w-auto">
+                    <select id="slicer-month" onchange="window.handleMonthChange()" class="flex-1 border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Months</option></select>
+                    <select id="slicer-day" onchange="window.updateDashboard()" class="flex-1 border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Days</option></select>
+                </div>
+            </div>
+
+            <div id="kpi-section" class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6">
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-blue-500 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+                    <h3 id="kpi-1-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Revenue</h3>
+                    <p id="val-rev" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-red-500 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+                    <h3 id="kpi-2-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Expenses</h3>
+                    <p id="val-exp" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+
+                <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-green-500 hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+                    <h3 id="kpi-3-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Profit</h3>
+                    <p id="val-prof" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p>
+                </div>
+            </div>
+
+            <div id="charts-section-1" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                    <div class="chart-container"><canvas id="mainChart"></canvas></div>
+                </div>
+                <div class="bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                    <div class="chart-container"><canvas id="subChart"></canvas></div>
+                </div>
+            </div>
             
-            <div id="dashboard-view" class="fade-in">
-                <div class="flex gap-2 mb-6 justify-end">
-                    <button onclick="window.switchContext('past')" id="btn-past" class="px-4 py-1 bg-slate-800 text-white rounded transition hover:scale-105">Past</button>
-                    <button onclick="window.switchContext('predicted')" id="btn-pred" class="px-4 py-1 text-gray-600 dark:text-gray-400 transition hover:scale-105">Predicted</button>
-                    <select id="slicer-month" onchange="window.handleMonthChange()" class="border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Months</option></select>
-                </div>
-                <div id="kpi-section" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-blue-500"><h3 id="kpi-1-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Revenue</h3><p id="val-rev" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p></div>
-                    <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-red-500"><h3 id="kpi-2-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Expenses</h3><p id="val-exp" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p></div>
-                    <div class="bg-white dark:bg-darkcard p-6 rounded shadow border-l-4 border-green-500"><h3 id="kpi-3-label" class="text-gray-500 dark:text-gray-400 text-sm font-medium">Profit</h3><p id="val-prof" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00 LKR</p></div>
-                </div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div class="lg:col-span-2 bg-white dark:bg-darkcard p-2 rounded shadow h-80"><div class="chart-container"><canvas id="mainChart"></canvas></div></div>
-                    <div class="bg-white dark:bg-darkcard p-2 rounded shadow h-80"><div class="chart-container"><canvas id="subChart"></canvas></div></div>
-                </div>
-                <div class="bg-white dark:bg-darkcard p-2 rounded shadow h-80"><div class="chart-container"><canvas id="compChart"></canvas></div></div>
+            <div id="charts-section-2" class="bg-white dark:bg-darkcard p-2 rounded shadow h-72 md:h-80">
+                <div class="chart-container"><canvas id="compChart"></canvas></div>
             </div>
-
-            <div id="pos-view" class="hidden fade-in grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-2 space-y-6">
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg">
-                        <h2 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-shopping-cart text-blue-500"></i> New Sale</h2>
-                        <div class="grid grid-cols-3 gap-3 mb-4">
-                            <div class="col-span-2">
-                                <label class="text-xs text-gray-500">Select Product</label>
-                                <select id="pos-product-select" class="w-full p-3 border rounded-lg bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-gray-600"></select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500">Qty</label>
-                                <div class="flex gap-2">
-                                    <input id="pos-qty" type="number" value="1" min="1" class="w-full p-3 border rounded-lg bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                                    <button onclick="window.addToCart()" class="bg-blue-600 text-white px-4 rounded-lg hover:bg-blue-700"><i class="fas fa-plus"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-                                <tbody id="cart-table-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg h-fit">
-                    <h3 class="font-bold text-lg mb-4 dark:text-white">Billing Details</h3>
-                    <form onsubmit="window.processSale(event)" class="space-y-4">
-                        <input name="customer_name" placeholder="Customer Name" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="phone" placeholder="Phone Number" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white">
-                        <input name="service_cost" id="pos-service-cost" type="number" placeholder="Service Cost (LKR)" oninput="window.renderCart()" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white">
-                        
-                        <div class="border-t pt-4 mt-4">
-                            <div class="flex justify-between text-xl font-bold dark:text-white">
-                                <span>Total:</span>
-                                <span id="pos-total">LKR 0.00</span>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform hover:scale-105">Complete Sale</button>
-                    </form>
-                </div>
-            </div>
-
-            <div id="inventory-view" class="hidden fade-in space-y-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-plus-circle text-green-500"></i> Add New Product</h2>
-                    <form onsubmit="window.addProduct(event)" class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <input name="code" placeholder="Code" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="name" placeholder="Product Name" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="stock" type="number" placeholder="Stock" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="reorder_level" type="number" placeholder="Reorder Lvl" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="unit_price" type="number" placeholder="Price (LKR)" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">Add Item</button>
-                    </form>
-                </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                            <tr><th>Code</th><th>Name</th><th>Stock</th><th>Reorder</th><th>Price</th><th>Status</th></tr>
-                        </thead>
-                        <tbody id="inventory-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="repairs-view" class="hidden fade-in space-y-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-tools text-orange-500"></i> New Repair Ticket</h2>
-                    <form onsubmit="window.addRepair(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <input name="customer_name" placeholder="Customer" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="phone" placeholder="Phone" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="advance" type="number" placeholder="Advance (LKR)" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="predicted_date" type="date" class="p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="md:col-span-4 bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700">Create Ticket</button>
-                    </form>
-                </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                            <tr><th>ID</th><th>Customer</th><th>Phone</th><th>Due Date</th><th>Status</th></tr>
-                        </thead>
-                        <tbody id="repairs-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="hr-view" class="hidden fade-in grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white">Add Worker</h2>
-                    <form onsubmit="window.addWorker(event)" class="space-y-4">
-                        <input name="name" placeholder="Worker Name" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="daily_salary" type="number" placeholder="Daily Salary (LKR)" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700">Save Worker</button>
-                    </form>
-                </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white">Worker List</h2>
-                    <div id="workers-list" class="space-y-2"></div>
-                </div>
-            </div>
-
+            
+            <div id="coming-soon-container"></div>
         </main>
 
+        <footer class="bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 mt-8 py-6">
+            <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm gap-4">
+                <div class="text-center md:text-left">
+                    <p class="font-bold text-slate-700 dark:text-slate-300">CycleSense Cloud</p>
+                    <p class="text-gray-500 dark:text-gray-500">© 2026 All Rights Reserved.</p>
+                </div>
+                <div class="flex items-center gap-6 justify-center">
+                    <div class="text-right hidden md:block">
+                        <p class="text-gray-400 text-xs">Technical Support</p>
+                        <p class="font-bold text-slate-700 dark:text-slate-300">Dinil Randika</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <a href="mailto:Dinil Randika05@gmail.com" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-blue-100 transition"><i class="fas fa-envelope"></i></a>
+                        <a href="tel:0756339536" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-green-100 transition"><i class="fas fa-phone"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        
         <div id="ai-modal" class="fixed bottom-6 right-6 w-80 md:w-96 h-[500px] bg-white dark:bg-darkcard rounded-2xl shadow-2xl z-50 flex flex-col hidden border border-gray-200 dark:border-gray-700 overflow-hidden fade-in">
             <div class="bg-purple-600 p-4 flex justify-between items-center text-white">
-                <div class="flex items-center gap-2"><i class="fas fa-robot animate-pulse"></i><h3 class="font-bold">CycleSense AI</h3></div>
-                <div class="flex gap-3"><button onclick="window.clearAIChat()"><i class="fas fa-trash-alt"></i></button><button onclick="window.toggleAI()"><i class="fas fa-times"></i></button></div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-robot animate-pulse"></i>
+                    <h3 class="font-bold">CycleSense AI 2.0</h3>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="window.clearAIChat()" class="hover:text-purple-200 transition" title="Clear History">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button onclick="window.toggleAI()" class="hover:text-purple-200 transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            <div id="ai-chat-history" class="flex-grow p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900 scroll-smooth"></div>
+            
+            <div id="ai-chat-history" class="flex-grow p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900 scroll-smooth">
+                </div>
+
             <div class="p-3 bg-white dark:bg-darkcard border-t dark:border-gray-700">
-                <div class="relative"><input id="ai-input" type="text" placeholder="Ask about revenue..." class="w-full pl-4 pr-10 py-2 rounded-full border dark:bg-slate-800 text-sm" onkeydown="window.handleAIKey(event)"><button onclick="window.triggerAISend()" class="absolute right-2 top-1.5 text-purple-600"><i class="fas fa-paper-plane"></i></button></div>
+                <div class="relative">
+                    <input id="ai-input" type="text" placeholder="Ask about revenue, profit..." class="w-full pl-4 pr-10 py-2 rounded-full border dark:border-gray-600 dark:bg-slate-800 focus:outline-none focus:border-purple-500 text-sm" onkeydown="window.handleAIKey(event)">
+                    <button onclick="window.triggerAISend()" class="absolute right-2 top-1.5 w-7 h-7 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition">
+                        <i class="fas fa-paper-plane text-xs"></i>
+                    </button>
+                </div>
             </div>
         </div>
-        <div id="loader" class="fixed inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center hidden z-50"><i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i></div>
+
+        <div id="loader" class="fixed inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center hidden z-50">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i>
+        </div>
     </div>
 
     <script type="module" src="js/app.js"></script>
