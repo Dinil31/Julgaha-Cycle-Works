@@ -5,60 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart POS - Dashboard</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>Smart POS Dashboard</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="pos.html">POS</a>
-      <a href="inventory.html">Inventory</a>
-      <a href="repairs.html">Repairs</a>
-      <a href="hr.html">HR & Payroll</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="section">
-      <div class="metrics">
-        <div class="metric">
-          <span>Today's Sales</span>
-          <strong id="dashboard-sales">LKR 0.00</strong>
-        </div>
-        <div class="metric">
-          <span>Low Stock Count</span>
-          <strong id="dashboard-low-stock">0</strong>
-        </div>
-        <div class="metric">
-          <span>Repairs Pending</span>
-          <strong id="dashboard-repairs">0</strong>
-        </div>
-        <div class="metric">
-          <span>Salary Upcoming</span>
-          <strong id="dashboard-salary">-</strong>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-bicycle"></i></span>
+        <div>
+          <div>Cycle Sense</div>
+          <small>Smart POS</small>
         </div>
       </div>
-    </section>
+      <nav class="nav">
+        <a class="nav-link active" href="index.html"><i class="fas fa-chart-line"></i>Dashboard</a>
+        <a class="nav-link" href="pos.html"><i class="fas fa-cash-register"></i>POS</a>
+        <a class="nav-link" href="inventory.html"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+        <a class="nav-link" href="repairs.html"><i class="fas fa-screwdriver-wrench"></i>Repairs</a>
+        <a class="nav-link" href="hr.html"><i class="fas fa-users"></i>HR & Payroll</a>
+      </nav>
+      <div class="sidebar-footer">Smart POS &amp; Management System</div>
+    </aside>
 
-    <section class="section grid grid-2">
-      <div class="card">
-        <h2>Quick Actions</h2>
-        <p class="notice">Use the navigation above to manage sales, inventory, repairs, and payroll.</p>
-        <div class="inline">
-          <button onclick="window.location.href='pos.html'">New Sale</button>
-          <button class="secondary" onclick="window.location.href='inventory.html'">Manage Stock</button>
+    <div class="content">
+      <header class="topbar">
+        <div class="page-title">
+          <h1>Smart POS Dashboard</h1>
+          <p>Cycle Sense operations overview</p>
         </div>
-      </div>
+        <div class="topbar-actions">
+          <button class="secondary" onclick="window.location.href='pos.html'">New Sale</button>
+          <button class="accent" onclick="window.location.href='inventory.html'">Stock</button>
+        </div>
+      </header>
 
-      <div class="card">
-        <h2>Business Alerts</h2>
-        <ul id="dashboard-alerts"></ul>
-      </div>
-    </section>
-  </main>
+      <main class="content-body">
+        <section class="section">
+          <div class="metrics">
+            <div class="metric">
+              <span>Today's Sales</span>
+              <strong id="dashboard-sales" class="loading-text">LKR 0.00</strong>
+            </div>
+            <div class="metric">
+              <span>Low Stock Count</span>
+              <strong id="dashboard-low-stock" class="loading-text">0</strong>
+            </div>
+            <div class="metric">
+              <span>Repairs Pending</span>
+              <strong id="dashboard-repairs" class="loading-text">0</strong>
+            </div>
+            <div class="metric">
+              <span>Salary Upcoming</span>
+              <strong id="dashboard-salary" class="loading-text">-</strong>
+            </div>
+          </div>
+        </section>
 
-  <footer>Smart POS &amp; Management System</footer>
+        <section class="section grid grid-2">
+          <div class="card">
+            <h2>Quick Actions</h2>
+            <p class="notice">Use the navigation to manage sales, inventory, repairs, and payroll.</p>
+            <div class="inline">
+              <button onclick="window.location.href='pos.html'">New Sale</button>
+              <button class="secondary" onclick="window.location.href='inventory.html'">Manage Stock</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Business Alerts</h2>
+            <ul id="dashboard-alerts" class="alert-list"></ul>
+          </div>
+        </section>
+      </main>
+
+      <footer>Smart POS &amp; Management System</footer>
+    </div>
+  </div>
 
   <script src="js/supabase.js"></script>
   <script src="js/dashboard.js"></script>

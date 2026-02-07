@@ -5,72 +5,94 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart POS - HR & Payroll</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>HR & Payroll</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="pos.html">POS</a>
-      <a href="inventory.html">Inventory</a>
-      <a href="repairs.html">Repairs</a>
-      <a href="hr.html">HR & Payroll</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="section grid grid-2">
-      <div class="card">
-        <h2>Add Worker</h2>
-        <form id="worker-form">
-          <label for="worker-name">Worker Name</label>
-          <input id="worker-name" name="name" required />
-          <label for="worker-salary">Daily Salary (LKR)</label>
-          <input id="worker-salary" name="daily_salary" type="number" min="0" step="0.01" value="3500" />
-          <button type="submit">Save Worker</button>
-          <span id="worker-message"></span>
-        </form>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-bicycle"></i></span>
+        <div>
+          <div>Cycle Sense</div>
+          <small>Smart POS</small>
+        </div>
       </div>
+      <nav class="nav">
+        <a class="nav-link" href="index.html"><i class="fas fa-chart-line"></i>Dashboard</a>
+        <a class="nav-link" href="pos.html"><i class="fas fa-cash-register"></i>POS</a>
+        <a class="nav-link" href="inventory.html"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+        <a class="nav-link" href="repairs.html"><i class="fas fa-screwdriver-wrench"></i>Repairs</a>
+        <a class="nav-link active" href="hr.html"><i class="fas fa-users"></i>HR & Payroll</a>
+      </nav>
+      <div class="sidebar-footer">Smart POS &amp; Management System</div>
+    </aside>
 
-      <div class="card">
-        <h2>Salary Calculation</h2>
-        <form id="salary-form">
-          <label for="salary-worker">Select Worker</label>
-          <select id="salary-worker" name="worker_id"></select>
-          <label for="salary-month">Month</label>
-          <input id="salary-month" name="month" type="month" required />
-          <label for="salary-deductions">Deductions (Advances)</label>
-          <input id="salary-deductions" name="deductions" type="number" min="0" step="0.01" value="0" />
-          <div class="notice">
-            <p>Daily salary options: Full day 3500, Half day 2500. Mondays and Sri Lankan holidays are OFF.</p>
-            <p>Salary is paid on the 25th. EPF 8% and ETF 3% are shown below.</p>
+    <div class="content">
+      <header class="topbar">
+        <div class="page-title">
+          <h1>HR &amp; Payroll</h1>
+          <p>Manage worker records and salary payments</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" onclick="window.location.href='index.html'">Dashboard</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <section class="section grid grid-2">
+          <div class="card">
+            <h2>Add Worker</h2>
+            <form id="worker-form">
+              <label for="worker-name">Worker Name</label>
+              <input id="worker-name" name="name" required />
+              <label for="worker-salary">Daily Salary (LKR)</label>
+              <input id="worker-salary" name="daily_salary" type="number" min="0" step="0.01" value="3500" />
+              <button type="submit">Save Worker</button>
+              <span id="worker-message"></span>
+            </form>
           </div>
-          <button type="submit">Generate Salary Record</button>
-          <span id="salary-message"></span>
-        </form>
-        <div id="salary-summary" style="margin-top: 12px;"></div>
-        <button id="salary-pdf" class="accent" type="button">Generate Salary Receipt PDF</button>
-      </div>
-    </section>
 
-    <section class="section">
-      <div class="card">
-        <h2>Workers List</h2>
-        <table class="table" id="workers-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Daily Salary</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+          <div class="card">
+            <h2>Salary Calculation</h2>
+            <form id="salary-form">
+              <label for="salary-worker">Select Worker</label>
+              <select id="salary-worker" name="worker_id"></select>
+              <label for="salary-month">Month</label>
+              <input id="salary-month" name="month" type="month" required />
+              <label for="salary-deductions">Deductions (Advances)</label>
+              <input id="salary-deductions" name="deductions" type="number" min="0" step="0.01" value="0" />
+              <div class="notice">
+                <p>Daily salary options: Full day 3500, Half day 2500. Mondays and Sri Lankan holidays are OFF.</p>
+                <p>Salary is paid on the 25th. EPF 8% and ETF 3% are shown below.</p>
+              </div>
+              <button type="submit">Generate Salary Record</button>
+              <span id="salary-message"></span>
+            </form>
+            <div id="salary-summary" style="margin-top: 12px;"></div>
+            <button id="salary-pdf" class="accent" type="button">Generate Salary Receipt PDF</button>
+          </div>
+        </section>
 
-  <footer>Smart POS &amp; Management System</footer>
+        <section class="section">
+          <div class="card">
+            <h2>Workers List</h2>
+            <table class="table" id="workers-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Daily Salary</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer>Smart POS &amp; Management System</footer>
+    </div>
+  </div>
 
   <script src="js/supabase.js"></script>
   <script src="js/hr.js"></script>

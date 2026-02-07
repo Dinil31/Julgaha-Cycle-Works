@@ -5,116 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart POS - Sales</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header>
-    <h1>Point of Sale</h1>
-    <nav>
-      <a href="index.html">Dashboard</a>
-      <a href="pos.html">POS</a>
-      <a href="inventory.html">Inventory</a>
-      <a href="repairs.html">Repairs</a>
-      <a href="hr.html">HR & Payroll</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="section grid grid-2">
-      <div class="card">
-        <h2>Create Sale</h2>
-        <form id="sale-form">
-          <div class="grid grid-2">
-            <div>
-              <label for="customer-name">Customer Name</label>
-              <input id="customer-name" name="customer_name" required />
-            </div>
-            <div>
-              <label for="customer-phone">Phone</label>
-              <input id="customer-phone" name="phone" required />
-            </div>
-            <div>
-              <label for="service-cost">Service Cost (LKR)</label>
-              <input id="service-cost" name="service_cost" type="number" min="0" step="0.01" value="0" />
-            </div>
-          </div>
-
-          <div class="section">
-            <h3>Spare Parts Used</h3>
-            <div class="inline">
-              <div>
-                <label for="part-select">Product</label>
-                <select id="part-select"></select>
-              </div>
-              <div>
-                <label for="part-qty">Qty</label>
-                <input id="part-qty" type="number" min="1" value="1" />
-              </div>
-              <div style="flex:0 0 auto; align-self:flex-end;">
-                <button type="button" id="add-part">Add Part</button>
-              </div>
-            </div>
-          </div>
-
-          <table class="table" id="parts-table">
-            <thead>
-              <tr>
-                <th>Part</th>
-                <th>Qty</th>
-                <th>Unit Price</th>
-                <th>Total</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-
-          <div class="section">
-            <div class="grid grid-2">
-              <div class="card">
-                <h3>Totals</h3>
-                <p>Parts Total: <strong id="parts-total">LKR 0.00</strong></p>
-                <p>Service: <strong id="service-total">LKR 0.00</strong></p>
-                <p>Total Bill: <strong id="grand-total">LKR 0.00</strong></p>
-                <p>Estimated Profit: <strong id="profit-total">LKR 0.00</strong></p>
-              </div>
-              <div class="card">
-                <h3>Customer Alerts</h3>
-                <div id="customer-alert" class="notice">No alerts yet.</div>
-              </div>
-            </div>
-          </div>
-
-          <button type="submit">Complete Sale</button>
-          <span id="sale-message"></span>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2>Smart Insights</h2>
-        <div class="metrics">
-          <div class="metric">
-            <span>Today's Sales</span>
-            <strong id="today-sales">LKR 0.00</strong>
-          </div>
-          <div class="metric">
-            <span>Predicted Revenue</span>
-            <strong id="predicted-revenue">LKR 0.00</strong>
-          </div>
-          <div class="metric">
-            <span>Performance Alert</span>
-            <strong id="performance-alert">On Track</strong>
-          </div>
-        </div>
-        <div class="card" style="margin-top: 16px;">
-          <h3>Top Selling Spare Part (Month)</h3>
-          <p id="top-part">Loading...</p>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-icon"><i class="fas fa-bicycle"></i></span>
+        <div>
+          <div>Cycle Sense</div>
+          <small>Smart POS</small>
         </div>
       </div>
-    </section>
-  </main>
+      <nav class="nav">
+        <a class="nav-link" href="index.html"><i class="fas fa-chart-line"></i>Dashboard</a>
+        <a class="nav-link active" href="pos.html"><i class="fas fa-cash-register"></i>POS</a>
+        <a class="nav-link" href="inventory.html"><i class="fas fa-boxes-stacked"></i>Inventory</a>
+        <a class="nav-link" href="repairs.html"><i class="fas fa-screwdriver-wrench"></i>Repairs</a>
+        <a class="nav-link" href="hr.html"><i class="fas fa-users"></i>HR & Payroll</a>
+      </nav>
+      <div class="sidebar-footer">Smart POS &amp; Management System</div>
+    </aside>
 
-  <footer>Smart POS &amp; Management System</footer>
+    <div class="content">
+      <header class="topbar">
+        <div class="page-title">
+          <h1>Point of Sale</h1>
+          <p>Fast checkout and service billing</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="secondary" onclick="window.location.href='index.html'">Dashboard</button>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <section class="section grid grid-2">
+          <div class="card">
+            <h2>Create Sale</h2>
+            <form id="sale-form">
+              <div class="grid grid-2">
+                <div>
+                  <label for="customer-name">Customer Name</label>
+                  <input id="customer-name" name="customer_name" required />
+                </div>
+                <div>
+                  <label for="customer-phone">Phone</label>
+                  <input id="customer-phone" name="phone" required />
+                </div>
+                <div>
+                  <label for="service-cost">Service Cost (LKR)</label>
+                  <input id="service-cost" name="service_cost" type="number" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+
+              <div class="section">
+                <h3>Spare Parts Used</h3>
+                <div class="inline">
+                  <div>
+                    <label for="part-select">Product</label>
+                    <select id="part-select"></select>
+                  </div>
+                  <div>
+                    <label for="part-qty">Qty</label>
+                    <input id="part-qty" type="number" min="1" value="1" />
+                  </div>
+                  <div style="flex:0 0 auto; align-self:flex-end;">
+                    <button type="button" id="add-part">Add Part</button>
+                  </div>
+                </div>
+              </div>
+
+              <table class="table" id="parts-table">
+                <thead>
+                  <tr>
+                    <th>Part</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+
+              <div class="section">
+                <div class="grid grid-2">
+                  <div class="card">
+                    <h3>Totals</h3>
+                    <p>Parts Total: <strong id="parts-total">LKR 0.00</strong></p>
+                    <p>Service: <strong id="service-total">LKR 0.00</strong></p>
+                    <p>Total Bill: <strong id="grand-total">LKR 0.00</strong></p>
+                    <p>Estimated Profit: <strong id="profit-total">LKR 0.00</strong></p>
+                  </div>
+                  <div class="card">
+                    <h3>Customer Alerts</h3>
+                    <div id="customer-alert" class="notice">No alerts yet.</div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit">Complete Sale</button>
+              <span id="sale-message"></span>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>Smart Insights</h2>
+            <div class="metrics">
+              <div class="metric">
+                <span>Today's Sales</span>
+                <strong id="today-sales" class="loading-text">LKR 0.00</strong>
+              </div>
+              <div class="metric">
+                <span>Predicted Revenue</span>
+                <strong id="predicted-revenue" class="loading-text">LKR 0.00</strong>
+              </div>
+              <div class="metric">
+                <span>Performance Alert</span>
+                <strong id="performance-alert" class="loading-text">On Track</strong>
+              </div>
+            </div>
+            <div class="card" style="margin-top: 16px;">
+              <h3>Top Selling Spare Part (Month)</h3>
+              <p id="top-part" class="loading-text">Loading...</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>Smart POS &amp; Management System</footer>
+    </div>
+  </div>
 
   <script src="js/supabase.js"></script>
   <script src="js/pos.js"></script>
