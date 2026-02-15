@@ -12,7 +12,7 @@ async function fetchAll(table) {
     return data;
 }
 
-// --- 1. INVENTORY LOGIC ---
+// --- 1. INVENTORY ---
 export async function loadInventory() {
     const products = await fetchAll('products');
     const tbody = document.getElementById('inventory-table-body');
@@ -20,7 +20,7 @@ export async function loadInventory() {
     
     tbody.innerHTML = '';
     if(products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No products found. Add one above!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No products found.</td></tr>';
         return;
     }
 
@@ -57,16 +57,15 @@ export async function addProduct(e) {
     };
 
     const { error } = await sb.from('products').insert(payload);
-    if(error) {
-        alert("Error: " + error.message);
-    } else {
-        await showCustomConfirm("Success", "Product added to inventory!", "success-green");
+    if(error) alert("Error: " + error.message);
+    else {
+        await showCustomConfirm("Success", "Product added!", "success-green");
         e.target.reset();
         loadInventory();
     }
 }
 
-// --- 2. POS LOGIC ---
+// --- 2. POS & SALES ---
 let cart = [];
 let productsCache = [];
 
@@ -88,7 +87,7 @@ export function addToCart() {
     const qtyInput = document.getElementById('pos-qty');
     const id = select.value;
     
-    if(!id) return alert("Please select a product.");
+    if(!id) return alert("Select a product first.");
 
     const product = productsCache.find(p => String(p.id) === String(id));
     const qty = parseInt(qtyInput.value);
@@ -99,7 +98,7 @@ export function addToCart() {
 
     const existing = cart.find(item => item.id === id);
     if(existing) {
-        if((existing.qty + qty) > product.stock) return alert("Total quantity exceeds stock.");
+        if((existing.qty + qty) > product.stock) return alert("Exceeds stock level.");
         existing.qty += qty;
     } else {
         cart.push({ id, name: product.name, price: product.unit_price, qty });
@@ -127,7 +126,7 @@ function renderCart() {
                 <td class="py-2 text-right">${formatCurrency(item.price)}</td>
                 <td class="py-2 text-right font-bold">${formatCurrency(lineTotal)}</td>
                 <td class="py-2 text-right">
-                    <button onclick="window.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-100 p-1 rounded-md transition"><i class="fas fa-trash"></i></button>
+                    <button onclick="window.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-100 p-1 rounded transition"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
     });
@@ -141,73 +140,125 @@ window.removeCartItem = (idx) => {
     renderCart();
 };
 
-// --- SALES REPORTING ---
-export async function showSalesSummary() {
-    const sb = getSupabase();
-    const { data: sales, error } = await sb.from('sales').select('total_amount, date');
+// --- SALES REPORTING ENGINE ---
+let allSales = [];
+
+export async function openReportModal() {
+    const modal = document.getElementById('sales-report-modal');
+    modal.classList.remove('hidden');
     
-    if(error || !sales) return alert("Could not fetch sales data.");
+    // Fetch fresh data
+    const sb = getSupabase();
+    const { data, error } = await sb.from('sales').select('*').order('date', { ascending: false });
+    
+    if(error) return alert("Error loading sales.");
+    allSales = data;
+    
+    // Default: Show Today
+    filterSales('today');
+}
 
-    const now = new Date();
-    // Normalize to start of day (00:00:00)
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const currentWeekStart = new Date(today); 
-    currentWeekStart.setDate(today.getDate() - today.getDay()); // Sunday as start
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const currentYearStart = new Date(now.getFullYear(), 0, 1);
+export function closeReportModal() {
+    document.getElementById('sales-report-modal').classList.add('hidden');
+}
 
-    let daily = 0, weekly = 0, monthly = 0, yearly = 0;
-
-    sales.forEach(s => {
-        const d = new Date(s.date);
-        const amount = Number(s.total_amount);
-        
-        if (d >= today) daily += amount;
-        if (d >= currentWeekStart) weekly += amount;
-        if (d >= currentMonthStart) monthly += amount;
-        if (d >= currentYearStart) yearly += amount;
+export function filterSales(period) {
+    const tbody = document.getElementById('report-table-body');
+    const totalEl = document.getElementById('report-total-sales');
+    const btns = document.querySelectorAll('.filter-btn');
+    
+    // Update active button state
+    btns.forEach(b => {
+        if(b.dataset.period === period) b.classList.add('bg-blue-600', 'text-white');
+        else b.classList.remove('bg-blue-600', 'text-white');
+        if(b.dataset.period !== period) b.classList.add('bg-gray-200', 'text-gray-700');
+        else b.classList.remove('bg-gray-200', 'text-gray-700');
     });
 
-    const msg = `Daily: ${formatCurrency(daily)}\nWeekly: ${formatCurrency(weekly)}\nMonthly: ${formatCurrency(monthly)}\nYearly: ${formatCurrency(yearly)}`;
-    await showCustomConfirm("Sales Report", msg);
+    // Date Logic
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const filtered = allSales.filter(s => {
+        const d = new Date(s.date);
+        if(period === 'today') return d >= startOfDay;
+        if(period === 'week') return d >= startOfWeek;
+        if(period === 'month') return d >= startOfMonth;
+        if(period === 'year') return d >= startOfYear;
+        return true; // all
+    });
+
+    // Render Table
+    tbody.innerHTML = '';
+    let grandTotal = 0;
+
+    if(filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No records found for this period.</td></tr>';
+    } else {
+        filtered.forEach(s => {
+            grandTotal += Number(s.total_amount);
+            tbody.innerHTML += `
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    <td class="p-3 text-sm text-gray-500">${new Date(s.date).toLocaleDateString()}</td>
+                    <td class="p-3 font-mono text-xs text-blue-500">#${s.id}</td>
+                    <td class="p-3 font-medium text-gray-800 dark:text-gray-200">${s.customer_name}</td>
+                    <td class="p-3 text-right text-gray-500">${formatCurrency(s.service_cost)}</td>
+                    <td class="p-3 text-right font-bold text-green-600">${formatCurrency(s.total_amount)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick='window.reprintBill(${JSON.stringify(s)})' class="text-gray-400 hover:text-blue-500" title="Reprint"><i class="fas fa-print"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    totalEl.innerText = formatCurrency(grandTotal);
+}
+
+// --- BILLING SYSTEM ---
+window.reprintBill = (sale) => {
+    // For reprint, we might not have items loaded, so we print a basic summary or fetch items if needed.
+    // Ideally, fetch items for full detail. For now, let's print the summary we have.
+    generateBill(sale, []); 
 }
 
 function generateBill(sale, items) {
-    // Open a new window for printing
     const printWindow = window.open('', '', 'width=400,height=600');
     
     let itemsHtml = '';
-    if (items.length > 0) {
+    if (items && items.length > 0) {
         itemsHtml = `
             <table style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:12px;">
-                <tr style="border-bottom:1px solid #000;">
+                <tr style="border-bottom:1px dashed #000;">
                     <th style="text-align:left;">Item</th>
                     <th style="text-align:center;">Qty</th>
-                    <th style="text-align:right;">Price</th>
                     <th style="text-align:right;">Total</th>
                 </tr>
                 ${items.map(i => `
                 <tr>
                     <td>${i.name}</td>
                     <td style="text-align:center;">${i.qty}</td>
-                    <td style="text-align:right;">${i.price}</td>
-                    <td style="text-align:right;">${i.price * i.qty}</td>
+                    <td style="text-align:right;">${(i.price * i.qty).toFixed(2)}</td>
                 </tr>`).join('')}
             </table>`;
     } else {
-        itemsHtml = '<p style="text-align:center; font-style:italic;">Service Only</p>';
+        itemsHtml = '<p style="text-align:center; font-style:italic; margin: 10px 0; font-size:12px;">(Service / Summary Bill)</p>';
     }
 
-    const htmlContent = `
+    const html = `
         <html>
         <head>
             <title>Receipt #${sale.id}</title>
             <style>
                 body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
-                h2, p { margin: 0; }
                 .center { text-align: center; }
                 .right { text-align: right; }
                 .line { border-top: 1px dashed #000; margin: 10px 0; }
+                h2 { margin:0; font-size: 18px; }
+                p { margin: 2px 0; font-size: 12px; }
             </style>
         </head>
         <body>
@@ -224,9 +275,8 @@ function generateBill(sale, items) {
             ${itemsHtml}
             <div class="line"></div>
             <div class="right">
-                ${items.length > 0 ? `<p>Parts Total: ${formatCurrency(sale.total_amount - sale.service_cost)}</p>` : ''}
-                ${sale.service_cost > 0 ? `<p>Service Cost: ${formatCurrency(sale.service_cost)}</p>` : ''}
-                <h3 style="margin-top:5px;">TOTAL: ${formatCurrency(sale.total_amount)}</h3>
+                ${sale.service_cost > 0 ? `<p>Service Cost: ${parseFloat(sale.service_cost).toFixed(2)}</p>` : ''}
+                <h3 style="margin-top:5px; font-size:16px;">TOTAL: ${parseFloat(sale.total_amount).toFixed(2)}</h3>
             </div>
             <div class="line"></div>
             <p class="center" style="font-size:10px;">Thank you! Ride Safe.</p>
@@ -234,29 +284,27 @@ function generateBill(sale, items) {
         </html>
     `;
 
-    printWindow.document.write(htmlContent);
+    printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
         printWindow.print();
-        // printWindow.close(); // Uncomment to close automatically after print
     }, 500);
 }
 
 export async function processSale(e) {
     e.preventDefault();
-    
     const sb = getSupabase();
     const form = new FormData(e.target);
     const serviceCost = parseFloat(form.get('service_cost') || 0);
     const partsTotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
-    // --- UPDATED VALIDATION: Allow if cart has items OR service cost > 0
+    // Allow service only (cart empty but service > 0)
     if (cart.length === 0 && serviceCost <= 0) {
-        return showCustomConfirm("Invalid Sale", "Please add products OR enter a service cost.", "danger");
+        return showCustomConfirm("Invalid Sale", "Please add items OR enter a service cost.", "danger");
     }
 
-    // 1. Create Sale Header
+    // 1. Create Sale
     const { data: sale, error } = await sb.from('sales').insert({
         customer_name: form.get('customer_name') || 'Walk-in',
         phone: form.get('phone'),
@@ -265,9 +313,9 @@ export async function processSale(e) {
         date: new Date().toISOString()
     }).select().single();
 
-    if(error) return alert("Sale Error: " + error.message);
+    if(error) return alert("Error: " + error.message);
 
-    // 2. Add Sale Items (Only if cart has items)
+    // 2. Add Items
     if (cart.length > 0) {
         const saleItems = cart.map(i => ({
             sale_id: sale.id,
@@ -277,24 +325,19 @@ export async function processSale(e) {
         }));
         await sb.from('sale_items').insert(saleItems);
 
-        // 3. Deduct Inventory
+        // Deduct Stock
         for(let item of cart) {
             const p = productsCache.find(x => String(x.id) === String(item.id));
-            if(p) {
-                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
-            }
+            if(p) await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
         }
     }
 
-    // 4. Generate Bill
+    // 3. Print
     generateBill(sale, cart);
 
     await showCustomConfirm("Success", "Sale Completed!", "success-green");
     
-    // 5. Show Updated Report
-    showSalesSummary();
-
-    // Reset
+    // Cleanup
     cart = [];
     e.target.reset();
     document.getElementById('pos-total').innerText = "LKR 0.00";
@@ -302,7 +345,7 @@ export async function processSale(e) {
     initPOS();
 }
 
-// --- 3. REPAIRS LOGIC ---
+// --- 3. REPAIRS ---
 export async function loadRepairs() {
     const repairs = await fetchAll('repairs');
     const tbody = document.getElementById('repairs-table-body');
@@ -310,13 +353,7 @@ export async function loadRepairs() {
 
     tbody.innerHTML = '';
     repairs.forEach(r => {
-        const statusColors = {
-            'In Progress': 'bg-blue-100 text-blue-800',
-            'Completed': 'bg-green-100 text-green-800',
-            'Pending': 'bg-yellow-100 text-yellow-800'
-        };
-        const badgeColor = statusColors[r.status] || 'bg-gray-100';
-
+        const statusColors = { 'In Progress': 'bg-blue-100 text-blue-800', 'Completed': 'bg-green-100 text-green-800' };
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-slate-800 dark:border-gray-700">
                 <td class="px-6 py-4 font-mono text-xs text-indigo-500">${r.repair_id}</td>
@@ -324,9 +361,7 @@ export async function loadRepairs() {
                 <td class="px-6 py-4 text-gray-500">${r.phone}</td>
                 <td class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">${formatCurrency(r.advance)}</td>
                 <td class="px-6 py-4">${new Date(r.predicted_date).toLocaleDateString()}</td>
-                <td class="px-6 py-4">
-                    <span class="${badgeColor} text-xs font-bold px-2.5 py-0.5 rounded uppercase">${r.status}</span>
-                </td>
+                <td class="px-6 py-4"><span class="${statusColors[r.status] || 'bg-gray-100'} text-xs font-bold px-2.5 py-0.5 rounded uppercase">${r.status}</span></td>
             </tr>`;
     });
 }
@@ -335,7 +370,6 @@ export async function addRepair(e) {
     e.preventDefault();
     const sb = getSupabase();
     const form = new FormData(e.target);
-    
     const { error } = await sb.from('repairs').insert({
         repair_id: 'REP-' + Date.now().toString().slice(-6),
         customer_name: form.get('customer_name'),
@@ -347,27 +381,21 @@ export async function addRepair(e) {
 
     if(error) alert(error.message);
     else {
-        await showCustomConfirm("Ticket Created", "Repair job added to system.", "success-green");
+        await showCustomConfirm("Ticket Created", "Repair job added.", "success-green");
         e.target.reset();
         loadRepairs();
     }
 }
 
-// --- 4. HR LOGIC ---
+// --- 4. HR ---
 export async function loadHR() {
     const workers = await fetchAll('workers');
     const list = document.getElementById('workers-list');
     if(!list) return;
-
     list.innerHTML = '';
-    if(workers.length === 0) list.innerHTML = '<p class="text-gray-500 text-sm">No workers yet.</p>';
-
     workers.forEach(w => {
         list.innerHTML += `<div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 flex justify-between items-center transition hover:scale-[1.02]">
-            <div>
-                <h4 class="font-bold text-gray-800 dark:text-white">${w.name}</h4>
-                <p class="text-xs text-gray-500">Staff Member</p>
-            </div>
+            <div><h4 class="font-bold text-gray-800 dark:text-white">${w.name}</h4><p class="text-xs text-gray-500">Staff</p></div>
             <span class="text-green-600 font-bold bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg">${formatCurrency(w.daily_salary)}/day</span>
         </div>`;
     });
@@ -377,15 +405,7 @@ export async function addWorker(e) {
     e.preventDefault();
     const sb = getSupabase();
     const form = new FormData(e.target);
-    const { error } = await sb.from('workers').insert({
-        name: form.get('name'),
-        daily_salary: Number(form.get('daily_salary'))
-    });
-    
+    const { error } = await sb.from('workers').insert({ name: form.get('name'), daily_salary: Number(form.get('daily_salary')) });
     if(error) alert(error.message);
-    else {
-        await showCustomConfirm("Success", "Worker profile created.", "success-green");
-        e.target.reset();
-        loadHR();
-    }
+    else { await showCustomConfirm("Success", "Worker added.", "success-green"); e.target.reset(); loadHR(); }
 }
