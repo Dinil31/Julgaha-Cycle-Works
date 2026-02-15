@@ -62,11 +62,12 @@ const getAlertsForRepair = (repair) => {
   const predictedDate = new Date(repair.predicted_date);
   const now = new Date();
   const monthsDiff = (now.getFullYear() - predictedDate.getFullYear()) * 12 + (now.getMonth() - predictedDate.getMonth());
+  const currentStatus = dbToUiStatus(repair.status);
 
-  if (repair.status !== 'Completed' && monthsDiff >= 3) {
+  if (currentStatus !== 'Completed' && monthsDiff >= 3) {
     alerts.push('Over 3 months - follow up customer');
   }
-  if (repair.status !== 'Completed' && monthsDiff >= 12) {
+  if (currentStatus !== 'Completed' && monthsDiff >= 12) {
     alerts.push('Over 1 year - mark as Cycle for Sale');
   }
 
@@ -96,6 +97,8 @@ const renderRepairs = (repairs) => {
       supabaseHelpers.update('repairs', { status: 'Cycle for Sale' }, { repair_id: repair.repair_id });
       repair.status = 'Cycle for Sale';
     }
+
+    const statusView = dbToUiStatus(repair.status);
 
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -182,7 +185,7 @@ repairForm.addEventListener('submit', async (event) => {
   };
 
   try {
-    await supabaseHelpers.insert('repairs', payload);
+    await insertRepairWithCompat(payload);
     repairMessage.textContent = `Repair created. ID: ${payload.repair_id}`;
     downloadRegistrationPdf(payload);
     publicStatusLink.textContent = buildPublicStatusUrl(payload.repair_id);
