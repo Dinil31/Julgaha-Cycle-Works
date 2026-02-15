@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Repair - CycleSense</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module" src="js/config.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+
+    <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
+        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg text-white text-3xl animate-bounce">
+            <i class="fas fa-search"></i>
+        </div>
+        <h1 class="text-2xl font-black text-gray-800 mb-2">CycleSense Tracker</h1>
+        <p class="text-gray-500 mb-6 text-sm">Enter your Repair Ticket ID to see status.</p>
+
+        <div class="relative mb-6">
+            <input id="track-id" type="text" placeholder="REP-123456" class="w-full pl-4 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none font-mono text-center uppercase tracking-widest text-lg transition">
+        </div>
+        <button onclick="checkStatus()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform hover:scale-105">Check Status</button>
+
+        <div id="result-area" class="hidden mt-8 text-left border-t pt-6">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-gray-400 uppercase">Status</span>
+                <span id="res-status" class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100">...</span>
+            </div>
+            <h2 id="res-customer" class="text-xl font-bold text-gray-800 mb-1">Customer</h2>
+            <p id="res-bike" class="text-sm text-gray-500 mb-4">Bike details...</p>
+            
+            <div id="bill-details" class="bg-gray-50 p-4 rounded-xl hidden">
+                <div class="flex justify-between text-sm mb-1"><span>Total Bill:</span> <span id="res-total" class="font-bold">0.00</span></div>
+                <div class="flex justify-between text-sm mb-1 text-green-600"><span>Advance:</span> <span id="res-adv">-0.00</span></div>
+                <div class="flex justify-between text-xl font-black mt-2 border-t pt-2 text-blue-600"><span>Balance:</span> <span id="res-bal">0.00</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getSupabase } from './js/config.js';
+
+        window.checkStatus = async function() {
+            const id = document.getElementById('track-id').value.trim().toUpperCase();
+            if(!id) return alert("Enter ID");
+            
+            const btn = document.querySelector('button');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Searching...';
+            
+            const sb = getSupabase();
+            const { data, error } = await sb.from('repairs').select('*').eq('repair_id', id).single();
+            
+            btn.innerHTML = 'Check Status';
+
+            if(error || !data) {
+                alert("Ticket not found. Check ID.");
+                document.getElementById('result-area').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('result-area').classList.remove('hidden');
+            document.getElementById('res-customer').innerText = data.customer_name;
+            document.getElementById('res-bike').innerText = "Repair ID: " + data.repair_id;
+            
+            const statusEl = document.getElementById('res-status');
+            statusEl.innerText = data.status;
+            
+            if(data.status === 'Completed') {
+                statusEl.className = "px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800";
+                document.getElementById('bill-details').classList.remove('hidden');
+                
+                const fmt = (v) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(v);
+                document.getElementById('res-total').innerText = fmt(data.final_amount);
+                document.getElementById('res-adv').innerText = "-" + fmt(data.advance);
+                document.getElementById('res-bal').innerText = fmt(data.balance_due);
+            } else {
+                statusEl.className = "px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800";
+                document.getElementById('bill-details').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
