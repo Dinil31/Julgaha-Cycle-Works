@@ -62,15 +62,52 @@ const getAlertsForRepair = (repair) => {
   const predictedDate = new Date(repair.predicted_date);
   const now = new Date();
   const monthsDiff = (now.getFullYear() - predictedDate.getFullYear()) * 12 + (now.getMonth() - predictedDate.getMonth());
+  const currentStatus = dbToUiStatus(repair.status);
 
-  if (repair.status !== 'Completed' && monthsDiff >= 3) {
-    alerts.push('Over 3 months - follow up customer');
-  }
-  if (repair.status !== 'Completed' && monthsDiff >= 12) {
-    alerts.push('Over 1 year - mark as Cycle for Sale');
-  }
+  if (currentStatus !== 'Completed' && monthsDiff >= 3) alerts.push('Over 3 months - follow up customer');
+  if (currentStatus !== 'Completed' && monthsDiff >= 12) alerts.push('Over 1 year - mark as Cycle for Sale');
 
   return alerts;
+};
+
+const buildPublicStatusUrl = (repairId = '') => {
+  const url = new URL('repair-status.html', window.location.href);
+  if (repairId) url.searchParams.set('repairId', normalizeRepairId(repairId));
+  return url.toString();
+};
+
+const updateRepairStatus = async (repairId, status) => {
+  await supabaseHelpers.update('repairs', { status: uiToDbStatus(status) }, { repair_id: repairId });
+};
+
+const insertRepairWithCompat = async (payload) => {
+  const preferredPayload = { ...payload, status: uiToDbStatus(payload.status || 'Working') };
+
+  try {
+    const inserted = await supabaseHelpers.insert('repairs', preferredPayload);
+    if (inserted && inserted.length) return inserted[0];
+  } catch (error) {
+    if (preferredPayload.status !== 'Repairing') throw error;
+  }
+
+  const fallback = await supabaseHelpers.insert('repairs', { ...preferredPayload, status: 'Working' });
+  return fallback && fallback.length ? fallback[0] : preferredPayload;
+};
+
+const createRepairWithRetry = async (basePayload, maxAttempts = 3) => {
+  let lastError;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const payload = { ...basePayload, repair_id: generateRepairId() };
+    try {
+      return await insertRepairWithCompat(payload);
+    } catch (error) {
+      lastError = error;
+      if (!String(error.message || '').toLowerCase().includes('duplicate')) break;
+    }
+  }
+
+  throw lastError || new Error('Unable to create repair.');
 };
 
 const buildPublicStatusUrl = (repairId = '') => {
@@ -97,6 +134,7 @@ const renderRepairs = (repairs) => {
       repair.status = 'Cycle for Sale';
     }
 
+    const statusView = dbToUiStatus(repair.status);
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>${repair.repair_id}</td>
@@ -171,8 +209,7 @@ repairForm.addEventListener('submit', async (event) => {
   repairMessage.textContent = '';
 
   const formData = new FormData(repairForm);
-  const payload = {
-    repair_id: generateRepairId(),
+  const basePayload = {
     customer_name: formData.get('customer_name').trim(),
     phone: formData.get('phone').trim(),
     advance: Number(formData.get('advance')),
@@ -187,7 +224,13 @@ repairForm.addEventListener('submit', async (event) => {
     downloadRegistrationPdf(payload);
     publicStatusLink.textContent = buildPublicStatusUrl(payload.repair_id);
     repairForm.reset();
-    loadRepairs();
+
+    // Refresh full list; if refresh fails, at least append new row locally.
+    try {
+      await loadRepairs();
+    } catch {
+      renderRepairs([insertedRepair]);
+    }
   } catch (error) {
     repairMessage.textContent = `Error creating repair: ${error.message}`;
   }
