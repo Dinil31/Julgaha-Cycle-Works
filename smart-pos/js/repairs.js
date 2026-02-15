@@ -15,9 +15,6 @@ const normalizeRepairId = (value) => {
   return raw.startsWith('REP-') ? raw : `REP-${raw.replace(/^REP/i, '').replace(/^-/, '')}`;
 };
 
-const uiToDbStatus = (status) => (status === 'Working' ? 'Repairing' : status);
-const dbToUiStatus = (status) => (status === 'Repairing' ? 'Working' : status || 'Working');
-
 const findRepairById = async (repairId) => {
   const normalized = normalizeRepairId(repairId);
   if (!normalized) return { data: null, error: null };
@@ -50,7 +47,7 @@ const downloadRegistrationPdf = (repair) => {
         <p><strong>Phone:</strong> ${repair.phone}</p>
         <p><strong>Advance:</strong> ${formatCurrency(repair.advance)}</p>
         <p><strong>Predicted Completion:</strong> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
-        <p><strong>Status:</strong> ${dbToUiStatus(repair.status)}</p>
+        <p><strong>Status:</strong> ${repair.status}</p>
       </body>
     </html>
   `);
@@ -81,22 +78,13 @@ const buildPublicStatusUrl = (repairId = '') => {
   const url = new URL('repair-status.html', window.location.href);
   if (repairId) {
     url.searchParams.set('repairId', normalizeRepairId(repairId));
+    url.searchParams.set('repairId', repairId);
   }
   return url.toString();
 };
 
 const updateRepairStatus = async (repairId, status) => {
-  await supabaseHelpers.update('repairs', { status: uiToDbStatus(status) }, { repair_id: repairId });
-};
-
-const insertRepairWithCompat = async (payload) => {
-  const preferredPayload = { ...payload, status: uiToDbStatus(payload.status || 'Working') };
-  try {
-    return await supabaseHelpers.insert('repairs', preferredPayload);
-  } catch (error) {
-    if (preferredPayload.status !== 'Repairing') throw error;
-    return await supabaseHelpers.insert('repairs', { ...preferredPayload, status: 'Working' });
-  }
+  await supabaseHelpers.update('repairs', { status }, { repair_id: repairId });
 };
 
 const renderRepairs = (repairs) => {
@@ -121,9 +109,10 @@ const renderRepairs = (repairs) => {
       <td>${new Date(repair.predicted_date).toLocaleDateString()}</td>
       <td>
         <select class="status-select" data-repair-id="${repair.repair_id}">
-          <option value="Working" ${statusView === 'Working' ? 'selected' : ''}>Working</option>
-          <option value="Completed" ${statusView === 'Completed' ? 'selected' : ''}>Completed</option>
-          <option value="Cycle for Sale" ${statusView === 'Cycle for Sale' ? 'selected' : ''}>Cycle for Sale</option>
+          <option value="Working" ${repair.status === 'Working' ? 'selected' : ''}>Working</option>
+          <option value="Pending Parts" ${repair.status === 'Pending Parts' ? 'selected' : ''}>Pending Parts</option>
+          <option value="Completed" ${repair.status === 'Completed' ? 'selected' : ''}>Completed</option>
+          <option value="Cycle for Sale" ${repair.status === 'Cycle for Sale' ? 'selected' : ''}>Cycle for Sale</option>
         </select>
       </td>
       <td>${alerts.length ? alerts.join(', ') : 'No alerts'}</td>
@@ -149,6 +138,9 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
     btn.addEventListener('click', () => {
       const repairId = normalizeRepairId(btn.dataset.repairId);
+  repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const repairId = btn.dataset.repairId;
       window.location.href = `pos.html?repairId=${encodeURIComponent(repairId)}`;
     });
   });
@@ -156,6 +148,12 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.print-reg').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { data } = await findRepairById(btn.dataset.repairId);
+      const repairId = btn.dataset.repairId;
+      const { data } = await supabaseClient
+        .from('repairs')
+        .select('*')
+        .eq('repair_id', repairId)
+        .maybeSingle();
       if (data) downloadRegistrationPdf(data);
     });
   });
@@ -204,13 +202,18 @@ repairSearchButton.addEventListener('click', async () => {
 
   repairSearchInput.value = repairId;
   const { data, error } = await findRepairById(repairId);
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('status, predicted_date, unpaid_amount')
+    .eq('repair_id', repairId)
+    .maybeSingle();
 
   if (error || !data) {
     repairStatus.textContent = 'Repair ID not found.';
     return;
   }
 
-  repairStatus.textContent = `Status: ${dbToUiStatus(data.status)}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}. Balance: ${formatCurrency(data.unpaid_amount || 0)}`;
+  repairStatus.textContent = `Status: ${data.status}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}. Balance: ${formatCurrency(data.unpaid_amount || 0)}`;
 });
 
 publicStatusLink.textContent = buildPublicStatusUrl();

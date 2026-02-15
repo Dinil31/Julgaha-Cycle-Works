@@ -11,8 +11,6 @@ const normalizeRepairId = (value) => {
   return raw.startsWith('REP-') ? raw : `REP-${raw.replace(/^REP/i, '').replace(/^-/, '')}`;
 };
 
-const dbToUiStatus = (status) => (status === 'Repairing' ? 'Working' : status || 'Working');
-
 const findRepairById = async (repairId) => {
   const normalized = normalizeRepairId(repairId);
   if (!normalized) return { data: null, error: null };
@@ -79,6 +77,14 @@ const loadRepair = async (repairId) => {
   billContainer.innerHTML = '';
 
   const { data, error } = await findRepairById(normalized);
+  resultBox.textContent = 'Checking...';
+  billContainer.innerHTML = '';
+
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('repair_id, customer_name, status, predicted_date, unpaid_amount, final_bill')
+    .eq('repair_id', repairId)
+    .maybeSingle();
 
   if (error || !data) {
     resultBox.textContent = 'Repair ID not found.';
@@ -88,7 +94,7 @@ const loadRepair = async (repairId) => {
   resultBox.innerHTML = `
     <p><strong>Repair ID:</strong> ${data.repair_id}</p>
     <p><strong>Customer:</strong> ${data.customer_name}</p>
-    <p><strong>Status:</strong> ${dbToUiStatus(data.status)}</p>
+    <p><strong>Status:</strong> ${data.status}</p>
     <p><strong>Expected Date:</strong> ${new Date(data.predicted_date).toLocaleDateString()}</p>
     <p><strong>Balance:</strong> ${formatCurrency(data.unpaid_amount || 0)}</p>
   `;
@@ -98,10 +104,14 @@ const loadRepair = async (repairId) => {
 
 checkButton.addEventListener('click', () => {
   loadRepair(repairIdInput.value);
+  const repairId = repairIdInput.value.trim();
+  if (!repairId) return;
+  loadRepair(repairId);
 });
 
 const params = new URLSearchParams(window.location.search);
 const initialRepairId = params.get('repairId');
 if (initialRepairId) {
+  repairIdInput.value = initialRepairId;
   loadRepair(initialRepairId);
 }
