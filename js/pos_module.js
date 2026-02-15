@@ -11,7 +11,7 @@ async function fetchAll(table) {
     return data;
 }
 
-// --- 1. INVENTORY & RESTOCK (EDITABLE) ---
+// --- 1. INVENTORY & RESTOCK ---
 export async function loadInventory() {
     const products = await fetchAll('products');
     const tbody = document.getElementById('inventory-table-body');
@@ -37,21 +37,18 @@ export async function loadInventory() {
     });
 }
 
-// Open Restock Modal (Editable)
 export async function generateRestockPDF() {
     const sb = getSupabase();
     const { data } = await sb.from('products').select('*');
     
-    // Filter logic: Items where stock <= reorder_level
     const lowStockItems = data.filter(p => p.stock <= p.reorder_level);
-
-    if(lowStockItems.length === 0) return showCustomConfirm("Inventory", "No items need restocking right now.", "confirm");
+    if(lowStockItems.length === 0) return showCustomConfirm("Inventory", "No items need restocking.", "confirm");
 
     const tbody = document.getElementById('restock-table-body');
     tbody.innerHTML = '';
 
     lowStockItems.forEach((p, index) => {
-        const suggestedOrder = (p.reorder_level * 3) - p.stock; // Simple logic: Aim for 3x safety stock
+        const suggested = (p.reorder_level * 3) - p.stock; 
         tbody.innerHTML += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
                 <td class="p-3 font-mono text-xs">${p.code}</td>
@@ -59,51 +56,28 @@ export async function generateRestockPDF() {
                 <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
                 <td class="p-3 text-center">${p.reorder_level}</td>
                 <td class="p-3 text-center">
-                    <input type="number" class="w-20 p-1 border rounded text-center bg-gray-50 dark:bg-slate-700 dark:text-white font-bold" value="${suggestedOrder > 0 ? suggestedOrder : 10}">
+                    <input type="number" class="w-20 p-1 border rounded text-center bg-gray-50 dark:bg-slate-700 dark:text-white font-bold" value="${suggested > 0 ? suggested : 10}">
                 </td>
                 <td class="p-3 text-center">
                     <button onclick="document.getElementById('restock-row-${index}').remove()" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>
-        `;
+            </tr>`;
     });
 
     document.getElementById('restock-modal').classList.remove('hidden');
 }
 
-// Print the Final Edited List
 window.printRestockFinal = () => {
     const rows = document.querySelectorAll('#restock-table-body tr');
     let printRows = '';
-    
     rows.forEach(row => {
         const cols = row.querySelectorAll('td');
         const qty = row.querySelector('input').value;
-        printRows += `
-            <tr>
-                <td>${cols[0].innerText}</td>
-                <td>${cols[1].innerText}</td>
-                <td style="text-align:center">${cols[2].innerText}</td>
-                <td style="text-align:center font-weight:bold;">${qty}</td>
-                <td style="border-bottom:1px solid #ccc;"></td>
-            </tr>`;
+        printRows += `<tr><td>${cols[0].innerText}</td><td>${cols[1].innerText}</td><td style="text-align:center">${cols[2].innerText}</td><td style="text-align:center; font-weight:bold;">${qty}</td><td style="border-bottom:1px solid #ccc;"></td></tr>`;
     });
 
     const printWindow = window.open('', '', 'width=800,height=600');
-    const html = `
-        <html><head><title>Restock Order</title>
-        <style>body{font-family:sans-serif; padding:20px;} h2{margin-bottom:5px;} table{width:100%; border-collapse:collapse; margin-top:20px;} th,td{border:1px solid #ddd; padding:10px; text-align:left;} th{background:#f4f4f4;}</style>
-        </head><body>
-        <h2>📦 Inventory Restock Order</h2>
-        <p>Date: ${new Date().toLocaleDateString()}</p>
-        <table>
-            <tr><th>Code</th><th>Product</th><th>Current</th><th>Order Qty</th><th>Check</th></tr>
-            ${printRows}
-        </table>
-        <script>window.print();</script>
-        </body></html>`;
-    
-    printWindow.document.write(html);
+    printWindow.document.write(`<html><head><title>Restock Order</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ddd;padding:10px;} th{background:#f4f4f4;}</style></head><body><h2>📦 Inventory Restock Order</h2><p>${new Date().toLocaleDateString()}</p><table><tr><th>Code</th><th>Product</th><th>Current</th><th>Order Qty</th><th>Check</th></tr>${printRows}</table><script>window.print();</script></body></html>`);
     printWindow.document.close();
 };
 
@@ -122,7 +96,7 @@ export async function addProduct(e) {
     else { await showCustomConfirm("Success", "Product Added", "success-green"); e.target.reset(); loadInventory(); }
 }
 
-// --- 2. POS (STANDARD) ---
+// --- 2. POS & SALES ---
 let cart = [];
 let productsCache = [];
 
@@ -181,8 +155,6 @@ export async function processSale(e) {
     const form = new FormData(e.target);
     const svc = parseFloat(form.get('service_cost') || 0);
     const total = cart.reduce((s, i) => s + (i.price*i.qty), 0) + svc;
-    
-    // ID Generator (Safe Long Number)
     const receiptNo = Date.now().toString().slice(-10) + Math.floor(Math.random()*100);
 
     if(cart.length === 0 && svc <= 0) return showCustomConfirm("Error", "Cart is empty.", "danger");
@@ -232,7 +204,7 @@ function generateBill(sale, items) {
     printWindow.document.close();
 }
 
-// --- 3. REPAIRS SYSTEM ---
+// --- 3. REPAIRS ---
 let repairCart = [];
 
 export async function loadRepairs() {
@@ -240,24 +212,20 @@ export async function loadRepairs() {
     const tbody = document.getElementById('repairs-table-body');
     if(!tbody) return;
 
-    // --- LOCK DATE LOGIC ---
-    // Set 'min' attribute to today for the date picker
+    // Lock Date
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.querySelector('input[name="predicted_date"]');
     if(dateInput) dateInput.setAttribute('min', today);
 
     tbody.innerHTML = '';
-    let pendingCount = 0;
-
     repairs.forEach(r => {
-        if(r.status === 'In Progress' || r.status === 'Pending') pendingCount++;
-        
         const statusBadge = r.status === 'Completed' 
             ? '<span class="bg-green-100 text-green-800 px-2 rounded font-bold text-xs">Completed</span>'
             : `<button onclick="window.openCompleteRepairModal('${r.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 shadow">Mark Complete</button>`;
 
         const deleteBtn = `<button onclick="window.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 ml-2"><i class="fas fa-trash"></i></button>`;
-        const printBtn = `<button onclick='window.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&apos;")})' class="text-gray-500 hover:text-blue-600 ml-2"><i class="fas fa-print"></i></button>`;
+        // Use JSON.stringify and replace quotes to safely pass object
+        const printBtn = `<button onclick='window.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-blue-600 ml-2"><i class="fas fa-print"></i></button>`;
 
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-slate-800 dark:border-gray-700">
@@ -270,44 +238,19 @@ export async function loadRepairs() {
     });
 }
 
-// --- PRINT REPAIR TICKET (WITH WEBSITE LINK) ---
 window.printRepairTicket = (repair) => {
     const printWindow = window.open('', '', 'width=400,height=600');
-    const websiteUrl = window.location.origin + "/track.html"; // Auto-detects your current website
-    const trackUrl = `${websiteUrl}?id=${repair.repair_id}`;
-
-    const html = `
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; }
-                h2, h3, p { margin: 5px 0; }
-                .box { border: 2px dashed black; padding: 10px; margin: 10px 0; }
-                .id { font-size: 18px; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <h2>CycleSense Repair</h2>
-            <p>Date: ${new Date().toLocaleDateString()}</p>
-            <div class="box">
-                <p>TICKET ID:</p>
-                <div class="id">${repair.repair_id}</div>
-            </div>
-            <p style="text-align:left;"><b>Customer:</b> ${repair.customer_name}</p>
-            <p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
-            <p style="text-align:left;"><b>Est. Finish:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
-            <p style="text-align:left;"><b>Advance:</b> LKR ${repair.advance}</p>
-            <hr>
-            <h3>Track Your Status</h3>
-            <p>Visit:</p>
-            <p><b>${websiteUrl}</b></p>
-            <p>Enter ID: <b>${repair.repair_id}</b></p>
-            <hr>
-            <p style="font-size:10px;">Bring this ticket to collect your bike.</p>
-            <script>window.print();</script>
-        </body>
-        </html>
-    `;
+    const websiteUrl = window.location.origin + "/track.html";
+    
+    const html = `<html><head><style>body{font-family:'Courier New';padding:20px;text-align:center;} .box{border:2px dashed black;padding:10px;margin:10px 0;} .id{font-size:18px;font-weight:bold;}</style></head><body>
+    <h2>CycleSense Repair</h2><p>${new Date().toLocaleDateString()}</p>
+    <div class="box"><p>TICKET ID:</p><div class="id">${repair.repair_id}</div></div>
+    <p style="text-align:left;"><b>Cust:</b> ${repair.customer_name}</p><p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
+    <p style="text-align:left;"><b>Est:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
+    <p style="text-align:left;"><b>Adv:</b> LKR ${repair.advance}</p><hr>
+    <h3>Track Status</h3><p>Visit: <b>${websiteUrl}</b></p><p>ID: <b>${repair.repair_id}</b></p><hr>
+    <script>window.print();</script></body></html>`;
+    
     printWindow.document.write(html);
     printWindow.document.close();
 }
@@ -316,7 +259,6 @@ export async function addRepair(e) {
     e.preventDefault();
     const sb = getSupabase();
     const form = new FormData(e.target);
-    
     const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
     
     const { data, error } = await sb.from('repairs').insert({
@@ -330,7 +272,6 @@ export async function addRepair(e) {
 
     if(error) alert(error.message);
     else { 
-        // Auto Print Ticket
         window.printRepairTicket(data);
         await showCustomConfirm("Success", "Ticket Created & Printed!", "success-green"); 
         e.target.reset(); 
@@ -378,8 +319,8 @@ window.addRepairPart = () => {
     const option = select.options[select.selectedIndex];
     const name = option.getAttribute('data-name');
     const price = parseFloat(option.getAttribute('data-price'));
-    
     repairCart.push({ id, name, price, qty: parseInt(qty) });
+    
     const advText = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, ''); 
     renderRepairCart(parseFloat(advText) || 0);
 }
@@ -388,28 +329,25 @@ function renderRepairCart(advance) {
     const tbody = document.getElementById('rep-parts-body');
     tbody.innerHTML = '';
     let partsTotal = 0;
-    
     repairCart.forEach(i => {
         partsTotal += i.price * i.qty;
         tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td align="right">${formatCurrency(i.price*i.qty)}</td></tr>`;
     });
-    
     const labor = parseFloat(document.getElementById('rep-labor').value || 0);
-    const total = partsTotal + labor;
-    const due = total - advance; 
-    
+    const due = (partsTotal + labor) - advance;
     document.getElementById('rep-total-due').innerText = formatCurrency(due);
 }
 
 window.finalizeRepair = async () => {
     const labor = parseFloat(document.getElementById('rep-labor').value || 0);
     const sb = getSupabase();
+    
     const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
     const partsTotal = repairCart.reduce((s, i) => s + (i.price * i.qty), 0);
     const finalTotal = partsTotal + labor;
     const balance = finalTotal - repair.advance;
-
     const receiptNo = "REP-" + Date.now().toString().slice(-8);
+
     const { data: sale } = await sb.from('sales').insert({
         receipt_no: receiptNo,
         customer_name: repair.customer_name + " (Repair)",
@@ -435,33 +373,70 @@ window.finalizeRepair = async () => {
     loadRepairs();
 }
 
-// --- REPORTS & HR ---
+// --- 4. SALES REPORTS & HR ---
 let allSales = [];
+
 export async function openReportModal() {
     document.getElementById('sales-report-modal').classList.remove('hidden');
     const sb = getSupabase();
     const { data } = await sb.from('sales').select('*').order('date', {ascending:false});
     if(!data) return;
     allSales = data;
-    // Just reuse the filter logic from before
-    // (Simulated here for brevity, standard filter function required)
+    filterSales('today');
+}
+
+export function closeReportModal() { document.getElementById('sales-report-modal').classList.add('hidden'); }
+
+export function filterSales(period) {
     const tbody = document.getElementById('report-table-body');
+    const totalEl = document.getElementById('report-total-sales');
+    if(!tbody) return;
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const filtered = allSales.filter(s => {
+        const d = new Date(s.date);
+        if(period === 'today') return d >= startOfDay;
+        if(period === 'week') return d >= startOfWeek;
+        if(period === 'month') return d >= startOfMonth;
+        if(period === 'year') return d >= startOfYear;
+        return true;
+    });
+
     tbody.innerHTML = '';
-    data.forEach(s => {
+    let grandTotal = 0;
+    filtered.forEach(s => {
+        grandTotal += Number(s.total_amount);
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-3">${new Date(s.date).toLocaleDateString()}</td>
                 <td class="p-3 font-mono text-blue-500">${s.receipt_no}</td>
                 <td class="p-3">${s.customer_name}</td>
                 <td class="p-3 text-right">${formatCurrency(s.total_amount)}</td>
-                <td class="p-3 text-center"><button onclick="window.deleteSale('${s.id}')" class="text-red-500"><i class="fas fa-trash"></i></button></td>
+                <td class="p-3 text-center">
+                    <button onclick="window.deleteSale('${s.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+                </td>
             </tr>`;
     });
+    totalEl.innerText = formatCurrency(grandTotal);
 }
-export function closeReportModal() { document.getElementById('sales-report-modal').classList.add('hidden'); }
+
 export async function deleteSale(id) {
     if(await showCustomConfirm("Delete?", "Confirm delete", "danger")) {
         const sb = getSupabase();
+        // Restore stock
+        const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', id);
+        if(items) {
+            for(let item of items) {
+                const { data: p } = await sb.from('products').select('stock').eq('id', item.product_id).single();
+                if(p) await sb.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id);
+            }
+        }
+        await sb.from('sale_items').delete().eq('sale_id', id);
         await sb.from('sales').delete().eq('id', id);
         openReportModal();
     }
@@ -476,6 +451,7 @@ export async function loadHR() {
         list.innerHTML += `<div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm flex justify-between"><div><h4 class="font-bold dark:text-white">${w.name}</h4></div><span class="text-green-600 font-bold">${formatCurrency(w.daily_salary)}/day</span></div>`;
     });
 }
+
 export async function addWorker(e) {
     e.preventDefault();
     const sb = getSupabase();
@@ -485,6 +461,9 @@ export async function addWorker(e) {
     loadHR();
 }
 
-// Expose Helpers for HTML Buttons
-window.printRestockFinal = () => { /* Defined above */ }; 
+// Window Exposures
 window.deleteSale = deleteSale;
+window.deleteRepair = deleteRepair;
+window.openCompleteRepairModal = openCompleteRepairModal;
+window.addRepairPart = addRepairPart;
+window.finalizeRepair = finalizeRepair;
