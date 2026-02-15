@@ -4,7 +4,7 @@ import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
 // NEW: Import Report Functions
-import { loadInventory, addProduct, initPOS, addToCart, processSale, loadRepairs, addRepair, loadHR, addWorker, openReportModal, closeReportModal, filterSales } from "./pos_module.js";
+import { loadInventory, addProduct, initPOS, addToCart, processSale, loadRepairs, addRepair, loadHR, addWorker, openReportModal, closeReportModal, filterSales, deleteSale, generateRestockPDF } from "./pos_module.js";
 
 function setActiveNav(activeId) {
     const navs = ['nav-revenue', 'nav-service', 'nav-inventory', 'nav-supplier', 'nav-pos', 'nav-repairs', 'nav-hr'];
@@ -40,6 +40,7 @@ window.addProduct = addProduct; window.addToCart = addToCart; window.processSale
 window.openReportModal = openReportModal;
 window.closeReportModal = closeReportModal;
 window.filterSales = filterSales;
+window.generateRestockPDF = generateRestockPDF;
 
 window.onload = function () {
   try {
@@ -51,3 +52,4 @@ window.onload = function () {
     checkSession();
   } catch (err) { console.error(err); alert("Startup Error: " + err.message); }
 };
+
