@@ -77,6 +77,7 @@ const buildPublicStatusUrl = (repairId = '') => {
   const url = new URL('repair-status.html', window.location.href);
   if (repairId) {
     url.searchParams.set('repairId', normalizeRepairId(repairId));
+    url.searchParams.set('repairId', repairId);
   }
   return url.toString();
 };
@@ -134,6 +135,9 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
     btn.addEventListener('click', () => {
       const repairId = normalizeRepairId(btn.dataset.repairId);
+  repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const repairId = btn.dataset.repairId;
       window.location.href = `pos.html?repairId=${encodeURIComponent(repairId)}`;
     });
   });
@@ -141,6 +145,12 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.print-reg').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { data } = await findRepairById(btn.dataset.repairId);
+      const repairId = btn.dataset.repairId;
+      const { data } = await supabaseClient
+        .from('repairs')
+        .select('*')
+        .eq('repair_id', repairId)
+        .maybeSingle();
       if (data) downloadRegistrationPdf(data);
     });
   });
@@ -189,6 +199,11 @@ repairSearchButton.addEventListener('click', async () => {
 
   repairSearchInput.value = repairId;
   const { data, error } = await findRepairById(repairId);
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('status, predicted_date, unpaid_amount')
+    .eq('repair_id', repairId)
+    .maybeSingle();
 
   if (error || !data) {
     repairStatus.textContent = 'Repair ID not found.';

@@ -77,6 +77,14 @@ const loadRepair = async (repairId) => {
   billContainer.innerHTML = '';
 
   const { data, error } = await findRepairById(normalized);
+  resultBox.textContent = 'Checking...';
+  billContainer.innerHTML = '';
+
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('repair_id, customer_name, status, predicted_date, unpaid_amount, final_bill')
+    .eq('repair_id', repairId)
+    .maybeSingle();
 
   if (error || !data) {
     resultBox.textContent = 'Repair ID not found.';
@@ -96,10 +104,14 @@ const loadRepair = async (repairId) => {
 
 checkButton.addEventListener('click', () => {
   loadRepair(repairIdInput.value);
+  const repairId = repairIdInput.value.trim();
+  if (!repairId) return;
+  loadRepair(repairId);
 });
 
 const params = new URLSearchParams(window.location.search);
 const initialRepairId = params.get('repairId');
 if (initialRepairId) {
+  repairIdInput.value = initialRepairId;
   loadRepair(initialRepairId);
 }

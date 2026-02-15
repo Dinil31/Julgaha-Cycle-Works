@@ -174,6 +174,127 @@ const prefillRepairFromUrl = async () => {
   document.querySelector('#customer-phone').value = data.phone || '';
 };
 
+const buildBillPayload = ({ repairId = '', customerName, phone, serviceCost, partsTotal, totalAmount, paidAmount = 0 }) => ({
+  bill_number: `BILL-${Date.now().toString().slice(-8)}`,
+  repair_id: repairId || null,
+  date: new Date().toISOString(),
+  customer_name: customerName,
+  phone,
+  service_cost: serviceCost,
+  parts_total: partsTotal,
+  total_amount: totalAmount,
+  paid_amount: paidAmount,
+  unpaid_amount: Math.max(totalAmount - paidAmount, 0),
+  parts: cart.map((item) => ({
+    name: item.name,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    total: item.total,
+  })),
+});
+
+const downloadBillPdf = (bill) => {
+  const popup = window.open('', '_blank', 'width=900,height=700');
+  if (!popup) {
+    saleMessage.textContent = 'Unable to open bill preview. Please allow popups.';
+    return;
+  }
+
+  const rows = bill.parts
+    .map(
+      (item) => `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.quantity}</td>
+        <td>${formatCurrency(item.unit_price)}</td>
+        <td>${formatCurrency(item.total)}</td>
+      </tr>`,
+    )
+    .join('');
+
+  popup.document.write(`
+    <html>
+      <head>
+        <title>${bill.bill_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 28px; color:#111; }
+          h1 { margin-bottom: 6px; }
+          .meta { margin: 2px 0; }
+          table { width:100%; border-collapse: collapse; margin-top: 18px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align:left; }
+          th { background:#f8f8f8; }
+          .summary { margin-top: 18px; font-size: 15px; }
+          .summary p { margin: 6px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>Cycle Sense Repair Bill</h1>
+        <p class="meta"><strong>Bill No:</strong> ${bill.bill_number}</p>
+        <p class="meta"><strong>Date:</strong> ${new Date(bill.date).toLocaleString()}</p>
+        <p class="meta"><strong>Customer:</strong> ${bill.customer_name}</p>
+        <p class="meta"><strong>Phone:</strong> ${bill.phone}</p>
+        <p class="meta"><strong>Repair ID:</strong> ${bill.repair_id || 'N/A'}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th><th>Qty</th><th>Unit Price</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="4">No parts used</td></tr>'}</tbody>
+        </table>
+        <div class="summary">
+          <p><strong>Parts Total:</strong> ${formatCurrency(bill.parts_total)}</p>
+          <p><strong>Service Cost:</strong> ${formatCurrency(bill.service_cost)}</p>
+          <p><strong>Grand Total:</strong> ${formatCurrency(bill.total_amount)}</p>
+          <p><strong>Advance/Paid:</strong> ${formatCurrency(bill.paid_amount)}</p>
+          <p><strong>Balance:</strong> ${formatCurrency(bill.unpaid_amount)}</p>
+        </div>
+      </body>
+    </html>
+  `);
+
+  popup.document.close();
+  popup.focus();
+  popup.print();
+};
+
+const completeRepairIfLinked = async (repairId, bill) => {
+  if (!repairId) return;
+
+  const updatePayload = {
+    status: 'Completed',
+    unpaid_amount: bill.unpaid_amount,
+    final_bill: bill,
+    completed_at: new Date().toISOString(),
+  };
+
+  try {
+    await supabaseHelpers.update('repairs', updatePayload, { repair_id: repairId });
+  } catch (error) {
+    await supabaseHelpers.update('repairs', { status: 'Completed', unpaid_amount: bill.unpaid_amount }, { repair_id: repairId });
+  }
+};
+
+const prefillRepairFromUrl = async () => {
+  const params = new URLSearchParams(window.location.search);
+  const repairId = params.get('repairId');
+  if (!repairId) return;
+
+  repairIdInput.value = repairId;
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('customer_name, phone, advance')
+    .eq('repair_id', repairId)
+    .maybeSingle();
+
+  if (error || !data) return;
+
+  const customerNameInput = document.querySelector('#customer-name');
+  const customerPhoneInput = document.querySelector('#customer-phone');
+  customerNameInput.value = data.customer_name || '';
+  customerPhoneInput.value = data.phone || '';
+};
+
 const refreshProductOptions = () => {
   partSelect.innerHTML = products
     .map(
@@ -316,6 +437,7 @@ saleForm.addEventListener('submit', async (event) => {
   const phone = formData.get('phone').trim();
   const repairId = normalizeRepairId(formData.get('repair_id'));
   repairIdInput.value = repairId;
+  const repairId = formData.get('repair_id').trim();
   const serviceCost = Number(formData.get('service_cost') || 0);
 
   if (cart.length === 0) {
@@ -332,6 +454,8 @@ saleForm.addEventListener('submit', async (event) => {
     if (repairId) {
       await ensureRepairRecord(repairId, customerName, phone);
       const { data: repair } = await supabaseClient
+    if (repairId) {
+      const { data: repair, error: repairError } = await supabaseClient
         .from('repairs')
         .select('advance')
         .eq('repair_id', repairId)
@@ -341,6 +465,20 @@ saleForm.addEventListener('submit', async (event) => {
     }
 
     const bill = buildBillPayload({ repairId, customerName, phone, serviceCost, partsTotal, totalAmount, paidAmount });
+      if (!repairError && repair) {
+        paidAmount = Number(repair.advance || 0);
+      }
+    }
+
+    const bill = buildBillPayload({
+      repairId,
+      customerName,
+      phone,
+      serviceCost,
+      partsTotal,
+      totalAmount,
+      paidAmount,
+    });
 
     const salePayload = {
       date: new Date().toISOString(),
@@ -363,6 +501,7 @@ saleForm.addEventListener('submit', async (event) => {
         total_amount: salePayload.total_amount,
       });
     }
+    const saleId = saleInsert[0].id;
 
     const saleId = saleInsert[0].id;
     const saleItemsPayload = cart.map((item) => ({
