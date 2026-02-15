@@ -7,19 +7,12 @@ const repairStatus = document.querySelector('#repair-status');
 const publicStatusLink = document.querySelector('#public-status-link');
 
 const formatCurrency = (value) => `LKR ${Number(value || 0).toFixed(2)}`;
-const uiToDbStatus = (status) => (status === 'Working' ? 'Repairing' : status);
-const dbToUiStatus = (status) => (status === 'Repairing' ? 'Working' : status || 'Working');
+const generateRepairId = () => `REP-${Date.now().toString().slice(-6)}`;
 
 const normalizeRepairId = (value) => {
   const raw = String(value || '').trim().toUpperCase();
   if (!raw) return '';
   return raw.startsWith('REP-') ? raw : `REP-${raw.replace(/^REP/i, '').replace(/^-/, '')}`;
-};
-
-const generateRepairId = () => {
-  const stamp = Date.now().toString().slice(-6);
-  const rand = Math.floor(Math.random() * 90 + 10).toString();
-  return `REP-${stamp}${rand}`;
 };
 
 const findRepairById = async (repairId) => {
@@ -54,7 +47,7 @@ const downloadRegistrationPdf = (repair) => {
         <p><strong>Phone:</strong> ${repair.phone}</p>
         <p><strong>Advance:</strong> ${formatCurrency(repair.advance)}</p>
         <p><strong>Predicted Completion:</strong> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
-        <p><strong>Status:</strong> ${dbToUiStatus(repair.status)}</p>
+        <p><strong>Status:</strong> ${repair.status}</p>
       </body>
     </html>
   `);
@@ -117,6 +110,19 @@ const createRepairWithRetry = async (basePayload, maxAttempts = 3) => {
   throw lastError || new Error('Unable to create repair.');
 };
 
+const buildPublicStatusUrl = (repairId = '') => {
+  const url = new URL('repair-status.html', window.location.href);
+  if (repairId) {
+    url.searchParams.set('repairId', normalizeRepairId(repairId));
+    url.searchParams.set('repairId', repairId);
+  }
+  return url.toString();
+};
+
+const updateRepairStatus = async (repairId, status) => {
+  await supabaseHelpers.update('repairs', { status }, { repair_id: repairId });
+};
+
 const renderRepairs = (repairs) => {
   repairsTableBody.innerHTML = '';
 
@@ -138,9 +144,10 @@ const renderRepairs = (repairs) => {
       <td>${new Date(repair.predicted_date).toLocaleDateString()}</td>
       <td>
         <select class="status-select" data-repair-id="${repair.repair_id}">
-          <option value="Working" ${statusView === 'Working' ? 'selected' : ''}>Working</option>
-          <option value="Completed" ${statusView === 'Completed' ? 'selected' : ''}>Completed</option>
-          <option value="Cycle for Sale" ${statusView === 'Cycle for Sale' ? 'selected' : ''}>Cycle for Sale</option>
+          <option value="Working" ${repair.status === 'Working' ? 'selected' : ''}>Working</option>
+          <option value="Pending Parts" ${repair.status === 'Pending Parts' ? 'selected' : ''}>Pending Parts</option>
+          <option value="Completed" ${repair.status === 'Completed' ? 'selected' : ''}>Completed</option>
+          <option value="Cycle for Sale" ${repair.status === 'Cycle for Sale' ? 'selected' : ''}>Cycle for Sale</option>
         </select>
       </td>
       <td>${alerts.length ? alerts.join(', ') : 'No alerts'}</td>
@@ -166,6 +173,9 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
     btn.addEventListener('click', () => {
       const repairId = normalizeRepairId(btn.dataset.repairId);
+  repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const repairId = btn.dataset.repairId;
       window.location.href = `pos.html?repairId=${encodeURIComponent(repairId)}`;
     });
   });
@@ -173,6 +183,12 @@ const renderRepairs = (repairs) => {
   repairsTableBody.querySelectorAll('.print-reg').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const { data } = await findRepairById(btn.dataset.repairId);
+      const repairId = btn.dataset.repairId;
+      const { data } = await supabaseClient
+        .from('repairs')
+        .select('*')
+        .eq('repair_id', repairId)
+        .maybeSingle();
       if (data) downloadRegistrationPdf(data);
     });
   });
@@ -203,10 +219,10 @@ repairForm.addEventListener('submit', async (event) => {
   };
 
   try {
-    const insertedRepair = await createRepairWithRetry(basePayload, 5);
-    repairMessage.textContent = `Repair created. ID: ${insertedRepair.repair_id}`;
-    downloadRegistrationPdf(insertedRepair);
-    publicStatusLink.textContent = buildPublicStatusUrl(insertedRepair.repair_id);
+    await supabaseHelpers.insert('repairs', payload);
+    repairMessage.textContent = `Repair created. ID: ${payload.repair_id}`;
+    downloadRegistrationPdf(payload);
+    publicStatusLink.textContent = buildPublicStatusUrl(payload.repair_id);
     repairForm.reset();
 
     // Refresh full list; if refresh fails, at least append new row locally.
@@ -226,13 +242,18 @@ repairSearchButton.addEventListener('click', async () => {
 
   repairSearchInput.value = repairId;
   const { data, error } = await findRepairById(repairId);
+  const { data, error } = await supabaseClient
+    .from('repairs')
+    .select('status, predicted_date, unpaid_amount')
+    .eq('repair_id', repairId)
+    .maybeSingle();
 
   if (error || !data) {
     repairStatus.textContent = 'Repair ID not found.';
     return;
   }
 
-  repairStatus.textContent = `Status: ${dbToUiStatus(data.status)}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}. Balance: ${formatCurrency(data.unpaid_amount || 0)}`;
+  repairStatus.textContent = `Status: ${data.status}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}. Balance: ${formatCurrency(data.unpaid_amount || 0)}`;
 });
 
 publicStatusLink.textContent = buildPublicStatusUrl();
