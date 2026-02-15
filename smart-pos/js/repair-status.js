@@ -5,6 +5,33 @@ const billContainer = document.querySelector('#public-bill');
 
 const formatCurrency = (value) => `LKR ${Number(value || 0).toFixed(2)}`;
 
+const normalizeRepairId = (value) => {
+  const raw = String(value || '').trim().toUpperCase();
+  if (!raw) return '';
+  return raw.startsWith('REP-') ? raw : `REP-${raw.replace(/^REP/i, '').replace(/^-/, '')}`;
+};
+
+const findRepairById = async (repairId) => {
+  const normalized = normalizeRepairId(repairId);
+  if (!normalized) return { data: null, error: null };
+
+  let response = await supabaseClient
+    .from('repairs')
+    .select('repair_id, customer_name, status, predicted_date, unpaid_amount, final_bill')
+    .eq('repair_id', normalized)
+    .maybeSingle();
+
+  if (!response.error && response.data) return response;
+
+  response = await supabaseClient
+    .from('repairs')
+    .select('repair_id, customer_name, status, predicted_date, unpaid_amount, final_bill')
+    .ilike('repair_id', normalized)
+    .maybeSingle();
+
+  return response;
+};
+
 const renderBill = (bill) => {
   if (!bill || !Array.isArray(bill.parts)) {
     billContainer.innerHTML = '<p>Final bill is not available yet.</p>';
@@ -39,6 +66,17 @@ const renderBill = (bill) => {
 };
 
 const loadRepair = async (repairId) => {
+  const normalized = normalizeRepairId(repairId);
+  if (!normalized) {
+    resultBox.textContent = 'Please enter a valid repair ID.';
+    return;
+  }
+
+  repairIdInput.value = normalized;
+  resultBox.textContent = 'Checking...';
+  billContainer.innerHTML = '';
+
+  const { data, error } = await findRepairById(normalized);
   resultBox.textContent = 'Checking...';
   billContainer.innerHTML = '';
 
@@ -65,6 +103,7 @@ const loadRepair = async (repairId) => {
 };
 
 checkButton.addEventListener('click', () => {
+  loadRepair(repairIdInput.value);
   const repairId = repairIdInput.value.trim();
   if (!repairId) return;
   loadRepair(repairId);
