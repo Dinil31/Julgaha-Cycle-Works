@@ -1,41 +1,67 @@
+// js/app.js
 import { initSupabase } from "./config.js";
-import { switchContext, renderComingSoon, toggleTheme, toggleLang, switchCat, handleMonthChange, updateDashboard } from "./ui.js";
+import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
-// IMPORT AI FUNCTIONS
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
+// NEW: Import POS Logic
+import { loadInventory, addProduct, initPOS, addToCart, processSale, loadRepairs, addRepair, loadHR, addWorker } from "./pos_module.js";
 
 // --- NAVIGATION ---
 function setActiveNav(activeId) {
-    const navs = ['nav-revenue', 'nav-service', 'nav-inventory', 'nav-supplier'];
+    const navs = ['nav-revenue', 'nav-service', 'nav-inventory', 'nav-supplier', 'nav-pos', 'nav-repairs', 'nav-hr'];
     navs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
+            // Updated Active/Inactive Styles for Modern Look
             el.className = (id === activeId) 
-                ? "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-slate-800 text-white shadow-md transition-all hover:scale-105"
-                : "flex items-center justify-center space-x-2 p-3 rounded-lg cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-transparent hover:scale-105";
+                ? "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-slate-800 text-white shadow-lg transform scale-105 transition-all border border-slate-700"
+                : "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-gray-200 dark:border-gray-700";
         }
     });
 }
 
-window.switchContext = function(mode) {
-    if (mode === 'past') setActiveNav('nav-revenue');
-    if (mode === 'service') setActiveNav('nav-service');
-    switchContext(mode);
+function hideAllSections() {
+    const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view'];
+    sections.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
 }
 
 window.handleNavClick = function(tabName) {
-    if (tabName === 'inventory') {
+    hideAllSections();
+    
+    if (tabName === 'dashboard') {
+        setActiveNav('nav-revenue');
+        document.getElementById('dashboard-view').classList.remove('hidden');
+        switchContext('past');
+    }
+    else if (tabName === 'pos') {
+        setActiveNav('nav-pos');
+        document.getElementById('pos-view').classList.remove('hidden');
+        initPOS();
+    }
+    else if (tabName === 'inventory') {
         setActiveNav('nav-inventory');
-        renderComingSoon('Inventory Management');
+        document.getElementById('inventory-view').classList.remove('hidden');
+        loadInventory();
     }
-    if (tabName === 'supplier') {
-        setActiveNav('nav-supplier');
-        renderComingSoon('Procurement & Supply');
+    else if (tabName === 'repairs') {
+        setActiveNav('nav-repairs');
+        document.getElementById('repairs-view').classList.remove('hidden');
+        loadRepairs();
     }
-    // AI Trigger
-    if (tabName === 'ai') {
+    else if (tabName === 'hr') {
+        setActiveNav('nav-hr');
+        document.getElementById('hr-view').classList.remove('hidden');
+        loadHR();
+    }
+    else if (tabName === 'ai') {
         toggleAI(); 
+        // Keep current view visible behind AI modal
+        const current = document.querySelector('div[id$="-view"]:not(.hidden)');
+        if(current) current.classList.remove('hidden');
     }
 }
 
@@ -43,16 +69,21 @@ window.handleNavClick = function(tabName) {
 window.toggleAI = toggleAI;
 window.clearAIChat = clearAIChat;
 window.handleAIKey = handleUserQuery;
-// This handles the button clicks
-window.triggerAIQuery = triggerAIQuery; 
-window.triggerAISend = function() {
-    handleUserQuery({ key: 'Enter' });
-}
+window.triggerAIQuery = triggerAIQuery;
+window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
+
+// POS Functions Exposed
+window.addProduct = addProduct;
+window.addToCart = addToCart;
+window.processSale = processSale;
+window.addRepair = addRepair;
+window.addWorker = addWorker;
+window.removeCartItem = (idx) => { /* handled in module but exposed here just in case */ };
 
 window.onload = function () {
   try {
     initSupabase();
-
+    
     window.handleLogin = handleLogin;
     window.handleLogout = handleLogout;
     window.handleResetPassword = handleResetPassword;
@@ -60,19 +91,21 @@ window.onload = function () {
     window.clearDatabase = clearDatabase;
     window.toggleTheme = toggleTheme;
     window.toggleLang = toggleLang;
-    window.switchCat = switchCat;
+    
+    // Fix Dashboard Switcher
+    window.switchContext = (mode) => {
+        hideAllSections();
+        document.getElementById('dashboard-view').classList.remove('hidden');
+        if (mode === 'past') setActiveNav('nav-revenue');
+        if (mode === 'service') setActiveNav('nav-service');
+        switchContext(mode);
+    };
+    
     window.renderComingSoon = renderComingSoon; 
     window.handleMonthChange = handleMonthChange;
     window.updateDashboard = updateDashboard;
 
-    const btn = document.getElementById("login-btn");
-    if (btn) {
-      btn.disabled = false;
-      btn.innerText = "Sign In";
-    }
-    const status = document.getElementById("status-msg");
-    if(status) status.style.display = "none";
-
+    // Check Session (Logic from your auth.js)
     checkSession();
   } catch (err) {
     console.error(err);
