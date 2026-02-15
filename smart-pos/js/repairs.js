@@ -4,10 +4,42 @@ const repairsTableBody = document.querySelector('#repairs-table tbody');
 const repairSearchInput = document.querySelector('#repair-search');
 const repairSearchButton = document.querySelector('#repair-search-btn');
 const repairStatus = document.querySelector('#repair-status');
+const publicStatusLink = document.querySelector('#public-status-link');
 
 const formatCurrency = (value) => `LKR ${Number(value || 0).toFixed(2)}`;
 
 const generateRepairId = () => `REP-${Date.now().toString().slice(-6)}`;
+
+const downloadRegistrationPdf = (repair) => {
+  const popup = window.open('', '_blank', 'width=800,height=680');
+  if (!popup) return;
+
+  popup.document.write(`
+    <html>
+      <head>
+        <title>Repair ${repair.repair_id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 28px; }
+          h1 { margin-bottom: 6px; }
+          p { margin: 5px 0; }
+        </style>
+      </head>
+      <body>
+        <h1>Cycle Sense Repair Service Slip</h1>
+        <p><strong>Repair ID:</strong> ${repair.repair_id}</p>
+        <p><strong>Customer:</strong> ${repair.customer_name}</p>
+        <p><strong>Phone:</strong> ${repair.phone}</p>
+        <p><strong>Advance:</strong> ${formatCurrency(repair.advance)}</p>
+        <p><strong>Predicted Completion:</strong> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
+        <p><strong>Status:</strong> ${repair.status}</p>
+      </body>
+    </html>
+  `);
+
+  popup.document.close();
+  popup.focus();
+  popup.print();
+};
 
 const getAlertsForRepair = (repair) => {
   const alerts = [];
@@ -23,6 +55,14 @@ const getAlertsForRepair = (repair) => {
   }
 
   return alerts;
+};
+
+const buildPublicStatusUrl = (repairId = '') => {
+  const url = new URL('repair-status.html', window.location.href);
+  if (repairId) {
+    url.searchParams.set('repairId', repairId);
+  }
+  return url.toString();
 };
 
 const renderRepairs = (repairs) => {
@@ -43,8 +83,31 @@ const renderRepairs = (repairs) => {
       <td>${new Date(repair.predicted_date).toLocaleDateString()}</td>
       <td>${repair.status}</td>
       <td>${alerts.length ? alerts.join(', ') : 'No alerts'}</td>
+      <td>
+        <button type="button" class="secondary open-pos" data-repair-id="${repair.repair_id}">Add Parts / Finalize</button>
+        <button type="button" class="secondary print-reg" data-repair-id="${repair.repair_id}">Print Slip</button>
+      </td>
     `;
     repairsTableBody.appendChild(row);
+  });
+
+  repairsTableBody.querySelectorAll('.open-pos').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const repairId = btn.dataset.repairId;
+      window.location.href = `pos.html?repairId=${encodeURIComponent(repairId)}`;
+    });
+  });
+
+  repairsTableBody.querySelectorAll('.print-reg').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const repairId = btn.dataset.repairId;
+      const { data } = await supabaseClient
+        .from('repairs')
+        .select('*')
+        .eq('repair_id', repairId)
+        .maybeSingle();
+      if (data) downloadRegistrationPdf(data);
+    });
   });
 };
 
@@ -75,6 +138,8 @@ repairForm.addEventListener('submit', async (event) => {
   try {
     await supabaseHelpers.insert('repairs', payload);
     repairMessage.textContent = `Repair created. ID: ${payload.repair_id}`;
+    downloadRegistrationPdf(payload);
+    publicStatusLink.textContent = buildPublicStatusUrl(payload.repair_id);
     repairForm.reset();
     loadRepairs();
   } catch (error) {
@@ -88,7 +153,7 @@ repairSearchButton.addEventListener('click', async () => {
 
   const { data, error } = await supabaseClient
     .from('repairs')
-    .select('status, predicted_date')
+    .select('status, predicted_date, unpaid_amount')
     .eq('repair_id', repairId)
     .maybeSingle();
 
@@ -97,7 +162,8 @@ repairSearchButton.addEventListener('click', async () => {
     return;
   }
 
-  repairStatus.textContent = `Status: ${data.status}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}`;
+  repairStatus.textContent = `Status: ${data.status}. Predicted completion: ${new Date(data.predicted_date).toLocaleDateString()}. Balance: ${formatCurrency(data.unpaid_amount || 0)}`;
 });
 
+publicStatusLink.textContent = buildPublicStatusUrl();
 loadRepairs();
