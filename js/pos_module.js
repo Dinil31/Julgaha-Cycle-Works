@@ -1,6 +1,6 @@
 // js/pos_module.js
 import { getSupabase } from './config.js';
-import { showCustomConfirm, showCustomPrompt } from './ui.js';
+import { showCustomConfirm } from './ui.js';
 
 const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
 
@@ -40,13 +40,14 @@ export async function loadInventory() {
     });
 
     if(lowStockCount > 0) {
-        showCustomConfirm("Inventory Alert", `⚠️ Warning: ${lowStockCount} items are low on stock!`, "danger");
+        // Optional: Notify user (commented out to avoid annoyance on every load)
+        // showCustomConfirm("Inventory Alert", `⚠️ Warning: ${lowStockCount} items are low on stock!`, "danger");
     }
 }
 
 export function generateRestockPDF() {
     const sb = getSupabase();
-    sb.from('products').select('*').lte('stock', 5).then(({data}) => { // lte matches reorder level logic roughly
+    sb.from('products').select('*').lte('stock', 5).then(({data}) => { 
         if(!data || data.length === 0) return alert("No items need restocking.");
         
         const printWindow = window.open('', '', 'width=800,height=600');
@@ -92,7 +93,7 @@ export async function initPOS() {
     if(select) {
         select.innerHTML = '<option value="">Select Product...</option>';
         productsCache.forEach(p => {
-            select.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}</option>`;
+            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}</option>`;
         });
     }
 }
@@ -103,14 +104,20 @@ export function addToCart() {
     const id = select.value;
     if(!id) return alert("Select Product");
     
+    // Check if element exists
+    const option = select.options[select.selectedIndex];
+    if(!option) return;
+
+    const name = option.getAttribute('data-name');
+    const price = parseFloat(option.getAttribute('data-price'));
     const p = productsCache.find(x => String(x.id) === String(id));
     const qty = parseInt(qtyInput.value);
     
-    if(qty > p.stock) return alert("Low Stock!");
+    if(p && qty > p.stock) return alert("Low Stock! Only " + p.stock + " available.");
     
     const exist = cart.find(i => i.id === id);
     if(exist) exist.qty += qty;
-    else cart.push({ id, name: p.name, price: p.unit_price, qty });
+    else cart.push({ id, name, price, qty });
     
     renderCart();
     qtyInput.value = 1;
@@ -124,7 +131,12 @@ function renderCart() {
     let total = 0;
     cart.forEach((i, idx) => {
         total += i.price * i.qty;
-        tbody.innerHTML += `<tr><td>${i.name}</td><td class="text-center">${i.qty}</td><td class="text-right">${formatCurrency(i.price * i.qty)}</td><td><button onclick="window.removeCartItem(${idx})" class="text-red-500"><i class="fas fa-times"></i></button></td></tr>`;
+        tbody.innerHTML += `<tr>
+            <td class="p-2">${i.name}</td>
+            <td class="text-center p-2">${i.qty}</td>
+            <td class="text-right p-2">${formatCurrency(i.price * i.qty)}</td>
+            <td class="p-2 text-center"><button onclick="window.removeCartItem(${idx})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
     });
     const svc = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
     totalEl.innerText = formatCurrency(total + svc);
@@ -132,18 +144,50 @@ function renderCart() {
 
 window.removeCartItem = (idx) => { cart.splice(idx, 1); renderCart(); };
 
+// --- PROCESS SALE & BILLING ---
+function generateBill(sale, items) {
+    const printWindow = window.open('', '', 'width=400,height=600');
+    let itemsHtml = '';
+    
+    if(items && items.length > 0) {
+        itemsHtml = `<table style="width:100%; font-size:12px; border-collapse:collapse; margin:10px 0;">
+            <tr style="border-bottom:1px dashed black"><th align="left">Item</th><th>Qty</th><th align="right">Total</th></tr>
+            ${items.map(i => `<tr><td>${i.name}</td><td align="center">${i.qty}</td><td align="right">${(i.price*i.qty).toFixed(2)}</td></tr>`).join('')}
+        </table>`;
+    } else {
+        itemsHtml = '<p style="text-align:center; font-style:italic;">(Service Bill)</p>';
+    }
+    
+    const html = `<html><head><style>body{font-family:'Courier New'; padding:20px;} h2,p{margin:0;}</style></head><body>
+    <center><h2>CycleSense</h2><p>Tel: 075 633 9536</p></center><hr>
+    <p>Receipt: ${sale.receipt_no || sale.id}</p>
+    <p>Date: ${new Date().toLocaleString()}</p>
+    <p>Customer: ${sale.customer_name}</p>
+    <hr>
+    ${itemsHtml}
+    <hr>
+    <div style="text-align:right">
+        ${sale.service_cost > 0 ? `<p>Labor: ${sale.service_cost.toFixed(2)}</p>` : ''}
+        <h3>TOTAL: ${sale.total_amount.toFixed(2)}</h3>
+    </div>
+    <hr><center><p style="font-size:10px">Thank you! Ride Safe.</p></center>
+    <script>window.print();</script></body></html>`;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+}
+
 export async function processSale(e) {
     e.preventDefault();
     const sb = getSupabase();
     const form = new FormData(e.target);
     const svc = parseFloat(form.get('service_cost') || 0);
     const total = cart.reduce((s, i) => s + (i.price*i.qty), 0) + svc;
-    
-    // Generate Long ID
-    const receiptNo = Date.now().toString() + Math.floor(Math.random()*100).toString();
+    const receiptNo = Date.now().toString().slice(-10);
 
-    if(cart.length === 0 && svc <= 0) return alert("Empty Sale");
+    if(cart.length === 0 && svc <= 0) return showCustomConfirm("Error", "Cart is empty.", "danger");
 
+    // 1. Create Sale
     const { data: sale, error } = await sb.from('sales').insert({
         receipt_no: receiptNo,
         customer_name: form.get('customer_name') || 'Walk-in',
@@ -153,52 +197,114 @@ export async function processSale(e) {
         date: new Date().toISOString()
     }).select().single();
 
-    if(error) return alert(error.message);
+    if(error) return alert("Sale Error: " + error.message);
 
+    // 2. Add Items & Deduct Stock
     if(cart.length > 0) {
         const items = cart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
         await sb.from('sale_items').insert(items);
+        
         for(let item of cart) {
             const p = productsCache.find(x => String(x.id) === String(item.id));
             if(p) await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
         }
     }
 
+    // 3. Finish
     generateBill(sale, cart);
     await showCustomConfirm("Success", "Sale Completed!", "success-green");
+    
     cart = [];
     e.target.reset();
+    document.getElementById('pos-total').innerText = "LKR 0.00";
     renderCart();
-    initPOS();
+    initPOS(); // Refresh stock
 }
 
-// --- DELETE SALES (And Restore Stock) ---
-export async function deleteSale(saleId) {
-    const confirm = await showCustomConfirm("Delete Sale?", "This will delete the sale and RESTORE inventory stock.", "danger");
-    if(!confirm) return;
+// --- SALES REPORTING ---
+let allSales = [];
 
+export async function openReportModal() {
+    document.getElementById('sales-report-modal').classList.remove('hidden');
     const sb = getSupabase();
-    // Get Items to restore stock
-    const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', saleId);
+    const { data, error } = await sb.from('sales').select('*').order('date', { ascending: false });
     
+    if(error) return alert("Error loading sales.");
+    allSales = data;
+    filterSales('today');
+}
+
+export function closeReportModal() {
+    document.getElementById('sales-report-modal').classList.add('hidden');
+}
+
+export function filterSales(period) {
+    const tbody = document.getElementById('report-table-body');
+    const totalEl = document.getElementById('report-total-sales');
+    if(!tbody) return;
+
+    // Date Logic
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const filtered = allSales.filter(s => {
+        const d = new Date(s.date);
+        if(period === 'today') return d >= startOfDay;
+        if(period === 'week') return d >= startOfWeek;
+        if(period === 'month') return d >= startOfMonth;
+        if(period === 'year') return d >= startOfYear;
+        return true;
+    });
+
+    tbody.innerHTML = '';
+    let grandTotal = 0;
+
+    filtered.forEach(s => {
+        grandTotal += Number(s.total_amount);
+        tbody.innerHTML += `
+            <tr class="border-b dark:border-gray-700">
+                <td class="p-3 text-sm">${new Date(s.date).toLocaleDateString()}</td>
+                <td class="p-3 font-mono text-blue-500 text-xs">${s.receipt_no || s.id}</td>
+                <td class="p-3 font-bold">${s.customer_name}</td>
+                <td class="p-3 text-right">${formatCurrency(s.service_cost)}</td>
+                <td class="p-3 text-right font-bold text-green-600">${formatCurrency(s.total_amount)}</td>
+                <td class="p-3 text-center">
+                    <button onclick='window.reprintBill(${JSON.stringify(s).replace(/'/g, "&apos;")})' class="text-blue-500 hover:text-blue-700 mr-2"><i class="fas fa-print"></i></button>
+                    <button onclick="window.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+    });
+    totalEl.innerText = formatCurrency(grandTotal);
+}
+
+// Reprint Helper
+window.reprintBill = (sale) => { generateBill(sale, []); }
+
+// Delete Sale Helper
+export async function deleteSale(saleId) {
+    if(!await showCustomConfirm("Delete Sale?", "This will restore stock if items were sold.", "danger")) return;
+    
+    const sb = getSupabase();
+    // 1. Restore Stock
+    const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', saleId);
     if(items) {
         for(let item of items) {
-            // Get current stock
-            const { data: prod } = await sb.from('products').select('stock').eq('id', item.product_id).single();
-            if(prod) {
-                await sb.from('products').update({ stock: prod.stock + item.quantity }).eq('id', item.product_id);
-            }
+            const { data: p } = await sb.from('products').select('stock').eq('id', item.product_id).single();
+            if(p) await sb.from('products').update({ stock: p.stock + item.quantity }).eq('id', item.product_id);
         }
     }
-
+    // 2. Delete Record
     await sb.from('sale_items').delete().eq('sale_id', saleId);
     await sb.from('sales').delete().eq('id', saleId);
     
-    await showCustomConfirm("Deleted", "Sale deleted and stock restored.", "success-green");
-    window.openReportModal(); // Refresh table
+    await showCustomConfirm("Deleted", "Sale removed.", "success-green");
+    openReportModal(); // Refresh
 }
 
-// --- 3. REPAIRS & COMPLETION FLOW ---
+// --- 3. REPAIRS & COMPLETION ---
 let repairCart = []; // Special cart for repairs
 
 export async function loadRepairs() {
@@ -213,7 +319,7 @@ export async function loadRepairs() {
         if(r.status === 'In Progress' || r.status === 'Pending') pendingCount++;
         
         const statusBadge = r.status === 'Completed' 
-            ? '<span class="bg-green-100 text-green-800 px-2 rounded font-bold">Completed</span>'
+            ? '<span class="bg-green-100 text-green-800 px-2 rounded font-bold text-xs">Completed</span>'
             : `<button onclick="window.openCompleteRepairModal('${r.id}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 shadow">Mark Complete</button>`;
 
         const deleteBtn = `<button onclick="window.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 ml-2"><i class="fas fa-trash"></i></button>`;
@@ -222,12 +328,15 @@ export async function loadRepairs() {
             <tr class="bg-white border-b dark:bg-slate-800 dark:border-gray-700">
                 <td class="px-6 py-4 font-mono text-xs text-indigo-500">${r.repair_id}</td>
                 <td class="px-6 py-4">${r.customer_name}</td>
+                <td class="px-6 py-4 text-gray-500">${r.phone}</td>
+                <td class="px-6 py-4 font-bold">${formatCurrency(r.advance)}</td>
                 <td class="px-6 py-4">${new Date(r.predicted_date).toLocaleDateString()}</td>
                 <td class="px-6 py-4">${statusBadge} ${deleteBtn}</td>
             </tr>`;
     });
 
-    if(pendingCount > 0) showCustomConfirm("Pending Jobs", `You have ${pendingCount} bikes pending repair.`, "confirm");
+    // Alert only once per session or just show badge
+    // if(pendingCount > 0) showCustomConfirm("Pending Jobs", `${pendingCount} bikes pending.`, "confirm");
 }
 
 export async function addRepair(e) {
@@ -254,26 +363,24 @@ export async function deleteRepair(id) {
     }
 }
 
-// --- REPAIR COMPLETION MODAL ---
+// --- REPAIR MODAL LOGIC ---
 let currentRepairId = null;
 
 window.openCompleteRepairModal = async (id) => {
     currentRepairId = id;
-    repairCart = []; // Reset repair parts
+    repairCart = [];
     const sb = getSupabase();
     const { data: repair } = await sb.from('repairs').select('*').eq('id', id).single();
     
-    // Fill Modal
     document.getElementById('rep-modal-customer').innerText = repair.customer_name;
     document.getElementById('rep-modal-adv').innerText = formatCurrency(repair.advance);
     document.getElementById('repair-finalize-modal').classList.remove('hidden');
     
-    // Populate Parts Select inside modal
     const select = document.getElementById('rep-part-select');
     select.innerHTML = '<option value="">Select Used Part...</option>';
     const products = await fetchAll('products');
     products.forEach(p => {
-        select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`;
+        select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name}</option>`;
     });
     
     renderRepairCart(repair.advance);
@@ -285,14 +392,18 @@ window.addRepairPart = () => {
     const id = select.value;
     if(!id) return;
     
-    const name = select.options[select.selectedIndex].getAttribute('data-name');
-    const price = parseFloat(select.options[select.selectedIndex].getAttribute('data-price'));
+    const option = select.options[select.selectedIndex];
+    const name = option.getAttribute('data-name');
+    const price = parseFloat(option.getAttribute('data-price'));
     
     repairCart.push({ id, name, price, qty: parseInt(qty) });
     
-    // Get advance again from UI to recalc
-    const advText = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
-    renderRepairCart(parseFloat(advText));
+    // Recalc
+    const advText = document.getElementById('rep-modal-adv').innerText;
+    // Simple currency parse hack: remove non-digits/dots
+    const advance = parseFloat(advText.replace(/[^0-9.]/g, '')) || 0; 
+    
+    renderRepairCart(advance);
 }
 
 function renderRepairCart(advance) {
@@ -302,110 +413,74 @@ function renderRepairCart(advance) {
     
     repairCart.forEach(i => {
         partsTotal += i.price * i.qty;
-        tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td>${formatCurrency(i.price*i.qty)}</td></tr>`;
+        tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td align="right">${formatCurrency(i.price*i.qty)}</td></tr>`;
     });
     
     const labor = parseFloat(document.getElementById('rep-labor').value || 0);
     const total = partsTotal + labor;
-    const due = total - advance;
+    const due = total - advance; // Assuming advance is already paid
     
     document.getElementById('rep-total-due').innerText = formatCurrency(due);
 }
 
 window.finalizeRepair = async () => {
     const labor = parseFloat(document.getElementById('rep-labor').value || 0);
-    const advanceStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, ''); // Crude parsing
-    const advance = parseFloat(advanceStr) / 100; // Fix currency parsing logic in real app
-    
     const sb = getSupabase();
     
-    // 1. Get Repair Details
+    // 1. Get Info
     const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
     const partsTotal = repairCart.reduce((s, i) => s + (i.price * i.qty), 0);
     const finalTotal = partsTotal + labor;
     const balance = finalTotal - repair.advance;
 
-    // 2. Create Sale Record (Integration)
+    // 2. Create Sale
     const receiptNo = "REP-" + Date.now().toString().slice(-8);
     const { data: sale } = await sb.from('sales').insert({
         receipt_no: receiptNo,
         customer_name: repair.customer_name + " (Repair)",
         phone: repair.phone,
         service_cost: labor,
-        total_amount: finalTotal, // Full amount (Advance is payment method technically, but simple accounting here)
+        total_amount: finalTotal,
         date: new Date().toISOString()
     }).select().single();
 
-    // 3. Add Items & Deduct Stock
-    if (repairCart.length > 0) {
+    // 3. Stock Deduct
+    if(repairCart.length > 0) {
         const items = repairCart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
         await sb.from('sale_items').insert(items);
         for(let item of repairCart) {
-            // Deduct stock
             const { data: p } = await sb.from('products').select('stock').eq('id', item.id).single();
             if(p) await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
         }
     }
 
-    // 4. Update Repair Ticket Status
-    await sb.from('repairs').update({
-        status: 'Completed',
-        parts_used: repairCart,
-        final_amount: finalTotal,
-        balance_due: balance
-    }).eq('id', currentRepairId);
+    // 4. Update Ticket
+    await sb.from('repairs').update({ status: 'Completed', final_amount: finalTotal, balance_due: balance }).eq('id', currentRepairId);
 
-    // 5. Print Bill
-    generateBill(sale, repairCart); // Reusing billing function
+    // 5. Print
+    generateBill(sale, repairCart);
 
     document.getElementById('repair-finalize-modal').classList.add('hidden');
-    await showCustomConfirm("Completed", "Repair finished & Bill Generated.", "success-green");
+    await showCustomConfirm("Done", "Repair Completed & Billed", "success-green");
     loadRepairs();
 }
 
-// --- BILLING GEN ---
-function generateBill(sale, items) {
-    const printWindow = window.open('', '', 'width=400,height=600');
-    let itemsHtml = items.map(i => `<tr><td>${i.name}</td><td>${i.qty}</td><td style="text-align:right">${(i.price*i.qty).toFixed(2)}</td></tr>`).join('');
-    
-    const html = `<html><head><style>body{font-family:'Courier New'; padding:20px;} table{width:100%; font-size:12px;}</style></head><body>
-    <center><h2>CycleSense</h2><p>Repair Receipt</p></center><hr>
-    <p>Receipt: ${sale.receipt_no || sale.id}</p>
-    <p>Date: ${new Date().toLocaleString()}</p>
-    <p>Customer: ${sale.customer_name}</p><hr>
-    <table><tr><th align="left">Item</th><th>Qty</th><th align="right">Price</th></tr>${itemsHtml}</table><hr>
-    <p align="right">Labor: ${sale.service_cost.toFixed(2)}</p>
-    <h3 align="right">TOTAL: ${sale.total_amount.toFixed(2)}</h3>
-    <center><p>Track Status at: cyclesense-cloud.netlify.app/track.html</p><p>ID: ${sale.receipt_no}</p></center>
-    <script>window.print();</script></body></html>`;
-    
-    printWindow.document.write(html);
-    printWindow.document.close();
-}
-
-// Sales Table Functions
-export async function openReportModal() {
-    document.getElementById('sales-report-modal').classList.remove('hidden');
-    const sb = getSupabase();
-    const { data } = await sb.from('sales').select('*').order('date', {ascending:false});
-    
-    const tbody = document.getElementById('report-table-body');
-    tbody.innerHTML = '';
-    data.forEach(s => {
-        tbody.innerHTML += `
-            <tr class="border-b dark:border-gray-700">
-                <td class="p-3">${new Date(s.date).toLocaleDateString()}</td>
-                <td class="p-3 font-mono text-blue-500">${s.receipt_no || s.id}</td>
-                <td class="p-3">${s.customer_name}</td>
-                <td class="p-3 text-right text-green-600 font-bold">${formatCurrency(s.total_amount)}</td>
-                <td class="p-3 text-center">
-                    <button onclick="window.deleteSale('${s.id}')" class="text-red-500 hover:bg-red-100 p-2 rounded"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
+// --- 4. HR ---
+export async function loadHR() {
+    const workers = await fetchAll('workers');
+    const list = document.getElementById('workers-list');
+    if(!list) return;
+    list.innerHTML = '';
+    workers.forEach(w => {
+        list.innerHTML += `<div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm flex justify-between"><div><h4 class="font-bold dark:text-white">${w.name}</h4><p class="text-xs text-gray-500">Staff</p></div><span class="text-green-600 font-bold">${formatCurrency(w.daily_salary)}/day</span></div>`;
     });
 }
-export function closeReportModal() { document.getElementById('sales-report-modal').classList.add('hidden'); }
-window.deleteSale = deleteSale; // Expose
-window.openCompleteRepairModal = openCompleteRepairModal;
-window.addRepairPart = addRepairPart;
-window.finalizeRepair = finalizeRepair;
+
+export async function addWorker(e) {
+    e.preventDefault();
+    const sb = getSupabase();
+    const form = new FormData(e.target);
+    await sb.from('workers').insert({ name: form.get('name'), daily_salary: Number(form.get('daily_salary')) });
+    e.target.reset();
+    loadHR();
+}
