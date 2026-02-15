@@ -1,11 +1,10 @@
 // js/app.js
 import { initSupabase } from "./config.js";
-import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
+import { switchContext, renderComingSoon, toggleTheme, toggleLang, switchCat, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
-// NEW: Import POS Logic
-import { loadInventory, addProduct, initPOS, addToCart, processSale, loadRepairs, addRepair, loadHR, addWorker } from "./pos_module.js";
+import { loadInventory, addProduct, initPOS, addToCart, processSale, loadRepairs, addRepair, loadHR, addWorker, showSalesSummary } from "./pos_module.js";
 
 // --- NAVIGATION ---
 function setActiveNav(activeId) {
@@ -13,7 +12,6 @@ function setActiveNav(activeId) {
     navs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            // Updated Active/Inactive Styles for Modern Look
             el.className = (id === activeId) 
                 ? "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-slate-800 text-white shadow-lg transform scale-105 transition-all border border-slate-700"
                 : "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-gray-200 dark:border-gray-700";
@@ -59,26 +57,26 @@ window.handleNavClick = function(tabName) {
     }
     else if (tabName === 'ai') {
         toggleAI(); 
-        // Keep current view visible behind AI modal
         const current = document.querySelector('div[id$="-view"]:not(.hidden)');
         if(current) current.classList.remove('hidden');
     }
 }
 
-// --- EXPOSE FUNCTIONS TO HTML ---
+// --- EXPOSE FUNCTIONS ---
 window.toggleAI = toggleAI;
 window.clearAIChat = clearAIChat;
 window.handleAIKey = handleUserQuery;
 window.triggerAIQuery = triggerAIQuery;
 window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
-// POS Functions Exposed
+// POS Functions
 window.addProduct = addProduct;
 window.addToCart = addToCart;
 window.processSale = processSale;
 window.addRepair = addRepair;
 window.addWorker = addWorker;
-window.removeCartItem = (idx) => { /* handled in module but exposed here just in case */ };
+window.showSalesSummary = showSalesSummary;
+window.removeCartItem = (idx) => { /* handled in module */ };
 
 window.onload = function () {
   try {
@@ -92,7 +90,6 @@ window.onload = function () {
     window.toggleTheme = toggleTheme;
     window.toggleLang = toggleLang;
     
-    // Fix Dashboard Switcher
     window.switchContext = (mode) => {
         hideAllSections();
         document.getElementById('dashboard-view').classList.remove('hidden');
@@ -105,7 +102,6 @@ window.onload = function () {
     window.handleMonthChange = handleMonthChange;
     window.updateDashboard = updateDashboard;
 
-    // Check Session (Logic from your auth.js)
     checkSession();
   } catch (err) {
     console.error(err);
