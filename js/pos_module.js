@@ -2,10 +2,11 @@
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
-const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
+const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
 
 async function fetchAll(table) {
     const sb = getSupabase();
+    // FIXED: Sorted by 'id' instead of 'created_at' to prevent crashing
     const { data, error } = await sb.from(table).select('*').order('id', { ascending: false });
     if (error) { console.error(`Error fetching ${table}:`, error.message); return []; }
     return data;
@@ -125,13 +126,13 @@ function renderCart() {
     let total = 0;
     cart.forEach((i, idx) => {
         total += i.price * i.qty;
-        tbody.innerHTML += `<tr><td class="p-2 text-gray-800 dark:text-gray-200">${i.name}</td><td class="text-center">${i.qty}</td><td class="text-right">${formatCurrency(i.price*i.qty)}</td><td class="text-center"><button onclick="window.removeCartItem(${idx})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+        tbody.innerHTML += `<tr><td class="p-2 text-gray-800 dark:text-gray-200">${i.name}</td><td class="text-center">${i.qty}</td><td class="text-right">${formatCurrency(i.price*i.qty)}</td><td class="text-center"><button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
     });
     const svc = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
     totalEl.innerText = formatCurrency(total + svc);
 }
 // Helper explicitly attached for inline onclick
-window.removeCartItem = (idx) => { cart.splice(idx, 1); renderCart(); };
+export function removeCartItem(idx) { cart.splice(idx, 1); renderCart(); };
 
 export async function processSale(e) {
     e.preventDefault();
@@ -170,23 +171,18 @@ function generateBill(sale, items) {
     w.document.close();
 }
 
-// --- 3. REPAIRS SYSTEM (UPDATED) ---
+// --- 3. REPAIRS SYSTEM (FIXED & ENHANCED) ---
 let repairCart = [];
 let repairsData = []; // Cache for filtering
 
 export async function loadRepairs() {
     const sb = getSupabase();
-    // Fetch all repairs order by latest
-    const { data } = await sb.from('repairs').select('*').order('created_at', { ascending: false });
+    // FIXED: Order by ID descending (newest first) instead of missing 'created_at'
+    const { data } = await sb.from('repairs').select('*').order('id', { ascending: false });
     
-    // Fallback sort by ID if created_at is missing
-    if (data) {
-        repairsData = data.sort((a, b) => b.id - a.id);
-    } else {
-        repairsData = [];
-    }
+    repairsData = data || [];
     
-    // Lock Date
+    // Lock Date to Today
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.querySelector('input[name="predicted_date"]');
     if(dateInput) dateInput.setAttribute('min', today);
@@ -208,18 +204,23 @@ export function filterRepairs() {
         return true;
     });
 
+    if(filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-gray-500">No tickets found.</td></tr>`;
+        return;
+    }
+
     filtered.forEach(r => {
         const isPending = r.status !== 'Completed';
-        // Red Pulse for pending items
+        
+        // Red Pulse Row for Pending
         const rowClass = isPending 
-            ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 animate-pulse' 
+            ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 animate-pulse' // Red Pulse
             : 'bg-white dark:bg-darkcard border-l-4 border-green-500';
         
         const statusBadge = isPending
             ? `<button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs shadow transition">Mark Complete</button>`
             : `<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold">Completed</span>`;
 
-        // Action Buttons using window.posModule
         const actions = `
             <div class="flex gap-2 justify-center">
                 <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 p-1" title="Edit"><i class="fas fa-edit"></i></button>
@@ -334,7 +335,7 @@ export function addRepairPart() {
     const name = option.getAttribute('data-name');
     const price = parseFloat(option.getAttribute('data-price'));
     repairCart.push({ id, name, price, qty: parseInt(qty) });
-    // Recalc
+    
     const advText = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, ''); 
     renderRepairCart(parseFloat(advText) || 0);
 }
@@ -348,8 +349,8 @@ function renderRepairCart(advance) {
         tbody.innerHTML += `<tr><td>${i.name}</td><td>${i.qty}</td><td align="right">${formatCurrency(i.price*i.qty)}</td></tr>`;
     });
     const labor = parseFloat(document.getElementById('rep-labor').value || 0);
-    // Convert advance text to number properly if not done
-    const due = (partsTotal + labor) - (advance / 100); 
+    // Correctly handle advance parsing issues by just using the numeric value passed in
+    // Note: advance here is in full currency (e.g. 2000), not cents
     document.getElementById('rep-total-due').innerText = formatCurrency((partsTotal + labor) - advance);
 }
 
