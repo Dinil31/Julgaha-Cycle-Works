@@ -1,4 +1,3 @@
-// js/pos_module.js
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
@@ -8,7 +7,10 @@ const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currenc
 async function fetchAll(table) {
     const sb = getSupabase();
     const { data, error } = await sb.from(table).select('*').order('id', { ascending: false });
-    if (error) { console.error(`Error fetching ${table}:`, error); return []; }
+    if (error) { 
+        console.error(`Error fetching ${table}:`, error.message); 
+        return []; 
+    }
     return data;
 }
 
@@ -20,7 +22,7 @@ export async function loadInventory() {
     
     tbody.innerHTML = '';
     if(products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No products found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No products found. Add one above!</td></tr>';
         return;
     }
 
@@ -57,15 +59,16 @@ export async function addProduct(e) {
     };
 
     const { error } = await sb.from('products').insert(payload);
-    if(error) alert("Error: " + error.message);
-    else {
+    if(error) {
+        alert("Error adding product: " + error.message);
+    } else {
         await showCustomConfirm("Success", "Product added!", "success-green");
         e.target.reset();
         loadInventory();
     }
 }
 
-// --- 2. POS & SALES ---
+// --- 2. POS & BILLING ---
 let cart = [];
 let productsCache = [];
 
@@ -147,12 +150,20 @@ export async function openReportModal() {
     const modal = document.getElementById('sales-report-modal');
     modal.classList.remove('hidden');
     
-    // Fetch fresh data
     const sb = getSupabase();
+    // Debug: Log what we are fetching
+    console.log("Fetching sales data...");
+    
     const { data, error } = await sb.from('sales').select('*').order('date', { ascending: false });
     
-    if(error) return alert("Error loading sales.");
+    if(error) {
+        console.error("Sales Fetch Error:", error);
+        alert("Error loading sales: " + error.message);
+        return;
+    }
+    
     allSales = data;
+    console.log("Sales loaded:", allSales.length);
     
     // Default: Show Today
     filterSales('today');
@@ -167,7 +178,7 @@ export function filterSales(period) {
     const totalEl = document.getElementById('report-total-sales');
     const btns = document.querySelectorAll('.filter-btn');
     
-    // Update active button state
+    // UI Update
     btns.forEach(b => {
         if(b.dataset.period === period) b.classList.add('bg-blue-600', 'text-white');
         else b.classList.remove('bg-blue-600', 'text-white');
@@ -175,10 +186,13 @@ export function filterSales(period) {
         else b.classList.remove('bg-gray-200', 'text-gray-700');
     });
 
-    // Date Logic
     const now = new Date();
+    // Reset time to 00:00:00 for accurate comparison
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    
+    const startOfWeek = new Date(startOfDay); 
+    startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+    
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -188,27 +202,27 @@ export function filterSales(period) {
         if(period === 'week') return d >= startOfWeek;
         if(period === 'month') return d >= startOfMonth;
         if(period === 'year') return d >= startOfYear;
-        return true; // all
+        return true; // 'all'
     });
 
-    // Render Table
+    // Render
     tbody.innerHTML = '';
     let grandTotal = 0;
 
     if(filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No records found for this period.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500 font-medium">No sales found for this period.</td></tr>';
     } else {
         filtered.forEach(s => {
             grandTotal += Number(s.total_amount);
             tbody.innerHTML += `
-                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700">
-                    <td class="p-3 text-sm text-gray-500">${new Date(s.date).toLocaleDateString()}</td>
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition">
+                    <td class="p-3 text-sm text-gray-500">${new Date(s.date).toLocaleDateString()} ${new Date(s.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                     <td class="p-3 font-mono text-xs text-blue-500">#${s.id}</td>
-                    <td class="p-3 font-medium text-gray-800 dark:text-gray-200">${s.customer_name}</td>
+                    <td class="p-3 font-medium text-gray-800 dark:text-gray-200">${s.customer_name || 'Walk-in'}</td>
                     <td class="p-3 text-right text-gray-500">${formatCurrency(s.service_cost)}</td>
                     <td class="p-3 text-right font-bold text-green-600">${formatCurrency(s.total_amount)}</td>
                     <td class="p-3 text-center">
-                        <button onclick='window.reprintBill(${JSON.stringify(s)})' class="text-gray-400 hover:text-blue-500" title="Reprint"><i class="fas fa-print"></i></button>
+                        <button onclick='window.reprintBill(${JSON.stringify(s).replace(/'/g, "&apos;")})' class="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition" title="Reprint Bill"><i class="fas fa-print"></i></button>
                     </td>
                 </tr>
             `;
@@ -218,12 +232,8 @@ export function filterSales(period) {
     totalEl.innerText = formatCurrency(grandTotal);
 }
 
-// --- BILLING SYSTEM ---
-window.reprintBill = (sale) => {
-    // For reprint, we might not have items loaded, so we print a basic summary or fetch items if needed.
-    // Ideally, fetch items for full detail. For now, let's print the summary we have.
-    generateBill(sale, []); 
-}
+// --- BILLING ---
+window.reprintBill = (sale) => { generateBill(sale, []); }
 
 function generateBill(sale, items) {
     const printWindow = window.open('', '', 'width=400,height=600');
@@ -237,12 +247,7 @@ function generateBill(sale, items) {
                     <th style="text-align:center;">Qty</th>
                     <th style="text-align:right;">Total</th>
                 </tr>
-                ${items.map(i => `
-                <tr>
-                    <td>${i.name}</td>
-                    <td style="text-align:center;">${i.qty}</td>
-                    <td style="text-align:right;">${(i.price * i.qty).toFixed(2)}</td>
-                </tr>`).join('')}
+                ${items.map(i => `<tr><td>${i.name}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;">${(i.price * i.qty).toFixed(2)}</td></tr>`).join('')}
             </table>`;
     } else {
         itemsHtml = '<p style="text-align:center; font-style:italic; margin: 10px 0; font-size:12px;">(Service / Summary Bill)</p>';
@@ -252,21 +257,10 @@ function generateBill(sale, items) {
         <html>
         <head>
             <title>Receipt #${sale.id}</title>
-            <style>
-                body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
-                .center { text-align: center; }
-                .right { text-align: right; }
-                .line { border-top: 1px dashed #000; margin: 10px 0; }
-                h2 { margin:0; font-size: 18px; }
-                p { margin: 2px 0; font-size: 12px; }
-            </style>
+            <style>body { font-family: 'Courier New', monospace; padding: 20px; color: #000; } .center { text-align: center; } .right { text-align: right; } .line { border-top: 1px dashed #000; margin: 10px 0; } h2 { margin:0; font-size: 18px; } p { margin: 2px 0; font-size: 12px; }</style>
         </head>
         <body>
-            <div class="center">
-                <h2>CycleSense</h2>
-                <p>Professional Workshop</p>
-                <p>Tel: 075 633 9536</p>
-            </div>
+            <div class="center"><h2>CycleSense</h2><p>Professional Workshop</p><p>Tel: 075 633 9536</p></div>
             <div class="line"></div>
             <p><strong>Date:</strong> ${new Date(sale.date).toLocaleString()}</p>
             <p><strong>Receipt:</strong> #${sale.id}</p>
@@ -283,13 +277,10 @@ function generateBill(sale, items) {
         </body>
         </html>
     `;
-
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-        printWindow.print();
-    }, 500);
+    setTimeout(() => { printWindow.print(); }, 500);
 }
 
 export async function processSale(e) {
@@ -299,12 +290,10 @@ export async function processSale(e) {
     const serviceCost = parseFloat(form.get('service_cost') || 0);
     const partsTotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
-    // Allow service only (cart empty but service > 0)
     if (cart.length === 0 && serviceCost <= 0) {
         return showCustomConfirm("Invalid Sale", "Please add items OR enter a service cost.", "danger");
     }
 
-    // 1. Create Sale
     const { data: sale, error } = await sb.from('sales').insert({
         customer_name: form.get('customer_name') || 'Walk-in',
         phone: form.get('phone'),
@@ -315,29 +304,17 @@ export async function processSale(e) {
 
     if(error) return alert("Error: " + error.message);
 
-    // 2. Add Items
     if (cart.length > 0) {
-        const saleItems = cart.map(i => ({
-            sale_id: sale.id,
-            product_id: i.id,
-            quantity: i.qty,
-            price: i.price
-        }));
+        const saleItems = cart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
         await sb.from('sale_items').insert(saleItems);
-
-        // Deduct Stock
         for(let item of cart) {
             const p = productsCache.find(x => String(x.id) === String(item.id));
             if(p) await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
         }
     }
 
-    // 3. Print
     generateBill(sale, cart);
-
     await showCustomConfirm("Success", "Sale Completed!", "success-green");
-    
-    // Cleanup
     cart = [];
     e.target.reset();
     document.getElementById('pos-total').innerText = "LKR 0.00";
@@ -345,67 +322,28 @@ export async function processSale(e) {
     initPOS();
 }
 
-// --- 3. REPAIRS ---
+// --- 3. REPAIRS & 4. HR (UNCHANGED, but included to keep file complete) ---
 export async function loadRepairs() {
     const repairs = await fetchAll('repairs');
     const tbody = document.getElementById('repairs-table-body');
     if(!tbody) return;
-
     tbody.innerHTML = '';
     repairs.forEach(r => {
         const statusColors = { 'In Progress': 'bg-blue-100 text-blue-800', 'Completed': 'bg-green-100 text-green-800' };
-        tbody.innerHTML += `
-            <tr class="bg-white border-b dark:bg-slate-800 dark:border-gray-700">
-                <td class="px-6 py-4 font-mono text-xs text-indigo-500">${r.repair_id}</td>
-                <td class="px-6 py-4 font-medium dark:text-white">${r.customer_name}</td>
-                <td class="px-6 py-4 text-gray-500">${r.phone}</td>
-                <td class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">${formatCurrency(r.advance)}</td>
-                <td class="px-6 py-4">${new Date(r.predicted_date).toLocaleDateString()}</td>
-                <td class="px-6 py-4"><span class="${statusColors[r.status] || 'bg-gray-100'} text-xs font-bold px-2.5 py-0.5 rounded uppercase">${r.status}</span></td>
-            </tr>`;
+        tbody.innerHTML += `<tr class="bg-white border-b dark:bg-slate-800 dark:border-gray-700"><td class="px-6 py-4 font-mono text-xs text-indigo-500">${r.repair_id}</td><td class="px-6 py-4 font-medium dark:text-white">${r.customer_name}</td><td class="px-6 py-4 text-gray-500">${r.phone}</td><td class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">${formatCurrency(r.advance)}</td><td class="px-6 py-4">${new Date(r.predicted_date).toLocaleDateString()}</td><td class="px-6 py-4"><span class="${statusColors[r.status] || 'bg-gray-100'} text-xs font-bold px-2.5 py-0.5 rounded uppercase">${r.status}</span></td></tr>`;
     });
 }
-
 export async function addRepair(e) {
-    e.preventDefault();
-    const sb = getSupabase();
-    const form = new FormData(e.target);
-    const { error } = await sb.from('repairs').insert({
-        repair_id: 'REP-' + Date.now().toString().slice(-6),
-        customer_name: form.get('customer_name'),
-        phone: form.get('phone'),
-        advance: Number(form.get('advance')),
-        predicted_date: form.get('predicted_date'),
-        status: 'In Progress'
-    });
-
-    if(error) alert(error.message);
-    else {
-        await showCustomConfirm("Ticket Created", "Repair job added.", "success-green");
-        e.target.reset();
-        loadRepairs();
-    }
+    e.preventDefault(); const sb = getSupabase(); const form = new FormData(e.target);
+    const { error } = await sb.from('repairs').insert({ repair_id: 'REP-' + Date.now().toString().slice(-6), customer_name: form.get('customer_name'), phone: form.get('phone'), advance: Number(form.get('advance')), predicted_date: form.get('predicted_date'), status: 'In Progress' });
+    if(error) alert(error.message); else { await showCustomConfirm("Ticket Created", "Repair job added.", "success-green"); e.target.reset(); loadRepairs(); }
 }
-
-// --- 4. HR ---
 export async function loadHR() {
-    const workers = await fetchAll('workers');
-    const list = document.getElementById('workers-list');
-    if(!list) return;
-    list.innerHTML = '';
-    workers.forEach(w => {
-        list.innerHTML += `<div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 flex justify-between items-center transition hover:scale-[1.02]">
-            <div><h4 class="font-bold text-gray-800 dark:text-white">${w.name}</h4><p class="text-xs text-gray-500">Staff</p></div>
-            <span class="text-green-600 font-bold bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg">${formatCurrency(w.daily_salary)}/day</span>
-        </div>`;
-    });
+    const workers = await fetchAll('workers'); const list = document.getElementById('workers-list'); if(!list) return;
+    list.innerHTML = ''; workers.forEach(w => { list.innerHTML += `<div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 flex justify-between items-center transition hover:scale-[1.02]"><div><h4 class="font-bold text-gray-800 dark:text-white">${w.name}</h4><p class="text-xs text-gray-500">Staff</p></div><span class="text-green-600 font-bold bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-lg">${formatCurrency(w.daily_salary)}/day</span></div>`; });
 }
-
 export async function addWorker(e) {
-    e.preventDefault();
-    const sb = getSupabase();
-    const form = new FormData(e.target);
+    e.preventDefault(); const sb = getSupabase(); const form = new FormData(e.target);
     const { error } = await sb.from('workers').insert({ name: form.get('name'), daily_salary: Number(form.get('daily_salary')) });
-    if(error) alert(error.message);
-    else { await showCustomConfirm("Success", "Worker added.", "success-green"); e.target.reset(); loadHR(); }
+    if(error) alert(error.message); else { await showCustomConfirm("Success", "Worker added.", "success-green"); e.target.reset(); loadHR(); }
 }
