@@ -24,6 +24,48 @@
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
+    <div id="sales-report-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop-in">
+            <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold dark:text-white">Sales History</h2>
+                    <p class="text-sm text-gray-500">Track revenue and print past bills.</p>
+                </div>
+                <button onclick="window.closeReportModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto bg-white dark:bg-darkcard">
+                <button onclick="window.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
+                <button onclick="window.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="week">This Week</button>
+                <button onclick="window.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="month">This Month</button>
+                <button onclick="window.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="year">This Year</button>
+                <button onclick="window.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="all">All Time</button>
+            </div>
+
+            <div class="flex-grow overflow-auto p-4">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 bg-gray-100 dark:bg-slate-800 text-xs uppercase text-gray-600 dark:text-gray-400 font-bold">
+                        <tr>
+                            <th class="p-3">Date</th>
+                            <th class="p-3">Receipt</th>
+                            <th class="p-3">Customer</th>
+                            <th class="p-3 text-right">Service</th>
+                            <th class="p-3 text-right">Total</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-table-body" class="text-sm">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-between items-center">
+                <span class="text-gray-500 font-medium">Total Revenue (Period):</span>
+                <span id="report-total-sales" class="text-2xl font-black text-green-600">LKR 0.00</span>
+            </div>
+        </div>
+    </div>
+
     <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[60]">
         <div id="modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
             <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4"><i id="modal-icon" class="fas fa-info-circle text-2xl"></i></div>
@@ -119,7 +161,7 @@
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-xl font-bold dark:text-white">New Sale</h2>
                             <div class="flex gap-2">
-                                <button onclick="window.showSalesSummary()" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg transition font-bold"><i class="fas fa-chart-pie"></i> Sales Report</button>
+                                <button onclick="window.openReportModal()" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg transition font-bold"><i class="fas fa-chart-pie"></i> Sales Report</button>
                                 <span class="text-xs bg-green-100 text-green-800 px-2 py-1.5 rounded-lg flex items-center">Active</span>
                             </div>
                         </div>
