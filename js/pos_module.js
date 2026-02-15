@@ -141,14 +141,120 @@ window.removeCartItem = (idx) => {
     renderCart();
 };
 
+// --- SALES REPORTING ---
+export async function showSalesSummary() {
+    const sb = getSupabase();
+    const { data: sales, error } = await sb.from('sales').select('total_amount, date');
+    
+    if(error || !sales) return alert("Could not fetch sales data.");
+
+    const now = new Date();
+    // Normalize to start of day (00:00:00)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const currentWeekStart = new Date(today); 
+    currentWeekStart.setDate(today.getDate() - today.getDay()); // Sunday as start
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentYearStart = new Date(now.getFullYear(), 0, 1);
+
+    let daily = 0, weekly = 0, monthly = 0, yearly = 0;
+
+    sales.forEach(s => {
+        const d = new Date(s.date);
+        const amount = Number(s.total_amount);
+        
+        if (d >= today) daily += amount;
+        if (d >= currentWeekStart) weekly += amount;
+        if (d >= currentMonthStart) monthly += amount;
+        if (d >= currentYearStart) yearly += amount;
+    });
+
+    const msg = `Daily: ${formatCurrency(daily)}\nWeekly: ${formatCurrency(weekly)}\nMonthly: ${formatCurrency(monthly)}\nYearly: ${formatCurrency(yearly)}`;
+    await showCustomConfirm("Sales Report", msg);
+}
+
+function generateBill(sale, items) {
+    // Open a new window for printing
+    const printWindow = window.open('', '', 'width=400,height=600');
+    
+    let itemsHtml = '';
+    if (items.length > 0) {
+        itemsHtml = `
+            <table style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:12px;">
+                <tr style="border-bottom:1px solid #000;">
+                    <th style="text-align:left;">Item</th>
+                    <th style="text-align:center;">Qty</th>
+                    <th style="text-align:right;">Price</th>
+                    <th style="text-align:right;">Total</th>
+                </tr>
+                ${items.map(i => `
+                <tr>
+                    <td>${i.name}</td>
+                    <td style="text-align:center;">${i.qty}</td>
+                    <td style="text-align:right;">${i.price}</td>
+                    <td style="text-align:right;">${i.price * i.qty}</td>
+                </tr>`).join('')}
+            </table>`;
+    } else {
+        itemsHtml = '<p style="text-align:center; font-style:italic;">Service Only</p>';
+    }
+
+    const htmlContent = `
+        <html>
+        <head>
+            <title>Receipt #${sale.id}</title>
+            <style>
+                body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
+                h2, p { margin: 0; }
+                .center { text-align: center; }
+                .right { text-align: right; }
+                .line { border-top: 1px dashed #000; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="center">
+                <h2>CycleSense</h2>
+                <p>Professional Workshop</p>
+                <p>Tel: 075 633 9536</p>
+            </div>
+            <div class="line"></div>
+            <p><strong>Date:</strong> ${new Date(sale.date).toLocaleString()}</p>
+            <p><strong>Receipt:</strong> #${sale.id}</p>
+            <p><strong>Customer:</strong> ${sale.customer_name}</p>
+            <div class="line"></div>
+            ${itemsHtml}
+            <div class="line"></div>
+            <div class="right">
+                ${items.length > 0 ? `<p>Parts Total: ${formatCurrency(sale.total_amount - sale.service_cost)}</p>` : ''}
+                ${sale.service_cost > 0 ? `<p>Service Cost: ${formatCurrency(sale.service_cost)}</p>` : ''}
+                <h3 style="margin-top:5px;">TOTAL: ${formatCurrency(sale.total_amount)}</h3>
+            </div>
+            <div class="line"></div>
+            <p class="center" style="font-size:10px;">Thank you! Ride Safe.</p>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        // printWindow.close(); // Uncomment to close automatically after print
+    }, 500);
+}
+
 export async function processSale(e) {
     e.preventDefault();
-    if(cart.length === 0) return showCustomConfirm("Empty Cart", "Please add items to the cart first.", "danger");
-
+    
     const sb = getSupabase();
     const form = new FormData(e.target);
     const serviceCost = parseFloat(form.get('service_cost') || 0);
     const partsTotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+    // --- UPDATED VALIDATION: Allow if cart has items OR service cost > 0
+    if (cart.length === 0 && serviceCost <= 0) {
+        return showCustomConfirm("Invalid Sale", "Please add products OR enter a service cost.", "danger");
+    }
 
     // 1. Create Sale Header
     const { data: sale, error } = await sb.from('sales').insert({
@@ -161,27 +267,39 @@ export async function processSale(e) {
 
     if(error) return alert("Sale Error: " + error.message);
 
-    // 2. Add Sale Items
-    const saleItems = cart.map(i => ({
-        sale_id: sale.id,
-        product_id: i.id,
-        quantity: i.qty,
-        price: i.price
-    }));
-    await sb.from('sale_items').insert(saleItems);
+    // 2. Add Sale Items (Only if cart has items)
+    if (cart.length > 0) {
+        const saleItems = cart.map(i => ({
+            sale_id: sale.id,
+            product_id: i.id,
+            quantity: i.qty,
+            price: i.price
+        }));
+        await sb.from('sale_items').insert(saleItems);
 
-    // 3. Deduct Inventory
-    for(let item of cart) {
-        const p = productsCache.find(x => String(x.id) === String(item.id));
-        await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
+        // 3. Deduct Inventory
+        for(let item of cart) {
+            const p = productsCache.find(x => String(x.id) === String(item.id));
+            if(p) {
+                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
+            }
+        }
     }
 
-    await showCustomConfirm("Success", "Sale Completed & Stock Updated!", "success-green");
+    // 4. Generate Bill
+    generateBill(sale, cart);
+
+    await showCustomConfirm("Success", "Sale Completed!", "success-green");
+    
+    // 5. Show Updated Report
+    showSalesSummary();
+
+    // Reset
     cart = [];
     e.target.reset();
     document.getElementById('pos-total').innerText = "LKR 0.00";
     renderCart();
-    initPOS(); // Reload fresh stock
+    initPOS();
 }
 
 // --- 3. REPAIRS LOGIC ---
