@@ -1,10 +1,8 @@
-// js/app.js
 import { initSupabase } from "./config.js";
-import { switchContext, renderComingSoon, toggleTheme, toggleLang, switchCat, handleMonthChange, updateDashboard } from "./ui.js";
+import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
-// IMPORTANT: Import everything as a module object
 import * as posModule from "./pos_module.js";
 
 // --- NAVIGATION ---
@@ -22,100 +20,32 @@ function setActiveNav(activeId) {
 
 function hideAllSections() {
     const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view'];
-    sections.forEach(id => { 
-        const el = document.getElementById(id); 
-        if(el) el.classList.add('hidden'); 
-    });
+    sections.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 }
 
 window.handleNavClick = function(tabName) {
     hideAllSections();
-    
-    if (tabName === 'dashboard') {
-        setActiveNav('nav-revenue');
-        document.getElementById('dashboard-view').classList.remove('hidden');
-        switchContext('past');
-    }
-    else if (tabName === 'pos') {
-        setActiveNav('nav-pos');
-        document.getElementById('pos-view').classList.remove('hidden');
-        posModule.initPOS();
-    }
-    else if (tabName === 'inventory') {
-        setActiveNav('nav-inventory');
-        document.getElementById('inventory-view').classList.remove('hidden');
-        posModule.loadInventory();
-    }
-    else if (tabName === 'repairs') {
-        setActiveNav('nav-repairs');
-        document.getElementById('repairs-view').classList.remove('hidden');
-        posModule.loadRepairs();
-    }
-    else if (tabName === 'hr') {
-        setActiveNav('nav-hr');
-        document.getElementById('hr-view').classList.remove('hidden');
-        posModule.loadHR();
-    }
-    else if (tabName === 'ai') {
-        toggleAI(); 
-        const current = document.querySelector('div[id$="-view"]:not(.hidden)');
-        if(current) current.classList.remove('hidden');
-    }
+    if (tabName === 'dashboard') { setActiveNav('nav-revenue'); document.getElementById('dashboard-view').classList.remove('hidden'); switchContext('past'); }
+    else if (tabName === 'pos') { setActiveNav('nav-pos'); document.getElementById('pos-view').classList.remove('hidden'); posModule.initPOS(); }
+    else if (tabName === 'inventory') { setActiveNav('nav-inventory'); document.getElementById('inventory-view').classList.remove('hidden'); posModule.loadInventory(); }
+    else if (tabName === 'repairs') { setActiveNav('nav-repairs'); document.getElementById('repairs-view').classList.remove('hidden'); posModule.loadRepairs(); }
+    else if (tabName === 'hr') { setActiveNav('nav-hr'); document.getElementById('hr-view').classList.remove('hidden'); posModule.loadHR(); }
+    else if (tabName === 'ai') { toggleAI(); const current = document.querySelector('div[id$="-view"]:not(.hidden)'); if(current) current.classList.remove('hidden'); }
 }
 
-// --- EXPOSE FUNCTIONS ---
-// AI
-window.toggleAI = toggleAI;
-window.clearAIChat = clearAIChat;
-window.handleAIKey = handleUserQuery;
-window.triggerAIQuery = triggerAIQuery;
-window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
+// AI Exposures
+window.toggleAI = toggleAI; window.clearAIChat = clearAIChat; window.handleAIKey = handleUserQuery; window.triggerAIQuery = triggerAIQuery; window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
-// POS MODULE EXPOSURE (Crucial for buttons to work)
+// Global POS Module
 window.posModule = posModule;
-
-// Map top-level buttons for convenience if needed, but HTML now uses posModule.x
-window.addProduct = posModule.addProduct;
-window.addToCart = posModule.addToCart;
-window.processSale = posModule.processSale;
-window.addRepair = posModule.addRepair;
-window.addWorker = posModule.addWorker;
-window.generateRestockPDF = posModule.generateRestockPDF;
-window.printRestockFinal = posModule.printRestockFinal;
-window.openReportModal = posModule.openReportModal;
-window.closeReportModal = posModule.closeReportModal;
-window.filterSales = posModule.filterSales;
-window.saveEditRepair = posModule.saveEditRepair;
-window.finalizeRepair = posModule.finalizeRepair;
-window.addRepairPart = posModule.addRepairPart;
 
 window.onload = function () {
   try {
     initSupabase();
-    
-    window.handleLogin = handleLogin;
-    window.handleLogout = handleLogout;
-    window.handleResetPassword = handleResetPassword;
-    window.uploadToSupabase = uploadToSupabase;
-    window.clearDatabase = clearDatabase;
-    window.toggleTheme = toggleTheme;
-    window.toggleLang = toggleLang;
-    
-    window.switchContext = (mode) => {
-        hideAllSections();
-        document.getElementById('dashboard-view').classList.remove('hidden');
-        if (mode === 'past') setActiveNav('nav-revenue');
-        if (mode === 'service') setActiveNav('nav-service');
-        switchContext(mode);
-    };
-    
-    window.renderComingSoon = renderComingSoon; 
-    window.handleMonthChange = handleMonthChange;
-    window.updateDashboard = updateDashboard;
-
+    window.handleLogin = handleLogin; window.handleLogout = handleLogout; window.handleResetPassword = handleResetPassword;
+    window.uploadToSupabase = uploadToSupabase; window.clearDatabase = clearDatabase; window.toggleTheme = toggleTheme; window.toggleLang = toggleLang;
+    window.switchContext = (mode) => { hideAllSections(); document.getElementById('dashboard-view').classList.remove('hidden'); if (mode === 'past') setActiveNav('nav-revenue'); if (mode === 'service') setActiveNav('nav-service'); switchContext(mode); };
+    window.renderComingSoon = renderComingSoon; window.handleMonthChange = handleMonthChange; window.updateDashboard = updateDashboard;
     checkSession();
-  } catch (err) {
-    console.error(err);
-    alert("Startup Error: " + err.message);
-  }
+  } catch (err) { console.error(err); alert("Startup Error: " + err.message); }
 };
