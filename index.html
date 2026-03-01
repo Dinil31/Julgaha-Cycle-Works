@@ -65,7 +65,7 @@
             <h3 id="modal-title" class="text-xl font-bold dark:text-white mb-2">Title</h3>
             <p id="modal-msg" class="text-gray-500 dark:text-gray-400 mb-6">Message</p>
             <div class="flex gap-3 justify-center">
-                <button id="modal-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 font-bold">Cancel</button>
+                <button id="modal-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 font-bold text-gray-700">Cancel</button>
                 <button id="modal-btn-confirm" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold">Confirm</button>
             </div>
         </div>
@@ -94,14 +94,14 @@
                     <h2 class="text-xl font-bold dark:text-white">Sales History</h2>
                     <p class="text-xs text-gray-500">Track revenue, reprint receipts, and manage sales.</p>
                 </div>
-                <button onclick="window.closeReportModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="window.posModule.closeReportModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
             </div>
             <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto bg-white dark:bg-darkcard">
-                <button onclick="window.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
-                <button onclick="window.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="week">This Week</button>
-                <button onclick="window.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="month">This Month</button>
-                <button onclick="window.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="year">This Year</button>
-                <button onclick="window.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="all">All Time</button>
+                <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
+                <button onclick="window.posModule.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="week">This Week</button>
+                <button onclick="window.posModule.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="month">This Month</button>
+                <button onclick="window.posModule.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="year">This Year</button>
+                <button onclick="window.posModule.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="all">All Time</button>
             </div>
             <div class="flex-grow overflow-auto p-4">
                 <table class="w-full text-left border-collapse">
@@ -110,7 +110,6 @@
                             <th class="p-3">Date</th>
                             <th class="p-3">Receipt</th>
                             <th class="p-3">Customer</th>
-                            <th class="p-3 text-right">Service</th>
                             <th class="p-3 text-right">Total</th>
                             <th class="p-3 text-center">Action</th>
                         </tr>
@@ -138,7 +137,7 @@
                 <div class="flex gap-2 mt-1">
                     <select id="rep-part-select" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm"></select>
                     <input id="rep-part-qty" type="number" value="1" class="w-16 p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm text-center">
-                    <button onclick="window.addRepairPart()" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i class="fas fa-plus"></i></button>
+                    <button onclick="window.posModule.addRepairPart()" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i class="fas fa-plus"></i></button>
                 </div>
                 <div class="max-h-32 overflow-y-auto mt-2 border rounded dark:border-gray-600">
                     <table class="w-full text-sm"><tbody id="rep-parts-body"></tbody></table>
@@ -146,8 +145,8 @@
             </div>
 
             <div class="mb-4">
-                <label class="text-xs font-bold uppercase text-gray-500">Labor Cost</label>
-                <input id="rep-labor" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white font-bold text-lg" oninput="window.addRepairPart()" placeholder="0.00"> 
+                <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
+                <input id="rep-labor" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white font-bold text-lg" oninput="window.posModule.addRepairPart()" placeholder="0.00"> 
             </div>
 
             <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-3 rounded mb-4 border border-gray-200 dark:border-gray-600">
@@ -157,7 +156,7 @@
 
             <div class="flex gap-2">
                 <button onclick="document.getElementById('repair-finalize-modal').classList.add('hidden')" class="w-1/3 bg-gray-200 py-3 rounded-xl font-bold text-gray-700 hover:bg-gray-300">Cancel</button>
-                <button onclick="window.finalizeRepair()" class="w-2/3 bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-700">Finish & Bill</button>
+                <button onclick="window.posModule.finalizeRepair()" class="w-2/3 bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-700">Finish & Bill</button>
             </div>
         </div>
     </div>
@@ -191,7 +190,7 @@
 
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-end gap-3">
                 <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="px-5 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300">Cancel</button>
-                <button onclick="window.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg hover:bg-blue-700"><i class="fas fa-print"></i> Print List</button>
+                <button onclick="window.posModule.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg hover:bg-blue-700"><i class="fas fa-print"></i> Print List</button>
             </div>
         </div>
     </div>
@@ -199,7 +198,7 @@
     <div id="repair-edit-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-md p-6 rounded-2xl shadow-2xl animate-pop-in">
             <h3 class="text-xl font-bold mb-4 dark:text-white">Edit Repair Details</h3>
-            <form onsubmit="window.saveEditRepair(event)" class="space-y-4">
+            <form onsubmit="window.posModule.saveEditRepair(event)" class="space-y-4">
                 <input type="hidden" id="edit-repair-id">
                 <div>
                     <label class="text-xs text-gray-500 uppercase">Customer</label>
@@ -338,7 +337,7 @@
                     <form onsubmit="window.posModule.processSale(event)" class="space-y-4">
                         <input name="customer_name" placeholder="Customer Name" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
                         <input name="phone" placeholder="Phone" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
-                        <input name="service_cost" id="pos-service-cost" type="number" placeholder="Service Cost (LKR)" oninput="window.renderCart()" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
+                        <input name="service_cost" id="pos-service-cost" type="number" placeholder="Service Cost (LKR)" oninput="window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
                         <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mt-4">
                             <div class="flex justify-between text-2xl font-black text-gray-800 dark:text-white"><span>Total</span><span id="pos-total">LKR 0.00</span></div>
                         </div>
@@ -372,12 +371,10 @@
 
             <div id="repairs-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                    
                     <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-tools text-blue-500"></i> Repair Tickets</h2>
-                        
                         <div class="flex gap-2">
-                            <select id="repair-filter" onchange="window.posModule.filterRepairs()" class="bg-gray-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm font-bold">
+                            <select id="repair-filter" onchange="window.posModule.filterRepairs()" class="bg-gray-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm font-bold dark:text-white">
                                 <option value="all">All Status</option>
                                 <option value="pending" selected>Pending Jobs</option>
                                 <option value="completed">Completed History</option>
@@ -416,18 +413,78 @@
                 </div>
             </div>
 
-            <div id="hr-view" class="hidden fade-in grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white">Add Worker</h2>
-                    <form onsubmit="window.posModule.addWorker(event)" class="space-y-4">
-                        <input name="name" placeholder="Worker Name" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="daily_salary" type="number" placeholder="Daily Salary (LKR)" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 shadow-md transition">Save Worker</button>
-                    </form>
+            <div id="hr-view" class="hidden fade-in space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col h-[500px]">
+                        <h2 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-users text-purple-500"></i> Manage Workers</h2>
+                        
+                        <form onsubmit="window.posModule.addWorker(event)" class="space-y-3 mb-6 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input name="name" placeholder="Full Name" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
+                                <input name="phone" placeholder="Phone Number" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
+                            </div>
+                            <input name="address" placeholder="Home Address" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white">
+                            <div class="flex gap-3">
+                                <input name="daily_salary" type="number" placeholder="Daily Salary (LKR)" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
+                                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded shadow hover:bg-purple-700 transition">Save Worker</button>
+                            </div>
+                        </form>
+
+                        <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Current Staff</h3>
+                        <div id="workers-list" class="flex-grow overflow-y-auto space-y-3 pr-2">
+                            </div>
+                    </div>
+
+                    <div class="flex flex-col gap-6">
+                        
+                        <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-calendar-check text-green-500"></i> Mark Attendance</h2>
+                            <form onsubmit="window.posModule.markAttendance(event)" class="space-y-3">
+                                <select id="hr-att-worker" name="worker_id" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-800 dark:text-white dark:border-gray-600 font-bold" required></select>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <input id="hr-att-date" name="date" type="date" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                                    <select name="status" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:text-white font-bold text-blue-600" required>
+                                        <option value="Full Day">Full Day</option>
+                                        <option value="Half Day">Half Day</option>
+                                        <option value="Short Leave">Short Leave</option>
+                                        <option value="Absent">Absent</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div><label class="text-xs text-gray-400">In Time</label><input name="in_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white text-sm"></div>
+                                    <div><label class="text-xs text-gray-400">Out Time</label><input name="out_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white text-sm"></div>
+                                </div>
+                                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-lg shadow hover:bg-green-700">Save Attendance</button>
+                            </form>
+                        </div>
+
+                        <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-red-200 dark:border-red-900/50">
+                            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-hand-holding-usd text-red-500"></i> Issue Advance</h2>
+                            <form onsubmit="window.posModule.addAdvance(event)" class="grid grid-cols-2 gap-3">
+                                <select id="hr-adv-worker" name="worker_id" class="col-span-2 w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required></select>
+                                <input id="hr-adv-date" name="date" type="date" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required>
+                                <input name="amount" type="number" placeholder="Amount (LKR)" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required>
+                                <button type="submit" class="col-span-2 bg-red-500 text-white font-bold py-2 rounded shadow hover:bg-red-600">Give Advance</button>
+                            </form>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                    <h2 class="text-xl font-bold mb-4 dark:text-white">Staff List</h2>
-                    <div id="workers-list" class="space-y-3"></div>
+
+                <div class="bg-slate-800 text-white p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 border border-slate-700 relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="z-10">
+                        <h2 class="text-2xl font-black mb-1">Payroll Generator</h2>
+                        <p class="text-gray-400 text-sm">Generates salary slips. Auto-deducts 8% EPF and all prior advances.</p>
+                    </div>
+                    <form onsubmit="window.posModule.generatePayroll(event)" class="flex gap-3 z-10 w-full md:w-auto">
+                        <select id="hr-pay-worker" name="worker_id" class="p-3 rounded-lg text-gray-900 font-bold w-full md:w-48" required></select>
+                        <input name="month" type="month" class="p-3 rounded-lg text-gray-900 font-bold w-full md:w-40" required>
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 transition transform hover:scale-105">
+                            <i class="fas fa-print"></i> Print Slip
+                        </button>
+                    </form>
                 </div>
             </div>
 
