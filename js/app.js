@@ -39,6 +39,8 @@ window.toggleAI = toggleAI; window.clearAIChat = clearAIChat; window.handleAIKey
 // Global POS Module
 window.posModule = posModule;
 
+window.posModule = posModule; // We expose the whole module
+
 window.onload = function () {
   try {
     initSupabase();
@@ -49,3 +51,4 @@ window.onload = function () {
     checkSession();
   } catch (err) { console.error(err); alert("Startup Error: " + err.message); }
 };
+
