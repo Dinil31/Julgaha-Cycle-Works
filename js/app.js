@@ -7,7 +7,7 @@ import * as posModule from "./pos_module.js";
 
 // --- NAVIGATION ---
 function setActiveNav(activeId) {
-    const navs = ['nav-revenue', 'nav-service', 'nav-inventory', 'nav-supplier', 'nav-pos', 'nav-repairs', 'nav-hr'];
+    const navs = ['nav-revenue', 'nav-pos', 'nav-inventory', 'nav-repairs', 'nav-hr', 'nav-calendar'];
     navs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -19,7 +19,7 @@ function setActiveNav(activeId) {
 }
 
 function hideAllSections() {
-    const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view'];
+    const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view', 'calendar-view'];
     sections.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 }
 
@@ -30,25 +30,47 @@ window.handleNavClick = function(tabName) {
     else if (tabName === 'inventory') { setActiveNav('nav-inventory'); document.getElementById('inventory-view').classList.remove('hidden'); posModule.loadInventory(); }
     else if (tabName === 'repairs') { setActiveNav('nav-repairs'); document.getElementById('repairs-view').classList.remove('hidden'); posModule.loadRepairs(); }
     else if (tabName === 'hr') { setActiveNav('nav-hr'); document.getElementById('hr-view').classList.remove('hidden'); posModule.loadHR(); }
+    else if (tabName === 'calendar') { setActiveNav('nav-calendar'); document.getElementById('calendar-view').classList.remove('hidden'); posModule.initCalendar(); }
     else if (tabName === 'ai') { toggleAI(); const current = document.querySelector('div[id$="-view"]:not(.hidden)'); if(current) current.classList.remove('hidden'); }
 }
+
+// --- LIVE CLOCK & QUOTE ---
+const quotes = [
+    "Every ride is a tiny holiday.", 
+    "Life is like riding a bicycle. To keep your balance, you must keep moving.", 
+    "A bicycle ride around the world begins with a single pedal stroke.",
+    "Nothing compares to the simple pleasure of riding a bike.",
+    "Work hard, ride harder."
+];
+
+function startClock() {
+    setInterval(() => {
+        const now = new Date();
+        const clockEl = document.getElementById('live-clock');
+        if(clockEl) clockEl.innerText = now.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }, 1000);
+    
+    const quoteEl = document.getElementById('daily-quote');
+    if(quoteEl) {
+        const todayDay = new Date().getDay(); // 0 to 6
+        quoteEl.innerText = `"${quotes[todayDay % quotes.length]}"`;
+    }
+}
+
 
 // AI Exposures
 window.toggleAI = toggleAI; window.clearAIChat = clearAIChat; window.handleAIKey = handleUserQuery; window.triggerAIQuery = triggerAIQuery; window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
-// Global POS Module
 window.posModule = posModule;
-
-window.posModule = posModule; // We expose the whole module
 
 window.onload = function () {
   try {
     initSupabase();
+    startClock();
     window.handleLogin = handleLogin; window.handleLogout = handleLogout; window.handleResetPassword = handleResetPassword;
-    window.uploadToSupabase = uploadToSupabase; window.clearDatabase = clearDatabase; window.toggleTheme = toggleTheme; window.toggleLang = toggleLang;
-    window.switchContext = (mode) => { hideAllSections(); document.getElementById('dashboard-view').classList.remove('hidden'); if (mode === 'past') setActiveNav('nav-revenue'); if (mode === 'service') setActiveNav('nav-service'); switchContext(mode); };
-    window.renderComingSoon = renderComingSoon; window.handleMonthChange = handleMonthChange; window.updateDashboard = updateDashboard;
+    window.toggleTheme = toggleTheme; 
+    window.switchContext = (mode) => { hideAllSections(); document.getElementById('dashboard-view').classList.remove('hidden'); setActiveNav('nav-revenue'); switchContext(mode); };
+    window.handleMonthChange = handleMonthChange; window.updateDashboard = updateDashboard;
     checkSession();
   } catch (err) { console.error(err); alert("Startup Error: " + err.message); }
 };
-
