@@ -45,8 +45,19 @@
         @keyframes cloud { 0% { transform: translateX(110vw); } 100% { transform: translateX(-20vw); } }
         
         /* Fix for Charts looking squished */
-        .chart-container { position: relative; height: 100%; width: 100%; min-height: 350px; display: flex; flex-direction: column; justify-content: center; } 
-        canvas { width: 100% !important; height: 100% !important; }
+        .chart-container { 
+            position: relative; 
+            height: 100%; 
+            width: 100%; 
+            min-height: 350px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+        } 
+        canvas { 
+            width: 100% !important; 
+            height: 100% !important; 
+        }
         
         /* UI Elements */
         .glass-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
@@ -55,7 +66,11 @@
         
         /* Success Effects */
         .pulse-green { animation: pulseGreen 2s infinite; }
-        @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+        @keyframes pulseGreen { 
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } 
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
@@ -101,7 +116,9 @@
                     <h2 class="text-xl font-bold dark:text-white">Sales History</h2>
                     <p class="text-xs text-gray-500">Track revenue and manage sales.</p>
                 </div>
-                <button onclick="window.posModule.closeReportModal()" class="text-gray-400 hover:text-red-500 text-xl transition"><i class="fas fa-times"></i></button>
+                <button onclick="window.posModule.closeReportModal()" class="text-gray-400 hover:text-red-500 text-xl transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto bg-white dark:bg-darkcard">
                 <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
@@ -121,7 +138,8 @@
                             <th class="p-3 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="report-table-body" class="text-sm"></tbody>
+                    <tbody id="report-table-body" class="text-sm">
+                        </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-between items-center">
@@ -138,7 +156,9 @@
                     <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-clipboard-list text-orange-500"></i> Restock List</h2>
                     <p class="text-xs text-gray-500">Edit quantities before printing.</p>
                 </div>
-                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-xl transition"><i class="fas fa-times"></i></button>
+                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-xl transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="flex-grow overflow-auto p-4">
                 <table class="w-full text-left border-collapse">
@@ -152,12 +172,15 @@
                             <th class="p-3 text-center">Action</th>
                         </tr>
                     </thead>
-                    <tbody id="restock-table-body" class="text-sm dark:text-gray-200"></tbody>
+                    <tbody id="restock-table-body" class="text-sm dark:text-gray-200">
+                        </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-end gap-3">
                 <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="px-5 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition">Cancel</button>
-                <button onclick="window.posModule.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transition"><i class="fas fa-print"></i> Print List</button>
+                <button onclick="window.posModule.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg transition">
+                    <i class="fas fa-print"></i> Print List
+                </button>
             </div>
         </div>
     </div>
@@ -193,32 +216,41 @@
 
     <div id="repair-finalize-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
         <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-2xl shadow-2xl animate-pop-in border-2 border-blue-500">
-            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-check-circle text-blue-500"></i> Complete Repair</h2>
+            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2">
+                <i class="fas fa-check-circle text-blue-500"></i> Complete Repair
+            </h2>
             <div class="flex justify-between mb-4 text-sm text-gray-500 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-700">
                 <span>Customer: <b id="rep-modal-customer" class="dark:text-gray-300"></b></span>
                 <span>Advance: <b id="rep-modal-adv" class="text-green-600"></b></span>
             </div>
+            
             <div class="mb-4">
                 <label class="text-xs font-bold uppercase text-gray-500">Add Replacement Parts</label>
                 <div class="flex gap-2 mt-1">
                     <select id="rep-part-select" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm"></select>
                     <input id="rep-part-qty" type="number" value="1" class="w-16 p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold">
-                    <button onclick="window.posModule.addRepairPart()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-3 rounded-lg"><i class="fas fa-plus"></i></button>
+                    <button type="button" onclick="window.posModule.addRepairPart()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-3 rounded-lg">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
                 <div class="max-h-32 overflow-y-auto mt-2 border rounded-lg dark:border-gray-600 bg-gray-50 dark:bg-slate-800">
                     <table class="w-full text-sm">
-                        <tbody id="rep-parts-body" class="dark:text-gray-300"></tbody>
+                        <tbody id="rep-parts-body" class="dark:text-gray-300">
+                            </tbody>
                     </table>
                 </div>
             </div>
+            
             <div class="mb-4">
                 <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
                 <input id="rep-labor" type="number" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 font-bold text-lg" oninput="window.posModule.addRepairPart()" placeholder="0.00"> 
             </div>
+            
             <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mb-4 border dark:border-gray-600 shadow-inner">
                 <span class="font-bold dark:text-white">Balance Due:</span>
                 <span id="rep-total-due" class="text-2xl font-black text-blue-600">0.00</span>
             </div>
+            
             <div class="flex gap-2">
                 <button onclick="document.getElementById('repair-finalize-modal').classList.add('hidden')" class="w-1/3 bg-gray-200 hover:bg-gray-300 transition py-3 rounded-xl font-bold text-gray-700">Cancel</button>
                 <button onclick="window.posModule.finalizeRepair()" class="w-2/3 bg-green-600 hover:bg-green-700 transition text-white py-3 rounded-xl font-bold shadow-lg">Finish & Bill</button>
@@ -228,13 +260,17 @@
 
     <div id="edit-worker-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-md p-6 rounded-2xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700">
-            <h2 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-user-edit text-purple-500"></i> Edit Worker</h2>
+            <h2 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2">
+                <i class="fas fa-user-edit text-purple-500"></i> Edit Worker
+            </h2>
             <form onsubmit="window.posModule.saveEditWorker(event)" class="space-y-3">
                 <input type="hidden" name="id" id="ew-id">
+                
                 <div>
                     <label class="text-[10px] font-bold uppercase text-gray-500">Full Name</label>
                     <input id="ew-name" name="name" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required placeholder="Name">
                 </div>
+                
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Phone</label>
@@ -245,6 +281,7 @@
                         <input id="ew-nic" name="nic" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" placeholder="NIC">
                     </div>
                 </div>
+                
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Date of Birth</label>
@@ -255,7 +292,8 @@
                         <input id="ew-address" name="address" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm" placeholder="Address">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-600">
+                
+                <div class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-600 mt-2">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Daily Salary (LKR)</label>
                         <input id="ew-salary" name="salary" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-500 font-bold text-green-600" required>
@@ -265,6 +303,7 @@
                         <input id="ew-pin" name="pin" type="text" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-500 text-center tracking-[0.3em] font-mono font-bold text-purple-600" required>
                     </div>
                 </div>
+                
                 <div class="flex gap-2 pt-3">
                     <button type="button" onclick="document.getElementById('edit-worker-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 hover:bg-gray-300 transition py-2 rounded-lg font-bold text-gray-700">Cancel</button>
                     <button type="submit" class="w-1/2 bg-purple-600 hover:bg-purple-700 transition text-white py-2 rounded-lg font-bold shadow-md">Save Changes</button>
@@ -286,6 +325,7 @@
                     <button onclick="document.getElementById('view-attendance-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl transition ml-2"><i class="fas fa-times"></i></button>
                 </div>
             </div>
+            
             <div class="flex gap-4 mb-4">
                 <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl flex-1 text-center border dark:border-gray-600 shadow-inner">
                     <p class="text-xs text-gray-500 font-bold uppercase">Current Accrued Gross</p>
@@ -296,6 +336,7 @@
                     <p class="text-2xl font-black text-green-700 dark:text-green-300 mt-1" id="view-att-net">0.00</p>
                 </div>
             </div>
+            
             <div class="flex-grow overflow-auto border rounded-xl dark:border-gray-700">
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 sticky top-0 shadow-sm">
@@ -306,7 +347,8 @@
                             <th class="p-3 text-red-500">Late/Early Penalty</th>
                         </tr>
                     </thead>
-                    <tbody id="view-att-table" class="dark:text-gray-300 text-sm"></tbody>
+                    <tbody id="view-att-table" class="dark:text-gray-300 text-sm">
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -314,7 +356,9 @@
 
     <div id="calendar-event-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-sm p-6 rounded-2xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700">
-            <h3 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-calendar-plus text-red-500"></i> Add Calendar Event</h3>
+            <h3 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2">
+                <i class="fas fa-calendar-plus text-red-500"></i> Add Calendar Event
+            </h3>
             <form onsubmit="window.posModule.saveCalendarEvent(event)" class="space-y-4">
                 <div>
                     <label class="text-xs font-bold uppercase text-gray-500">Selected Date</label>
@@ -346,7 +390,9 @@
 
         <div class="z-10 bg-white/90 dark:bg-darkcard/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-white/50 dark:border-gray-700 transform hover:scale-105 transition duration-500">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-blue-500/50 animate-wiggle"><i class="fas fa-bicycle"></i></div>
+                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-blue-500/50 animate-wiggle">
+                    <i class="fas fa-bicycle"></i>
+                </div>
                 <h1 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">CycleSense Cloud</h1>
                 <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Smart Workshop System</p>
             </div>
@@ -425,6 +471,9 @@
                 <div id="nav-calendar" onclick="window.handleNavClick('calendar')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
                     <i class="fas fa-calendar-alt text-red-500"></i> <span>Calendar</span>
                 </div>
+                <div id="nav-data" onclick="window.handleNavClick('data')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
+                    <i class="fas fa-database text-teal-500"></i> <span>Data Sync</span>
+                </div>
             </div>
         </div>
 
@@ -477,6 +526,7 @@
             </div>
 
             <div id="pos-view" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
                         
@@ -627,7 +677,9 @@
                         <h2 class="text-2xl font-black dark:text-white flex items-center gap-3"><i class="fas fa-tools text-blue-500"></i> Repair Workshop</h2>
                         <div class="flex gap-3 w-full md:w-auto flex-wrap justify-center">
                             <div class="relative">
-                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400"><i class="fas fa-filter"></i></div>
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-filter"></i>
+                                </div>
                                 <select id="repair-filter" onchange="window.posModule.filterRepairs()" class="pl-10 pr-8 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-bold dark:text-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm">
                                     <option value="all">View All Tickets</option>
                                     <option value="pending" selected>Pending Jobs Only</option>
@@ -703,7 +755,9 @@
 
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 flex flex-col gap-5 relative overflow-hidden">
                     
-                    <div class="absolute -right-10 -top-10 opacity-[0.03] text-9xl text-purple-500 pointer-events-none"><i class="fas fa-coins"></i></div>
+                    <div class="absolute -right-10 -top-10 opacity-[0.03] text-9xl text-purple-500 pointer-events-none">
+                        <i class="fas fa-coins"></i>
+                    </div>
 
                     <div id="bday-alert" class="hidden bg-gradient-to-r from-pink-100 to-rose-100 text-pink-800 p-4 rounded-xl font-black text-lg animate-bounce text-center border border-pink-300 shadow-sm"></div>
                     <div id="salary-alert" class="hidden bg-gradient-to-r from-red-100 to-orange-100 text-red-800 p-4 rounded-xl font-black text-lg animate-pulse text-center border border-red-300 shadow-sm"></div>
@@ -740,7 +794,9 @@
                     
                     <div class="bg-white dark:bg-darkcard p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col h-[650px]">
                         
-                        <h2 class="text-xl font-black mb-4 dark:text-white border-b pb-2 dark:border-gray-700 flex items-center gap-2"><i class="fas fa-user-plus text-purple-500"></i> Hire New Staff</h2>
+                        <h2 class="text-xl font-black mb-4 dark:text-white border-b pb-2 dark:border-gray-700 flex items-center gap-2">
+                            <i class="fas fa-user-plus text-purple-500"></i> Hire New Staff
+                        </h2>
                         
                         <form onsubmit="window.posModule.addWorker(event)" class="space-y-3 mb-6 bg-purple-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-dashed border-purple-200 dark:border-gray-600">
                             <div class="grid grid-cols-2 gap-3">
@@ -862,7 +918,9 @@
                 </div>
 
                 <div class="bg-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col lg:flex-row justify-between items-center gap-8 border border-slate-700 relative overflow-hidden mt-2">
-                    <div class="absolute -right-10 -bottom-10 opacity-[0.05] text-9xl pointer-events-none"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="absolute -right-10 -bottom-10 opacity-[0.05] text-9xl pointer-events-none">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
                     
                     <div class="z-10 w-full lg:w-1/2 text-center lg:text-left">
                         <span class="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded mb-2 inline-block">Automated Generation</span>
@@ -885,7 +943,9 @@
                     
                     <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b dark:border-gray-700 pb-4">
                         <div>
-                            <h2 class="text-3xl font-black dark:text-white text-red-500 flex items-center gap-3"><i class="fas fa-calendar-alt"></i> Company Calendar</h2>
+                            <h2 class="text-3xl font-black dark:text-white text-red-500 flex items-center gap-3">
+                                <i class="fas fa-calendar-alt"></i> Company Calendar
+                            </h2>
                             <p class="text-sm text-gray-500 font-bold mt-1 tracking-wide uppercase">Track Shop Holidays & Events</p>
                         </div>
                         <div class="flex gap-4 items-center bg-gray-50 dark:bg-slate-800 p-2 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-inner">
@@ -901,7 +961,11 @@
                     
                     <div class="grid grid-cols-7 gap-2 mb-2 text-center font-black text-gray-400 uppercase text-xs tracking-widest bg-gray-50 dark:bg-slate-800 py-3 rounded-t-xl border dark:border-gray-700">
                         <div class="text-red-400">Sun</div>
-                        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div>
+                        <div>Mon</div>
+                        <div>Tue</div>
+                        <div>Wed</div>
+                        <div>Thu</div>
+                        <div>Fri</div>
                         <div class="text-blue-400">Sat</div>
                     </div>
                     
@@ -910,6 +974,50 @@
                     
                     <div class="mt-6 text-center text-xs font-bold text-gray-400 flex items-center justify-center gap-2">
                         <i class="fas fa-info-circle"></i> Click on any day to add or view an event.
+                    </div>
+                </div>
+            </div>
+
+            <div id="data-view" class="hidden fade-in space-y-6">
+                <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-3xl font-black dark:text-white text-teal-600 flex items-center gap-3 mb-6">
+                        <i class="fas fa-database"></i> Database Management
+                    </h2>
+                    <p class="text-gray-500 mb-8 font-medium">Upload financial history and AI predictions to power your analytics dashboard.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-gray-50 dark:bg-slate-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-inner">
+                            <h3 class="font-black text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide"><i class="fas fa-file-excel text-green-600"></i> Upload Past Data</h3>
+                            <p class="text-xs text-gray-500 mb-4">Updates the 'Past Records' charts.</p>
+                            <input type="file" id="file-past" accept=".xlsx, .xls" class="w-full p-3 mb-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 dark:text-white outline-none cursor-pointer">
+                            <button onclick="window.uploadToSupabase('past')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition shadow-md">
+                                <i class="fas fa-cloud-upload-alt"></i> Upload Past Data
+                            </button>
+                        </div>
+                        
+                        <div class="bg-gray-50 dark:bg-slate-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-inner">
+                            <h3 class="font-black text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide"><i class="fas fa-file-excel text-indigo-600"></i> Upload Predicted Data</h3>
+                            <p class="text-xs text-gray-500 mb-4">Updates the 'AI Predictions' charts.</p>
+                            <input type="file" id="file-predicted" accept=".xlsx, .xls" class="w-full p-3 mb-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 dark:text-white outline-none cursor-pointer">
+                            <button onclick="window.uploadToSupabase('predicted')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md">
+                                <i class="fas fa-cloud-upload-alt"></i> Upload Predicted Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t-2 border-dashed border-gray-200 dark:border-gray-700 pt-8 mt-4">
+                        <h3 class="text-red-500 font-black uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle"></i> Danger Zone
+                        </h3>
+                        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div>
+                                <h4 class="font-black text-red-700 dark:text-red-400 text-lg">Clear Financial Database</h4>
+                                <p class="text-sm text-red-600 dark:text-red-300 font-medium">This will permanently delete all past and predicted analytical data from the charts. Use with extreme caution.</p>
+                            </div>
+                            <button onclick="window.clearDatabase()" class="bg-red-600 hover:bg-red-700 text-white font-black py-4 px-8 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center gap-2 whitespace-nowrap transform hover:scale-105">
+                                <i class="fas fa-trash-alt"></i> Clear All Chart Data
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -924,7 +1032,7 @@
                     </p>
                     <p class="text-gray-500 dark:text-gray-400 mt-1 font-medium text-xs">© 2026 CycleSense Automated Systems. All Rights Reserved.</p>
                 </div>
-                <div class="flex items-center gap-6 justify-center bg-gray-50 dark:bg-slate-800 py-3 px-6 rounded-2xl border dark:border-gray-700 shadow-inner">
+                <div class="flex items-center gap-6 justify-center bg-gray-50 dark:bg-slate-800 py-3 px-6 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-inner">
                     <div class="text-right hidden md:block">
                         <p class="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-0.5">System Administrator & Developer</p>
                         <p class="font-black text-blue-600 dark:text-blue-400 text-base">Dinil Randika</p>
@@ -984,7 +1092,7 @@
         </div>
 
         <div id="loader" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[100] backdrop-blur-md">
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl flex flex-col items-center">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-gray-200 dark:border-gray-700">
                 <div class="relative">
                     <i class="fas fa-bicycle text-5xl text-blue-500 animate-ride absolute"></i>
                     <i class="fas fa-circle-notch fa-spin text-6xl text-gray-200 dark:text-gray-700"></i>
