@@ -1,3 +1,4 @@
+// js/app.js
 import { initSupabase } from "./config.js";
 import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
@@ -7,19 +8,21 @@ import * as posModule from "./pos_module.js";
 
 // --- NAVIGATION ---
 function setActiveNav(activeId) {
-    const navs = ['nav-revenue', 'nav-pos', 'nav-inventory', 'nav-repairs', 'nav-hr', 'nav-calendar'];
+    // ADDED 'nav-data' to the array
+    const navs = ['nav-revenue', 'nav-pos', 'nav-inventory', 'nav-repairs', 'nav-hr', 'nav-calendar', 'nav-data'];
     navs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.className = (id === activeId) 
-                ? "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-slate-800 text-white shadow-lg transform scale-105 transition-all border border-slate-700"
-                : "flex-shrink-0 flex items-center justify-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-all border border-gray-200 dark:border-gray-700";
+                ? "flex-shrink-0 flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-slate-800 text-white shadow-md transition font-bold text-sm"
+                : "flex-shrink-0 flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm";
         }
     });
 }
 
 function hideAllSections() {
-    const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view', 'calendar-view'];
+    // ADDED 'data-view' to the array
+    const sections = ['dashboard-view', 'pos-view', 'inventory-view', 'repairs-view', 'hr-view', 'calendar-view', 'data-view'];
     sections.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 }
 
@@ -31,6 +34,7 @@ window.handleNavClick = function(tabName) {
     else if (tabName === 'repairs') { setActiveNav('nav-repairs'); document.getElementById('repairs-view').classList.remove('hidden'); posModule.loadRepairs(); }
     else if (tabName === 'hr') { setActiveNav('nav-hr'); document.getElementById('hr-view').classList.remove('hidden'); posModule.loadHR(); }
     else if (tabName === 'calendar') { setActiveNav('nav-calendar'); document.getElementById('calendar-view').classList.remove('hidden'); posModule.initCalendar(); }
+    else if (tabName === 'data') { setActiveNav('nav-data'); document.getElementById('data-view').classList.remove('hidden'); } // ADDED DATA VIEW LOGIC
     else if (tabName === 'ai') { toggleAI(); const current = document.querySelector('div[id$="-view"]:not(.hidden)'); if(current) current.classList.remove('hidden'); }
 }
 
@@ -52,14 +56,17 @@ function startClock() {
     
     const quoteEl = document.getElementById('daily-quote');
     if(quoteEl) {
-        const todayDay = new Date().getDay(); // 0 to 6
+        const todayDay = new Date().getDay(); 
         quoteEl.innerText = `"${quotes[todayDay % quotes.length]}"`;
     }
 }
 
-
-// AI Exposures
-window.toggleAI = toggleAI; window.clearAIChat = clearAIChat; window.handleAIKey = handleUserQuery; window.triggerAIQuery = triggerAIQuery; window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
+// --- EXPOSURES ---
+window.toggleAI = toggleAI; 
+window.clearAIChat = clearAIChat; 
+window.handleAIKey = handleUserQuery; 
+window.triggerAIQuery = triggerAIQuery; 
+window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
 window.posModule = posModule;
 
@@ -67,10 +74,15 @@ window.onload = function () {
   try {
     initSupabase();
     startClock();
-    window.handleLogin = handleLogin; window.handleLogout = handleLogout; window.handleResetPassword = handleResetPassword;
+    window.handleLogin = handleLogin; 
+    window.handleLogout = handleLogout; 
+    window.handleResetPassword = handleResetPassword;
+    window.uploadToSupabase = uploadToSupabase; // Ensure Excel upload works
+    window.clearDatabase = clearDatabase;       // Ensure Clear DB works
     window.toggleTheme = toggleTheme; 
     window.switchContext = (mode) => { hideAllSections(); document.getElementById('dashboard-view').classList.remove('hidden'); setActiveNav('nav-revenue'); switchContext(mode); };
-    window.handleMonthChange = handleMonthChange; window.updateDashboard = updateDashboard;
+    window.handleMonthChange = handleMonthChange; 
+    window.updateDashboard = updateDashboard;
     checkSession();
   } catch (err) { console.error(err); alert("Startup Error: " + err.message); }
 };
