@@ -49,12 +49,8 @@
         .dark .grid-pattern { background-color: #0f172a; background-image: radial-gradient(#334155 1px, transparent 1px); }
         
         /* Success Effects */
-        .confetti-piece { position: fixed; width: 10px; height: 10px; background-color: #f2d74e; top: -10px; z-index: 9999; animation: fall linear forwards; }
-        @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
         .pulse-green { animation: pulseGreen 2s infinite; }
         @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
-        .pulse-red { animation: pulseRed 2s infinite; }
-        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
@@ -77,86 +73,43 @@
             <h3 id="input-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">Reset Password</h3>
             <p id="input-msg" class="text-gray-500 dark:text-gray-400 mb-6">Enter your email to receive a reset link.</p>
             <div class="relative group text-left">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-envelope text-gray-400 group-focus-within:text-indigo-500 transition"></i></div>
-                <input id="modal-input-field" type="email" class="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner" placeholder="name@example.com">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-envelope text-gray-400"></i></div>
+                <input id="modal-input-field" type="email" class="w-full pl-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white outline-none" placeholder="name@example.com">
             </div>
             <div class="flex gap-3 justify-center mt-6">
-                <button id="input-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition font-bold">Cancel</button>
-                <button id="input-btn-confirm" class="px-5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 hover:animate-wiggle transition font-bold shadow-lg shadow-indigo-500/30">Send Link</button>
+                <button id="input-btn-cancel" class="px-5 py-2 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-bold">Cancel</button>
+                <button id="input-btn-confirm" class="px-5 py-2 rounded-xl bg-indigo-600 text-white font-bold shadow-lg">Send Link</button>
             </div>
         </div>
     </div>
 
     <div id="sales-report-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
-        <div class="bg-white dark:bg-darkcard w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop-in border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-darkcard w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop-in">
             <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
                 <div>
                     <h2 class="text-xl font-bold dark:text-white">Sales History</h2>
-                    <p class="text-xs text-gray-500">Track revenue, reprint receipts, and manage sales.</p>
+                    <p class="text-xs text-gray-500">Track revenue and manage sales.</p>
                 </div>
-                <button onclick="window.posModule.closeReportModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="window.posModule.closeReportModal()" class="text-gray-400 hover:text-red-500 text-xl"><i class="fas fa-times"></i></button>
             </div>
-            <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto bg-white dark:bg-darkcard">
-                <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
-                <button onclick="window.posModule.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="week">This Week</button>
-                <button onclick="window.posModule.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="month">This Month</button>
-                <button onclick="window.posModule.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="year">This Year</button>
-                <button onclick="window.posModule.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="all">All Time</button>
+            <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto">
+                <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold" data-period="today">Today</button>
+                <button onclick="window.posModule.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold" data-period="week">This Week</button>
+                <button onclick="window.posModule.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold" data-period="month">This Month</button>
+                <button onclick="window.posModule.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold" data-period="year">This Year</button>
+                <button onclick="window.posModule.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold" data-period="all">All Time</button>
             </div>
             <div class="flex-grow overflow-auto p-4">
                 <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 bg-gray-100 dark:bg-slate-800 text-xs uppercase text-gray-600 dark:text-gray-400 font-bold">
-                        <tr>
-                            <th class="p-3">Date</th>
-                            <th class="p-3">Receipt</th>
-                            <th class="p-3">Customer</th>
-                            <th class="p-3 text-right">Total</th>
-                            <th class="p-3 text-center">Action</th>
-                        </tr>
+                    <thead class="sticky top-0 bg-gray-100 dark:bg-slate-800 text-xs uppercase text-gray-600">
+                        <tr><th class="p-3">Date</th><th class="p-3">Receipt</th><th class="p-3">Customer</th><th class="p-3 text-right">Total</th><th class="p-3 text-center">Action</th></tr>
                     </thead>
                     <tbody id="report-table-body" class="text-sm"></tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-between items-center">
-                <span class="text-gray-500 font-medium text-sm">Total Revenue (Selected Period):</span>
+                <span class="text-gray-500 font-medium text-sm">Total Revenue:</span>
                 <span id="report-total-sales" class="text-2xl font-black text-green-600">LKR 0.00</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="repair-finalize-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
-        <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-2xl shadow-2xl animate-pop-in border-2 border-blue-500">
-            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-check-circle text-blue-500"></i> Complete Repair</h2>
-            <div class="flex justify-between mb-4 text-sm text-gray-500 bg-gray-50 dark:bg-slate-800 p-2 rounded">
-                <span>Customer: <b id="rep-modal-customer"></b></span>
-                <span>Advance: <b id="rep-modal-adv" class="text-green-600"></b></span>
-            </div>
-            
-            <div class="mb-4">
-                <label class="text-xs font-bold uppercase text-gray-500">Add Parts Used</label>
-                <div class="flex gap-2 mt-1">
-                    <select id="rep-part-select" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm"></select>
-                    <input id="rep-part-qty" type="number" value="1" class="w-16 p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm text-center">
-                    <button onclick="window.posModule.addRepairPart()" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i class="fas fa-plus"></i></button>
-                </div>
-                <div class="max-h-32 overflow-y-auto mt-2 border rounded dark:border-gray-600">
-                    <table class="w-full text-sm"><tbody id="rep-parts-body"></tbody></table>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
-                <input id="rep-labor" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white font-bold text-lg" oninput="window.posModule.addRepairPart()" placeholder="0.00"> 
-            </div>
-
-            <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-3 rounded mb-4 border border-gray-200 dark:border-gray-600">
-                <span class="font-bold dark:text-white">Balance Due:</span>
-                <span id="rep-total-due" class="text-xl font-black text-blue-600">0.00</span>
-            </div>
-
-            <div class="flex gap-2">
-                <button onclick="document.getElementById('repair-finalize-modal').classList.add('hidden')" class="w-1/3 bg-gray-200 py-3 rounded-xl font-bold text-gray-700 hover:bg-gray-300">Cancel</button>
-                <button onclick="window.posModule.finalizeRepair()" class="w-2/3 bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-700">Finish & Bill</button>
             </div>
         </div>
     </div>
@@ -168,29 +121,19 @@
                     <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-clipboard-list text-orange-500"></i> Restock List</h2>
                     <p class="text-xs text-gray-500">Edit quantities before printing.</p>
                 </div>
-                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-xl"><i class="fas fa-times"></i></button>
             </div>
-            
             <div class="flex-grow overflow-auto p-4">
                 <table class="w-full text-left border-collapse">
                     <thead class="sticky top-0 bg-gray-100 dark:bg-slate-700 text-xs uppercase text-gray-600 dark:text-gray-300">
-                        <tr>
-                            <th class="p-3">Code</th>
-                            <th class="p-3">Product Name</th>
-                            <th class="p-3 text-center">Current</th>
-                            <th class="p-3 text-center">Reorder Lvl</th>
-                            <th class="p-3 text-center" style="width: 120px;">Order Qty</th>
-                            <th class="p-3 text-center">Action</th>
-                        </tr>
+                        <tr><th class="p-3">Code</th><th class="p-3">Product Name</th><th class="p-3 text-center">Current</th><th class="p-3 text-center">Reorder Lvl</th><th class="p-3 text-center">Order Qty</th><th class="p-3 text-center">Action</th></tr>
                     </thead>
-                    <tbody id="restock-table-body" class="text-sm dark:text-gray-200">
-                        </tbody>
+                    <tbody id="restock-table-body" class="text-sm dark:text-gray-200"></tbody>
                 </table>
             </div>
-
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-end gap-3">
-                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="px-5 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold hover:bg-gray-300">Cancel</button>
-                <button onclick="window.posModule.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg hover:bg-blue-700"><i class="fas fa-print"></i> Print List</button>
+                <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="px-5 py-2 rounded-xl bg-gray-200 text-gray-700 font-bold">Cancel</button>
+                <button onclick="window.posModule.printRestockFinal()" class="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg"><i class="fas fa-print"></i> Print List</button>
             </div>
         </div>
     </div>
@@ -200,84 +143,148 @@
             <h3 class="text-xl font-bold mb-4 dark:text-white">Edit Repair Details</h3>
             <form onsubmit="window.posModule.saveEditRepair(event)" class="space-y-4">
                 <input type="hidden" id="edit-repair-id">
-                <div>
-                    <label class="text-xs text-gray-500 uppercase">Customer</label>
-                    <input id="edit-repair-customer" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 uppercase">Phone</label>
-                    <input id="edit-repair-phone" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 uppercase">Advance (LKR)</label>
-                    <input id="edit-repair-advance" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-500 uppercase">Due Date</label>
-                    <input id="edit-repair-date" type="date" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                </div>
+                <div><label class="text-xs text-gray-500 uppercase">Customer</label><input id="edit-repair-customer" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white"></div>
+                <div><label class="text-xs text-gray-500 uppercase">Phone</label><input id="edit-repair-phone" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white"></div>
+                <div><label class="text-xs text-gray-500 uppercase">Advance (LKR)</label><input id="edit-repair-advance" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white"></div>
+                <div><label class="text-xs text-gray-500 uppercase">Due Date</label><input id="edit-repair-date" type="date" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white"></div>
                 <div class="flex gap-2 mt-4">
-                    <button type="button" onclick="document.getElementById('repair-edit-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 py-2 rounded font-bold text-gray-700 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" class="w-1/2 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Save Changes</button>
+                    <button type="button" onclick="document.getElementById('repair-edit-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 py-2 rounded font-bold text-gray-700">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-blue-600 text-white py-2 rounded font-bold">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
+
+    <div id="repair-finalize-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-2xl shadow-2xl animate-pop-in border-2 border-blue-500">
+            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-check-circle text-blue-500"></i> Complete Repair</h2>
+            <div class="flex justify-between mb-4 text-sm text-gray-500 bg-gray-50 dark:bg-slate-800 p-2 rounded">
+                <span>Customer: <b id="rep-modal-customer"></b></span>
+                <span>Advance: <b id="rep-modal-adv" class="text-green-600"></b></span>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold uppercase text-gray-500">Add Parts Used</label>
+                <div class="flex gap-2 mt-1">
+                    <select id="rep-part-select" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white text-sm"></select>
+                    <input id="rep-part-qty" type="number" value="1" class="w-16 p-2 border rounded dark:bg-slate-700 dark:text-white text-center">
+                    <button onclick="window.posModule.addRepairPart()" class="bg-blue-600 text-white px-3 rounded"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="max-h-32 overflow-y-auto mt-2 border rounded dark:border-gray-600">
+                    <table class="w-full text-sm"><tbody id="rep-parts-body"></tbody></table>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
+                <input id="rep-labor" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white font-bold text-lg" oninput="window.posModule.addRepairPart()" placeholder="0.00"> 
+            </div>
+            <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-3 rounded mb-4 border dark:border-gray-600">
+                <span class="font-bold dark:text-white">Balance Due:</span>
+                <span id="rep-total-due" class="text-xl font-black text-blue-600">0.00</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('repair-finalize-modal').classList.add('hidden')" class="w-1/3 bg-gray-200 py-3 rounded-xl font-bold text-gray-700">Cancel</button>
+                <button onclick="window.posModule.finalizeRepair()" class="w-2/3 bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg">Finish & Bill</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-worker-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-md p-6 rounded-2xl shadow-2xl animate-pop-in">
+            <h2 class="text-xl font-bold mb-4 dark:text-white">Edit Worker Details</h2>
+            <form onsubmit="window.posModule.saveEditWorker(event)" class="space-y-4">
+                <input type="hidden" name="id" id="ew-id">
+                <input id="ew-name" name="name" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white" required placeholder="Full Name">
+                <input id="ew-phone" name="phone" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white" required placeholder="Phone">
+                <input id="ew-address" name="address" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white" placeholder="Address">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs text-gray-500">Daily Salary</label><input id="ew-salary" name="salary" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white" required></div>
+                    <div><label class="text-xs text-gray-500">Portal PIN</label><input id="ew-pin" name="pin" type="text" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white font-mono tracking-widest text-center" required></div>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('edit-worker-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 py-2 rounded font-bold text-gray-700">Cancel</button>
+                    <button type="submit" class="w-1/2 bg-blue-600 text-white py-2 rounded font-bold shadow">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="view-attendance-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-3xl h-[80vh] flex flex-col p-6 rounded-2xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700">
+            <div class="flex justify-between items-center mb-4 border-b pb-4 dark:border-gray-700">
+                <div>
+                    <h2 class="text-2xl font-black dark:text-white text-blue-600" id="view-att-name">Name</h2>
+                    <p class="text-xs text-gray-500">Live Salary & Attendance Status</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="hidden" id="view-att-wid">
+                    <input type="month" id="view-att-month" class="p-2 rounded border text-sm font-bold dark:bg-slate-700 dark:text-white" onchange="window.posModule.updateAdminAttendanceView()">
+                    <button onclick="document.getElementById('view-attendance-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="flex gap-4 mb-4">
+                <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl flex-1 text-center border dark:border-gray-600">
+                    <p class="text-xs text-gray-500 font-bold uppercase">Current Gross</p>
+                    <p class="text-2xl font-black text-gray-800 dark:text-gray-200" id="view-att-gross">0.00</p>
+                </div>
+                <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl flex-1 text-center border border-green-200 dark:border-green-800">
+                    <p class="text-xs text-green-600 dark:text-green-400 font-bold uppercase">Net Payable</p>
+                    <p class="text-2xl font-black text-green-700 dark:text-green-300" id="view-att-net">0.00</p>
+                </div>
+            </div>
+            <div class="flex-grow overflow-auto border rounded-xl dark:border-gray-700">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 dark:bg-slate-800 text-xs uppercase text-gray-500 sticky top-0">
+                        <tr><th class="p-3">Date</th><th class="p-3">Status</th><th class="p-3">Times</th><th class="p-3 text-red-500">Time Penalty</th></tr>
+                    </thead>
+                    <tbody id="view-att-table" class="dark:text-gray-300"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 
     <div id="login-section" class="min-h-screen flex flex-col items-center justify-center grid-pattern relative overflow-hidden">
         <div class="absolute top-20 left-10 text-gray-300 dark:text-slate-800 text-9xl opacity-20 animate-cloud" style="animation-duration: 25s;"><i class="fas fa-cloud"></i></div>
-        <div class="absolute top-40 right-20 text-gray-300 dark:text-slate-800 text-8xl opacity-20 animate-cloud" style="animation-duration: 35s;"><i class="fas fa-cloud"></i></div>
         <div class="absolute bottom-0 w-full h-32 border-t-4 border-gray-300 dark:border-slate-700 bg-gray-200 dark:bg-slate-800 flex items-end overflow-hidden z-0">
-            <div class="absolute bottom-10 w-full h-2 border-t-2 border-dashed border-gray-400 dark:border-slate-600"></div>
-            <div class="animate-ride absolute bottom-4"><div class="text-6xl text-blue-600 dark:text-blue-400 animate-bounce-slight"><i class="fas fa-bicycle"></i></div><div class="absolute top-2 -left-4 w-6 h-1 bg-gray-400 rounded opacity-50"></div></div>
+            <div class="animate-ride absolute bottom-4"><div class="text-6xl text-blue-600 dark:text-blue-400 animate-bounce-slight"><i class="fas fa-bicycle"></i></div></div>
         </div>
-        <div class="z-10 bg-white/90 dark:bg-darkcard/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-sm border border-gray-100 dark:border-gray-700 transform hover:scale-105 transition duration-500">
+        <div class="z-10 bg-white/90 dark:bg-darkcard/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl w-full max-w-sm border dark:border-gray-700 transform hover:scale-105 transition duration-500">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-blue-500/50 animate-wiggle"><i class="fas fa-bicycle"></i></div>
+                <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg animate-wiggle"><i class="fas fa-bicycle"></i></div>
                 <h1 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">CycleSense Cloud</h1>
-                <p class="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">Smart Workshop System</p>
+                <p class="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">Smart Workshop</p>
             </div>
             <p id="status-msg" class="text-center text-xs text-blue-500 mb-4 animate-pulse hidden">Connecting...</p>
             <form onsubmit="window.handleLogin(event)" class="space-y-5">
-                <div class="group">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Email</label>
-                    <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-envelope"></i></span><input id="email" type="email" value="julgahacycleworks@gmail.com" class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium shadow-inner" placeholder="Enter email"></div>
-                </div>
-                <div class="group">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Password</label>
-                    <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fas fa-lock"></i></span><input id="password" type="password" placeholder="••••••••" class="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-medium shadow-inner"></div>
-                </div>
-                <button id="login-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transform active:scale-95 transition-all duration-200">Let's Ride! <i class="fas fa-arrow-right ml-2"></i></button>
+                <input id="email" type="email" value="julgahacycleworks@gmail.com" class="w-full p-3 bg-gray-50 border rounded-xl dark:bg-slate-800 dark:text-white" placeholder="Email">
+                <input id="password" type="password" placeholder="Password" class="w-full p-3 bg-gray-50 border rounded-xl dark:bg-slate-800 dark:text-white">
+                <button id="login-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg">Login</button>
             </form>
-            <div class="mt-6 text-center border-t border-gray-100 dark:border-gray-700 pt-4"><button onclick="window.handleResetPassword()" class="text-sm font-bold text-blue-500 hover:text-blue-600 hover:underline transition">Forgot Password?</button></div>
         </div>
-        <p class="absolute bottom-2 text-[10px] text-gray-400 z-10">© 2026 CycleSense Cloud</p>
     </div>
+
 
     <div id="dashboard-section" class="hidden min-h-screen flex flex-col fade-in">
         
-        <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 gap-4 sticky top-0 z-50">
-            <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:rotate-12 transition"><i class="fas fa-bicycle"></i></div>
-                    <div><h2 class="font-black text-xl text-slate-800 dark:text-white tracking-tight">CycleSense</h2><p class="text-xs text-blue-600 dark:text-blue-400 font-bold" id="user-display">Admin</p></div>
-                </div>
-                <button onclick="window.handleNavClick('ai')" class="md:hidden bg-purple-600 hover:bg-purple-700 text-white p-2 rounded shadow animate-pulse"><i class="fas fa-robot"></i></button>
+        <header class="bg-white dark:bg-darkcard shadow p-4 flex justify-between items-center border-b dark:border-gray-700 z-50">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center"><i class="fas fa-bicycle"></i></div>
+                <div><h2 class="font-black text-xl text-slate-800 dark:text-white">CycleSense</h2></div>
             </div>
-            <div class="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end flex-wrap">
-                <button onclick="window.handleNavClick('ai')" class="hidden md:flex bg-purple-600 hover:bg-purple-700 hover:scale-105 transition text-white px-3 py-2 rounded shadow items-center gap-2 text-xs animate-pulse"><i class="fas fa-robot"></i> <span>CycleSense AI 2.0</span></button>
-                <button onclick="window.toggleTheme()" class="bg-gray-200 dark:bg-slate-700 p-2 rounded-full w-8 h-8 flex items-center justify-center hover:rotate-180 transition duration-500"><i id="theme-icon" class="fas fa-moon"></i></button>
-                <button onclick="window.handleLogout()" class="border border-red-500 text-red-500 px-3 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-xs hover:scale-110 transition"><i class="fas fa-sign-out-alt"></i></button>
+            <div class="flex gap-2">
+                <button onclick="window.handleNavClick('ai')" class="bg-purple-600 text-white px-3 py-2 rounded text-xs animate-pulse"><i class="fas fa-robot"></i></button>
+                <button onclick="window.toggleTheme()" class="bg-gray-200 dark:bg-slate-700 p-2 rounded-full w-8 h-8"><i class="fas fa-moon"></i></button>
+                <button onclick="window.handleLogout()" class="border border-red-500 text-red-500 px-3 py-2 rounded text-xs"><i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
 
         <div class="bg-gray-50 dark:bg-darkbg p-4 overflow-x-auto border-b dark:border-gray-800">
-            <div class="container mx-auto flex gap-3 min-w-max justify-center md:justify-start">
-                <div id="nav-revenue" onclick="window.handleNavClick('dashboard')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-slate-800 text-white shadow-lg"><i class="fas fa-chart-line"></i> <span>Dashboard</span></div>
-                <div id="nav-pos" onclick="window.handleNavClick('pos')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition border border-gray-200 dark:border-gray-700"><i class="fas fa-cash-register text-green-500"></i> <span>POS</span></div>
-                <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition border border-gray-200 dark:border-gray-700"><i class="fas fa-boxes text-orange-500"></i> <span>Inventory</span></div>
-                <div id="nav-repairs" onclick="window.handleNavClick('repairs')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition border border-gray-200 dark:border-gray-700"><i class="fas fa-tools text-blue-500"></i> <span>Repairs</span></div>
-                <div id="nav-hr" onclick="window.handleNavClick('hr')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition border border-gray-200 dark:border-gray-700"><i class="fas fa-users text-purple-500"></i> <span>HR</span></div>
+            <div class="container mx-auto flex gap-3 min-w-max">
+                <div id="nav-revenue" onclick="window.handleNavClick('dashboard')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-slate-800 text-white"><i class="fas fa-chart-line"></i> <span>Dashboard</span></div>
+                <div id="nav-pos" onclick="window.handleNavClick('pos')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard dark:text-gray-300 text-gray-600 border dark:border-gray-700"><i class="fas fa-cash-register text-green-500"></i> <span>POS</span></div>
+                <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard dark:text-gray-300 text-gray-600 border dark:border-gray-700"><i class="fas fa-boxes text-orange-500"></i> <span>Inventory</span></div>
+                <div id="nav-repairs" onclick="window.handleNavClick('repairs')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard dark:text-gray-300 text-gray-600 border dark:border-gray-700"><i class="fas fa-tools text-blue-500"></i> <span>Repairs</span></div>
+                <div id="nav-hr" onclick="window.handleNavClick('hr')" class="flex items-center space-x-2 px-4 py-2 rounded-xl cursor-pointer bg-white dark:bg-darkcard dark:text-gray-300 text-gray-600 border dark:border-gray-700"><i class="fas fa-users text-purple-500"></i> <span>HR / Payroll</span></div>
             </div>
         </div>
 
@@ -285,250 +292,166 @@
             
             <div id="dashboard-view" class="fade-in">
                 <div class="flex gap-2 mb-6 justify-end flex-wrap">
-                    <button onclick="window.switchContext('past')" id="btn-past" class="px-4 py-1 bg-slate-800 text-white rounded shadow transition">Past</button>
-                    <button onclick="window.switchContext('predicted')" id="btn-pred" class="px-4 py-1 text-gray-600 dark:text-gray-400 transition">Predicted</button>
-                    <select id="slicer-month" onchange="window.handleMonthChange()" class="border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Months</option></select>
-                    <select id="slicer-day" onchange="window.updateDashboard()" class="border dark:border-gray-600 p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Days</option></select>
+                    <button onclick="window.switchContext('past')" id="btn-past" class="px-4 py-1 bg-slate-800 text-white rounded">Past</button>
+                    <button onclick="window.switchContext('predicted')" id="btn-pred" class="px-4 py-1 text-gray-600 dark:text-gray-400">Predicted</button>
+                    <select id="slicer-month" onchange="window.handleMonthChange()" class="p-2 rounded bg-white dark:bg-darkcard dark:text-white"><option value="all">All Months</option></select>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-blue-500"><h3 id="kpi-1-label" class="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase">Revenue</h3><p id="val-rev" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00</p></div>
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-red-500"><h3 id="kpi-2-label" class="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase">Expenses</h3><p id="val-exp" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00</p></div>
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-green-500"><h3 id="kpi-3-label" class="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase">Profit</h3><p id="val-prof" class="text-2xl font-bold text-gray-800 dark:text-white mt-1">0.00</p></div>
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-blue-500"><h3 class="text-gray-500 text-sm font-bold uppercase">Revenue</h3><p id="val-rev" class="text-2xl font-bold mt-1 dark:text-white">0.00</p></div>
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-red-500"><h3 class="text-gray-500 text-sm font-bold uppercase">Expenses</h3><p id="val-exp" class="text-2xl font-bold mt-1 dark:text-white">0.00</p></div>
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-sm border-l-4 border-green-500"><h3 class="text-gray-500 text-sm font-bold uppercase">Profit</h3><p id="val-prof" class="text-2xl font-bold mt-1 dark:text-white">0.00</p></div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    <div class="lg:col-span-2 bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 h-80"><div class="chart-container"><canvas id="mainChart"></canvas></div></div>
-                    <div class="bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 h-80"><div class="chart-container"><canvas id="subChart"></canvas></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm h-80"><canvas id="mainChart"></canvas></div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm h-80"><canvas id="subChart"></canvas></div>
                 </div>
             </div>
 
             <div id="pos-view" class="hidden fade-in grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="md:col-span-2 space-y-6">
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                        <div class="flex justify-between items-center mb-4">
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700">
+                        <div class="flex justify-between mb-4">
                             <h2 class="text-xl font-bold dark:text-white">New Sale</h2>
-                            <div class="flex gap-2">
-                                <button onclick="window.posModule.openReportModal()" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1.5 rounded-lg transition font-bold"><i class="fas fa-chart-pie"></i> Sales Report</button>
-                                <span class="text-xs bg-green-100 text-green-800 px-2 py-1.5 rounded-lg flex items-center font-bold">Active</span>
-                            </div>
+                            <button onclick="window.posModule.openReportModal()" class="text-xs bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg font-bold"><i class="fas fa-chart-pie"></i> Sales Report</button>
                         </div>
                         <div class="grid grid-cols-3 gap-3 mb-4">
-                            <div class="col-span-2">
-                                <label class="text-xs text-gray-500 font-bold uppercase">Product</label>
-                                <select id="pos-product-select" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:ring-2 focus:ring-green-500 outline-none"></select>
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-500 font-bold uppercase">Qty</label>
-                                <div class="flex gap-2">
-                                    <input id="pos-qty" type="number" value="1" min="1" class="w-full p-3 border rounded-xl bg-gray-50 dark:bg-slate-700 dark:text-white dark:border-gray-600">
-                                    <button onclick="window.posModule.addToCart()" class="bg-green-600 text-white px-4 rounded-xl hover:bg-green-700 shadow-md"><i class="fas fa-plus"></i></button>
-                                </div>
-                            </div>
+                            <div class="col-span-2"><select id="pos-product-select" class="w-full p-3 border rounded-xl dark:bg-slate-700 dark:text-white"></select></div>
+                            <div class="flex gap-2"><input id="pos-qty" type="number" value="1" class="w-full p-3 border rounded-xl dark:bg-slate-700 dark:text-white"><button onclick="window.posModule.addToCart()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fas fa-plus"></i></button></div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-slate-800 dark:text-gray-300 rounded-t-lg"><tr><th class="p-3">Item</th><th class="p-3 text-center">Qty</th><th class="p-3 text-right">Price</th><th class="p-3 text-right">Total</th><th class="p-3"></th></tr></thead>
-                                <tbody id="cart-table-body"></tbody>
-                            </table>
-                        </div>
+                        <table class="w-full text-sm text-left"><thead class="bg-gray-100 dark:bg-slate-800 dark:text-white"><tr><th class="p-3">Item</th><th>Qty</th><th class="text-right">Price</th><th></th></tr></thead><tbody id="cart-table-body" class="dark:text-white"></tbody></table>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 h-fit">
-                    <h3 class="font-bold text-lg mb-4 dark:text-white border-b pb-2 dark:border-gray-700">Billing</h3>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700 h-fit">
+                    <h3 class="font-bold text-lg mb-4 dark:text-white">Billing</h3>
                     <form onsubmit="window.posModule.processSale(event)" class="space-y-4">
-                        <input name="customer_name" placeholder="Customer Name" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
-                        <input name="phone" placeholder="Phone" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
-                        <input name="service_cost" id="pos-service-cost" type="number" placeholder="Service Cost (LKR)" oninput="window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white outline-none focus:border-green-500">
-                        <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mt-4">
-                            <div class="flex justify-between text-2xl font-black text-gray-800 dark:text-white"><span>Total</span><span id="pos-total">LKR 0.00</span></div>
-                        </div>
-                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:scale-105">Checkout <i class="fas fa-arrow-right ml-2"></i></button>
+                        <input name="customer_name" placeholder="Customer Name" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white">
+                        <input name="phone" placeholder="Phone" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white">
+                        <input name="service_cost" id="pos-service-cost" type="number" placeholder="Service Cost (LKR)" oninput="window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white">
+                        <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mt-4 flex justify-between text-2xl font-black dark:text-white"><span>Total</span><span id="pos-total">LKR 0.00</span></div>
+                        <button type="submit" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl">Checkout</button>
                     </form>
                 </div>
             </div>
 
             <div id="inventory-view" class="hidden fade-in space-y-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-plus-circle text-orange-500"></i> Add Product</h2>
-                        <button onclick="window.posModule.generateRestockPDF()" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1.5 rounded-lg font-bold transition"><i class="fas fa-file-pdf"></i> Restock List</button>
+                        <button onclick="window.posModule.generateRestockPDF()" class="text-xs bg-red-100 text-red-800 px-3 py-1.5 rounded-lg font-bold"><i class="fas fa-file-pdf"></i> Restock List</button>
                     </div>
                     <form onsubmit="window.posModule.addProduct(event)" class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <input name="code" placeholder="Code (e.g. TIRE-001)" class="p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="name" placeholder="Product Name" class="p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="stock" type="number" placeholder="Stock" class="p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="reorder_level" type="number" placeholder="Reorder Lvl" class="p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <input name="unit_price" type="number" placeholder="Price (LKR)" class="p-3 rounded-xl border bg-gray-50 dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 shadow-md transition">Add Item</button>
+                        <input name="code" placeholder="Code" class="p-3 rounded-xl border dark:bg-slate-700 dark:text-white" required>
+                        <input name="name" placeholder="Name" class="p-3 rounded-xl border dark:bg-slate-700 dark:text-white" required>
+                        <input name="stock" type="number" placeholder="Stock" class="p-3 rounded-xl border dark:bg-slate-700 dark:text-white" required>
+                        <input name="reorder_level" type="number" placeholder="Reorder" class="p-3 rounded-xl border dark:bg-slate-700 dark:text-white" required>
+                        <input name="unit_price" type="number" placeholder="Price (LKR)" class="p-3 rounded-xl border dark:bg-slate-700 dark:text-white" required>
+                        <button type="submit" class="bg-orange-500 text-white font-bold rounded-xl">Add Item</button>
                     </form>
                 </div>
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-x-auto">
-                    <table class="w-full text-left text-gray-500 dark:text-gray-400">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-slate-800 dark:text-gray-300"><tr><th class="p-4">Code</th><th class="p-4">Name</th><th class="p-4">Stock</th><th class="p-4">Reorder</th><th class="p-4">Price</th><th class="p-4">Status</th></tr></thead>
-                        <tbody id="inventory-table-body"></tbody>
-                    </table>
+                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700 overflow-x-auto">
+                    <table class="w-full text-left text-sm dark:text-white"><thead class="bg-gray-100 dark:bg-slate-800"><tr><th class="p-4">Code</th><th>Name</th><th>Stock</th><th>Reorder</th><th>Price</th><th>Status</th></tr></thead><tbody id="inventory-table-body"></tbody></table>
                 </div>
             </div>
 
             <div id="repairs-view" class="hidden fade-in space-y-6">
-                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-tools text-blue-500"></i> Repair Tickets</h2>
                         <div class="flex gap-2">
                             <select id="repair-filter" onchange="window.posModule.filterRepairs()" class="bg-gray-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm font-bold dark:text-white">
-                                <option value="all">All Status</option>
-                                <option value="pending" selected>Pending Jobs</option>
-                                <option value="completed">Completed History</option>
+                                <option value="all">All Status</option><option value="pending" selected>Pending Jobs</option><option value="completed">Completed History</option>
                             </select>
-                            
-                            <a href="track.html" target="_blank" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-2 rounded-lg font-bold transition flex items-center gap-2 shadow-sm">
-                                <i class="fas fa-search-location"></i> Public Tracker
-                            </a>
+                            <a href="track.html" target="_blank" class="text-xs bg-indigo-100 text-indigo-800 px-3 py-2 rounded-lg font-bold flex items-center gap-2"><i class="fas fa-search-location"></i> Public Tracker</a>
                         </div>
                     </div>
-
-                    <form onsubmit="window.posModule.addRepair(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 mb-6">
-                        <input name="customer_name" placeholder="Customer Name" class="p-3 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                    <form onsubmit="window.posModule.addRepair(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600 mb-6">
+                        <input name="customer_name" placeholder="Customer" class="p-3 rounded-lg border dark:bg-slate-700 dark:text-white" required>
                         <input name="phone" placeholder="Phone" class="p-3 rounded-lg border dark:bg-slate-700 dark:text-white" required>
                         <input name="advance" type="number" placeholder="Advance (LKR)" class="p-3 rounded-lg border dark:bg-slate-700 dark:text-white" required>
                         <input name="predicted_date" type="date" class="p-3 rounded-lg border dark:bg-slate-700 dark:text-white" required>
-                        <button type="submit" class="md:col-span-4 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md">Generate Ticket</button>
+                        <button type="submit" class="md:col-span-4 bg-blue-600 text-white font-bold py-3 rounded-lg">Generate Ticket</button>
                     </form>
-
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-gray-500 dark:text-gray-400">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-slate-700 dark:text-gray-300">
-                                <tr>
-                                    <th class="p-4">Ticket ID</th>
-                                    <th class="p-4">Customer</th>
-                                    <th class="p-4">Phone</th>
-                                    <th class="p-4">Advance</th>
-                                    <th class="p-4">Due Date</th>
-                                    <th class="p-4 text-center">Status</th>
-                                    <th class="p-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="repairs-table-body"></tbody>
-                        </table>
+                        <table class="w-full text-left text-sm dark:text-white"><thead class="bg-gray-100 dark:bg-slate-800"><tr><th class="p-4">Ticket ID</th><th>Customer</th><th>Phone</th><th>Advance</th><th>Due Date</th><th class="text-center">Status</th><th class="text-center">Actions</th></tr></thead><tbody id="repairs-table-body"></tbody></table>
                     </div>
                 </div>
             </div>
 
             <div id="hr-view" class="hidden fade-in space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    
-                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col h-[500px]">
-                        <h2 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-users text-purple-500"></i> Manage Workers</h2>
-                        
-                        <form onsubmit="window.posModule.addWorker(event)" class="space-y-3 mb-6 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600">
-                            <div class="grid grid-cols-2 gap-3">
-                                <input name="name" placeholder="Full Name" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
-                                <input name="phone" placeholder="Phone Number" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
-                            </div>
-                            <input name="address" placeholder="Home Address" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white">
-                            <div class="flex gap-3">
-                                <input name="daily_salary" type="number" placeholder="Daily Salary (LKR)" class="w-full p-2 rounded border text-sm dark:bg-slate-700 dark:text-white" required>
-                                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded shadow hover:bg-purple-700 transition">Save Worker</button>
-                            </div>
-                        </form>
+                <div class="flex justify-between items-center mb-2">
+                    <h1 class="text-2xl font-black dark:text-white"><i class="fas fa-users text-purple-500"></i> HR & Payroll</h1>
+                    <a href="worker-portal.html" target="_blank" class="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><i class="fas fa-external-link-alt"></i> Portal</a>
+                </div>
 
-                        <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Current Staff</h3>
-                        <div id="workers-list" class="flex-grow overflow-y-auto space-y-3 pr-2">
-                            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700 flex flex-col h-[550px]">
+                        <h2 class="text-xl font-black mb-4 dark:text-white">Register Worker</h2>
+                        <form onsubmit="window.posModule.addWorker(event)" class="space-y-3 mb-6 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600">
+                            <div class="grid grid-cols-2 gap-3"><input name="name" placeholder="Name" class="p-2 rounded border dark:bg-slate-700 dark:text-white" required><input name="phone" placeholder="Phone" class="p-2 rounded border dark:bg-slate-700 dark:text-white" required></div>
+                            <input name="address" placeholder="Address" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white">
+                            <div class="flex gap-3"><input name="daily_salary" type="number" placeholder="Daily Salary (LKR)" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required><button type="submit" class="w-full bg-purple-600 text-white font-bold py-2 rounded">Save</button></div>
+                        </form>
+                        <h3 class="text-sm font-bold text-gray-500 uppercase mb-2">Directory</h3>
+                        <div id="workers-list" class="flex-grow overflow-y-auto space-y-3 pr-2"></div>
                     </div>
 
                     <div class="flex flex-col gap-6">
-                        
-                        <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-calendar-check text-green-500"></i> Mark Attendance</h2>
+                        <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border dark:border-gray-700">
+                            <h2 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-calendar-check text-green-500"></i> Mark Attendance</h2>
                             <form onsubmit="window.posModule.markAttendance(event)" class="space-y-3">
-                                <select id="hr-att-worker" name="worker_id" class="w-full p-3 rounded-lg border bg-gray-50 dark:bg-slate-800 dark:text-white dark:border-gray-600 font-bold" required></select>
+                                <select id="hr-att-worker" name="worker_id" class="w-full p-3 rounded-lg border dark:bg-slate-800 dark:text-white" required></select>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <input id="hr-att-date" name="date" type="date" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:text-white" required>
-                                    <select name="status" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:text-white font-bold text-blue-600" required>
-                                        <option value="Full Day">Full Day</option>
-                                        <option value="Half Day">Half Day</option>
-                                        <option value="Short Leave">Short Leave</option>
-                                        <option value="Absent">Absent</option>
-                                    </select>
+                                    <input id="hr-att-date" name="date" type="date" class="p-2 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                                    <select name="status" class="p-2 rounded-lg border dark:bg-slate-700 text-blue-600 font-bold" required><option value="Full Day">Full Day</option><option value="Half Day">Half Day</option><option value="Short Leave">Short Leave</option><option value="Absent">Absent</option></select>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div><label class="text-xs text-gray-400">In Time</label><input name="in_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white text-sm"></div>
-                                    <div><label class="text-xs text-gray-400">Out Time</label><input name="out_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white text-sm"></div>
+                                    <div><label class="text-xs text-gray-400">In Time</label><input name="in_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" value="10:00"></div>
+                                    <div><label class="text-xs text-gray-400">Out Time</label><input name="out_time" type="time" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" value="17:00"></div>
                                 </div>
-                                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-lg shadow hover:bg-green-700">Save Attendance</button>
+                                <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded-lg">Save</button>
                             </form>
                         </div>
 
                         <div class="bg-white dark:bg-darkcard p-6 rounded-2xl shadow-lg border border-red-200 dark:border-red-900/50">
-                            <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2"><i class="fas fa-hand-holding-usd text-red-500"></i> Issue Advance</h2>
+                            <h2 class="text-xl font-bold mb-4 dark:text-white"><i class="fas fa-hand-holding-usd text-red-500"></i> Issue Advance</h2>
                             <form onsubmit="window.posModule.addAdvance(event)" class="grid grid-cols-2 gap-3">
                                 <select id="hr-adv-worker" name="worker_id" class="col-span-2 w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required></select>
                                 <input id="hr-adv-date" name="date" type="date" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required>
-                                <input name="amount" type="number" placeholder="Amount (LKR)" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required>
-                                <button type="submit" class="col-span-2 bg-red-500 text-white font-bold py-2 rounded shadow hover:bg-red-600">Give Advance</button>
+                                <input name="amount" type="number" placeholder="Amount" class="w-full p-2 rounded border dark:bg-slate-700 dark:text-white" required>
+                                <button type="submit" class="col-span-2 bg-red-500 text-white font-bold py-2 rounded">Give Advance</button>
                             </form>
                         </div>
-
                     </div>
                 </div>
 
-                <div class="bg-slate-800 text-white p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 border border-slate-700 relative overflow-hidden">
-                    <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl"><i class="fas fa-file-invoice-dollar"></i></div>
-                    <div class="z-10">
-                        <h2 class="text-2xl font-black mb-1">Payroll Generator</h2>
-                        <p class="text-gray-400 text-sm">Generates salary slips. Auto-deducts 8% EPF and all prior advances.</p>
+                <div class="bg-slate-800 text-white p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-6 border border-slate-700">
+                    <div class="z-10 w-full md:w-1/2">
+                        <h2 class="text-2xl font-black mb-1">Payroll Slip Generator</h2>
+                        <p class="text-gray-400 text-sm">Calculates days worked, deducts time penalties, auto-deducts 8% EPF, and subtracts advances.</p>
                     </div>
-                    <form onsubmit="window.posModule.generatePayroll(event)" class="flex gap-3 z-10 w-full md:w-auto">
+                    <form onsubmit="window.posModule.generatePayroll(event)" class="flex flex-col md:flex-row gap-3 w-full md:w-1/2 justify-end">
                         <select id="hr-pay-worker" name="worker_id" class="p-3 rounded-lg text-gray-900 font-bold w-full md:w-48" required></select>
                         <input name="month" type="month" class="p-3 rounded-lg text-gray-900 font-bold w-full md:w-40" required>
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 transition transform hover:scale-105">
-                            <i class="fas fa-print"></i> Print Slip
-                        </button>
+                        <button type="submit" class="bg-blue-500 text-white font-bold px-6 py-3 rounded-lg"><i class="fas fa-print"></i> Generate</button>
                     </form>
                 </div>
             </div>
 
         </main>
 
-        <footer class="bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 mt-8 py-6">
-            <div class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-sm gap-4">
-                <div class="text-center md:text-left">
-                    <p class="font-bold text-slate-700 dark:text-slate-300">CycleSense Cloud</p>
-                    <p class="text-gray-500 dark:text-gray-500">© 2026 All Rights Reserved.</p>
-                </div>
-                <div class="flex items-center gap-6 justify-center">
-                    <div class="text-right hidden md:block">
-                        <p class="text-gray-400 text-xs">Technical Support</p>
-                        <p class="font-bold text-slate-700 dark:text-slate-300">Dinil Randika</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <a href="mailto:Dinil Randika05@gmail.com" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-blue-100 transition"><i class="fas fa-envelope"></i></a>
-                        <a href="tel:0756339536" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-green-100 transition"><i class="fas fa-phone"></i></a>
-                    </div>
-                </div>
-            </div>
-        </footer>
-        
-        <div id="ai-modal" class="fixed bottom-6 right-6 w-80 md:w-96 h-[500px] bg-white dark:bg-darkcard rounded-2xl shadow-2xl z-50 flex flex-col hidden border border-gray-200 dark:border-gray-700 overflow-hidden fade-in">
+        <div id="ai-modal" class="fixed bottom-6 right-6 w-80 md:w-96 h-[500px] bg-white dark:bg-darkcard rounded-2xl shadow-2xl z-50 flex flex-col hidden border dark:border-gray-700 overflow-hidden fade-in">
             <div class="bg-purple-600 p-4 flex justify-between items-center text-white">
                 <div class="flex items-center gap-2"><i class="fas fa-robot animate-pulse"></i><h3 class="font-bold">CycleSense AI 2.0</h3></div>
-                <div class="flex gap-3">
-                    <button onclick="window.clearAIChat()" class="hover:text-purple-200 transition" title="Clear History"><i class="fas fa-trash-alt"></i></button>
-                    <button onclick="window.toggleAI()" class="hover:text-purple-200 transition"><i class="fas fa-times"></i></button>
-                </div>
+                <div class="flex gap-3"><button onclick="window.clearAIChat()"><i class="fas fa-trash-alt"></i></button><button onclick="window.toggleAI()"><i class="fas fa-times"></i></button></div>
             </div>
             <div id="ai-chat-history" class="flex-grow p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900 scroll-smooth"></div>
-            <div class="p-3 bg-white dark:bg-darkcard border-t dark:border-gray-700">
-                <div class="relative">
-                    <input id="ai-input" type="text" placeholder="Ask about revenue, profit..." class="w-full pl-4 pr-10 py-2 rounded-full border dark:border-gray-600 dark:bg-slate-800 focus:outline-none focus:border-purple-500 text-sm" onkeydown="window.handleAIKey(event)">
-                    <button onclick="window.triggerAISend()" class="absolute right-2 top-1.5 w-7 h-7 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition"><i class="fas fa-paper-plane text-xs"></i></button>
-                </div>
+            <div class="p-3 bg-white dark:bg-darkcard border-t dark:border-gray-700 relative">
+                <input id="ai-input" type="text" placeholder="Ask AI..." class="w-full pl-4 pr-10 py-2 rounded-full border dark:bg-slate-800 dark:text-white" onkeydown="window.handleAIKey(event)">
+                <button onclick="window.triggerAISend()" class="absolute right-5 top-4 text-purple-600"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
 
-        <div id="loader" class="fixed inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center hidden z-50">
-            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i>
-        </div>
+        <div id="loader" class="fixed inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center hidden z-50"><i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i></div>
     </div>
 
     <script type="module" src="js/app.js"></script>
