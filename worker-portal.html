@@ -6,6 +6,7 @@
     <title>Employee Portal - CycleSense</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
 
@@ -14,23 +15,26 @@
             <i class="fas fa-id-badge"></i>
         </div>
         <h1 class="text-2xl font-black text-gray-800 mb-1">Employee Portal</h1>
-        <p class="text-gray-500 mb-6 text-sm">Log in to view your salary & attendance.</p>
+        <p class="text-gray-500 mb-6 text-sm">Log in using your Worker ID (e.g. W2026001) and PIN.</p>
 
         <form id="portal-login-form" class="space-y-4">
-            <input id="worker-id" type="number" placeholder="Worker ID (e.g. 1)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold" required>
+            <input id="worker-id" type="text" placeholder="Worker ID (e.g. W2026001)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold uppercase tracking-widest" required>
             <input id="worker-pin" type="password" placeholder="4-Digit PIN" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold tracking-[0.5em]" required>
-            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Login</button>
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Secure Login</button>
         </form>
         <p id="login-error" class="text-red-500 text-xs mt-3 hidden"></p>
     </div>
 
     <div id="dashboard-view" class="hidden max-w-2xl w-full bg-white p-6 md:p-8 rounded-2xl shadow-2xl">
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
+        <div class="flex justify-between items-start mb-6 border-b pb-4">
             <div>
                 <h2 class="text-2xl font-black text-gray-800" id="emp-name">Name</h2>
-                <p class="text-gray-500 text-sm">ID: <span id="emp-id"></span> | Daily Rate: <span id="emp-rate"></span></p>
+                <p class="text-gray-500 text-sm">ID: <span id="emp-id" class="font-mono text-purple-600 font-bold"></span> | Daily Rate: <span id="emp-rate"></span></p>
             </div>
-            <button onclick="location.reload()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg"><i class="fas fa-sign-out-alt"></i></button>
+            <div class="flex gap-2">
+                <button onclick="changePin()" class="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-key"></i> Change PIN</button>
+                <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-bold px-3 py-2 rounded-lg transition shadow-sm"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
         </div>
 
         <div class="mb-4 flex gap-2 items-center">
@@ -43,12 +47,12 @@
                 <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
                 <div class="flex justify-between text-sm mb-1"><span>Full Days (<span id="count-full">0</span>)</span> <span id="val-full" class="font-medium">0.00</span></div>
                 <div class="flex justify-between text-sm mb-1"><span>Half Days (<span id="count-half">0</span>)</span> <span id="val-half" class="font-medium">0.00</span></div>
-                <div class="flex justify-between text-sm text-red-500 mb-1"><span>Late/Early Penalties</span> <span id="val-penalty" class="font-medium">- 0.00</span></div>
+                <div class="flex justify-between text-sm text-red-500 mb-1"><span>Time Penalties</span> <span id="val-penalty" class="font-medium">- 0.00</span></div>
                 <div class="flex justify-between font-bold mt-2 pt-2 border-t text-green-600"><span>Gross Earnings</span> <span id="val-gross">0.00</span></div>
             </div>
             <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
-                <div class="flex justify-between text-sm mb-1 text-red-500"><span>Advances Taken</span> <span id="val-advances">- 0.00</span></div>
+                <div class="flex justify-between text-sm mb-1 text-red-500"><span>Advances</span> <span id="val-advances">- 0.00</span></div>
                 <div class="flex justify-between text-sm mb-1 text-red-500"><span>EPF (8%)</span> <span id="val-epf">- 0.00</span></div>
                 <div class="flex justify-between font-bold mt-2 pt-2 border-t text-blue-600 text-lg"><span>Net Payable</span> <span id="val-net">0.00</span></div>
             </div>
@@ -71,11 +75,11 @@
 
         document.getElementById('portal-login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const id = document.getElementById('worker-id').value;
+            const uid = document.getElementById('worker-id').value.trim().toUpperCase();
             const pin = document.getElementById('worker-pin').value;
             
             const sb = getSupabase();
-            const { data, error } = await sb.from('workers').select('*').eq('id', id).eq('pin', pin).single();
+            const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
             
             if(error || !data) {
                 document.getElementById('login-error').innerText = "Invalid ID or PIN.";
@@ -85,7 +89,7 @@
                 document.getElementById('login-view').classList.add('hidden');
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 document.getElementById('emp-name').innerText = data.name;
-                document.getElementById('emp-id').innerText = data.id;
+                document.getElementById('emp-id').innerText = data.worker_uid;
                 document.getElementById('emp-rate').innerText = formatCurrency(data.daily_salary);
                 
                 const now = new Date();
@@ -93,6 +97,17 @@
                 loadDashboard();
             }
         });
+
+        window.changePin = async () => {
+            const newPin = prompt("Enter your new 4-digit PIN:");
+            if(!newPin || newPin.length !== 4 || isNaN(newPin)) {
+                return alert("PIN must be exactly 4 digits.");
+            }
+            const sb = getSupabase();
+            const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
+            if(error) alert("Failed to update PIN.");
+            else alert("PIN successfully updated!");
+        };
 
         window.loadDashboard = async () => {
             if(!currentUser) return;
@@ -117,8 +132,8 @@
                         const inMins = parseInt(a.in_time.split(':')[0])*60 + parseInt(a.in_time.split(':')[1]);
                         const outMins = parseInt(a.out_time.split(':')[0])*60 + parseInt(a.out_time.split(':')[1]);
                         let missed = 0;
-                        if(inMins > 600) missed += (inMins - 600); // After 10AM
-                        if(outMins < 1020) missed += (1020 - outMins); // Before 5PM
+                        if(inMins > 600) missed += (inMins - 600); // After 10:00
+                        if(outMins < 1020) missed += (1020 - outMins); // Before 17:00
                         if(missed > 0) {
                             dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
                             totalPenalty += dayPenalty;
