@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - CycleSense</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+
+    <div id="login-view" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
+        <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-white text-2xl">
+            <i class="fas fa-id-badge"></i>
+        </div>
+        <h1 class="text-2xl font-black text-gray-800 mb-1">Employee Portal</h1>
+        <p class="text-gray-500 mb-6 text-sm">Log in to view your salary & attendance.</p>
+
+        <form id="portal-login-form" class="space-y-4">
+            <input id="worker-id" type="number" placeholder="Worker ID (e.g. 1)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold" required>
+            <input id="worker-pin" type="password" placeholder="4-Digit PIN" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold tracking-[0.5em]" required>
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Login</button>
+        </form>
+        <p id="login-error" class="text-red-500 text-xs mt-3 hidden"></p>
+    </div>
+
+    <div id="dashboard-view" class="hidden max-w-2xl w-full bg-white p-6 md:p-8 rounded-2xl shadow-2xl">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <div>
+                <h2 class="text-2xl font-black text-gray-800" id="emp-name">Name</h2>
+                <p class="text-gray-500 text-sm">ID: <span id="emp-id"></span> | Daily Rate: <span id="emp-rate"></span></p>
+            </div>
+            <button onclick="location.reload()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+
+        <div class="mb-4 flex gap-2 items-center">
+            <label class="font-bold text-gray-600 text-sm">Select Month:</label>
+            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold" onchange="loadDashboard()">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
+                <div class="flex justify-between text-sm mb-1"><span>Full Days (<span id="count-full">0</span>)</span> <span id="val-full" class="font-medium">0.00</span></div>
+                <div class="flex justify-between text-sm mb-1"><span>Half Days (<span id="count-half">0</span>)</span> <span id="val-half" class="font-medium">0.00</span></div>
+                <div class="flex justify-between text-sm text-red-500 mb-1"><span>Late/Early Penalties</span> <span id="val-penalty" class="font-medium">- 0.00</span></div>
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t text-green-600"><span>Gross Earnings</span> <span id="val-gross">0.00</span></div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
+                <div class="flex justify-between text-sm mb-1 text-red-500"><span>Advances Taken</span> <span id="val-advances">- 0.00</span></div>
+                <div class="flex justify-between text-sm mb-1 text-red-500"><span>EPF (8%)</span> <span id="val-epf">- 0.00</span></div>
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t text-blue-600 text-lg"><span>Net Payable</span> <span id="val-net">0.00</span></div>
+            </div>
+        </div>
+
+        <h3 class="font-bold text-gray-700 mb-2">Attendance Log</h3>
+        <div class="overflow-x-auto border rounded-xl max-h-60">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0"><tr><th class="p-2">Date</th><th class="p-2">Status</th><th class="p-2">In</th><th class="p-2">Out</th><th class="p-2 text-red-500">Penalty</th></tr></thead>
+                <tbody id="att-log"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getSupabase } from './js/config.js';
+        let currentUser = null;
+
+        const formatCurrency = (v) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(v || 0);
+
+        document.getElementById('portal-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('worker-id').value;
+            const pin = document.getElementById('worker-pin').value;
+            
+            const sb = getSupabase();
+            const { data, error } = await sb.from('workers').select('*').eq('id', id).eq('pin', pin).single();
+            
+            if(error || !data) {
+                document.getElementById('login-error').innerText = "Invalid ID or PIN.";
+                document.getElementById('login-error').classList.remove('hidden');
+            } else {
+                currentUser = data;
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
+                document.getElementById('emp-name').innerText = data.name;
+                document.getElementById('emp-id').innerText = data.id;
+                document.getElementById('emp-rate').innerText = formatCurrency(data.daily_salary);
+                
+                const now = new Date();
+                document.getElementById('month-selector').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
+                loadDashboard();
+            }
+        });
+
+        window.loadDashboard = async () => {
+            if(!currentUser) return;
+            const monthStr = document.getElementById('month-selector').value;
+            const [year, month] = monthStr.split('-');
+            const startDate = `${monthStr}-01`;
+            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+            const sb = getSupabase();
+            const { data: attData } = await sb.from('attendance').select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
+            const { data: advData } = await sb.from('advances').select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate);
+
+            let full = 0, half = 0, short = 0, totalPenalty = 0;
+            const logTable = document.getElementById('att-log');
+            logTable.innerHTML = '';
+
+            (attData || []).forEach(a => {
+                let dayPenalty = 0;
+                if(a.status === 'Full Day') {
+                    full++;
+                    if(a.in_time && a.out_time) {
+                        const inMins = parseInt(a.in_time.split(':')[0])*60 + parseInt(a.in_time.split(':')[1]);
+                        const outMins = parseInt(a.out_time.split(':')[0])*60 + parseInt(a.out_time.split(':')[1]);
+                        let missed = 0;
+                        if(inMins > 600) missed += (inMins - 600); // After 10AM
+                        if(outMins < 1020) missed += (1020 - outMins); // Before 5PM
+                        if(missed > 0) {
+                            dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
+                            totalPenalty += dayPenalty;
+                        }
+                    }
+                } else if(a.status === 'Half Day') half++;
+                else if(a.status === 'Short Leave') short++;
+
+                logTable.innerHTML += `<tr class="border-b"><td class="p-2">${a.date}</td><td class="p-2 font-bold">${a.status}</td><td class="p-2">${a.in_time || '-'}</td><td class="p-2">${a.out_time || '-'}</td><td class="p-2 text-red-500">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td></tr>`;
+            });
+
+            if(attData.length === 0) logTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No attendance records.</td></tr>`;
+
+            const baseEarn = (full * currentUser.daily_salary) + (short * currentUser.daily_salary) + (half * (currentUser.daily_salary / 2));
+            const gross = baseEarn - totalPenalty;
+            const advances = (advData || []).reduce((s, a) => s + Number(a.amount), 0);
+            const epf = gross > 0 ? gross * 0.08 : 0;
+            const net = gross - advances - epf;
+
+            document.getElementById('count-full').innerText = full;
+            document.getElementById('val-full').innerText = formatCurrency(full * currentUser.daily_salary);
+            document.getElementById('count-half').innerText = half;
+            document.getElementById('val-half').innerText = formatCurrency(half * (currentUser.daily_salary/2));
+            document.getElementById('val-penalty').innerText = "- " + formatCurrency(totalPenalty);
+            document.getElementById('val-gross').innerText = formatCurrency(gross);
+            document.getElementById('val-advances').innerText = "- " + formatCurrency(advances);
+            document.getElementById('val-epf').innerText = "- " + formatCurrency(epf);
+            document.getElementById('val-net').innerText = formatCurrency(net);
+        }
+    </script>
+</body>
+</html>
