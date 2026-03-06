@@ -2,10 +2,7 @@
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
-// ==========================================
-// GLOBAL FORMATTERS & HELPERS
-// ==========================================
-
+// --- Global Formatters & Helpers ---
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-LK', { 
         style: 'currency', 
@@ -27,7 +24,7 @@ async function fetchAll(table) {
 
 
 // ==========================================
-// 1. INVENTORY & RESTOCK SYSTEM
+// 1. INVENTORY & RESTOCK
 // ==========================================
 
 export async function loadInventory() {
@@ -118,7 +115,6 @@ export async function confirmQuickRestock(e) {
 
     const sb = getSupabase();
     
-    // Fetch latest stock directly to prevent overwriting issues
     const { data: p, error: fetchError } = await sb.from('products').select('stock').eq('id', id).single();
     
     if (fetchError) {
@@ -289,7 +285,7 @@ export async function addProduct(e) {
 
 
 // ==========================================
-// 2. POS & SALES SYSTEM
+// 2. POS & SALES
 // ==========================================
 let cart = []; 
 let productsCache = [];
@@ -339,12 +335,7 @@ export function addToCart() {
     if (existingItem) {
         existingItem.qty += qty; 
     } else {
-        cart.push({ 
-            id: id, 
-            name: name, 
-            price: price, 
-            qty: qty 
-        });
+        cart.push({ id, name, price, qty });
     }
     
     renderCart(); 
@@ -364,7 +355,6 @@ export function renderCart() {
     
     cart.forEach((item, idx) => { 
         total += item.price * item.qty; 
-        
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-2 font-bold dark:text-white">
@@ -446,10 +436,12 @@ export async function processSale(e) {
     e.target.reset(); 
     renderCart(); 
     
-    await initPOS(); 
-    await loadInventory(); // Sync background inventory
-    
+    // Launch printer instantly
     generateBill(sale, itemsForBill);
+    
+    await initPOS(); 
+    await loadInventory(); 
+    
     await showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
 }
 
@@ -805,7 +797,6 @@ export function reprintFinalBill(r) {
     
     if (r.parts_used) {
         const parts = typeof r.parts_used === 'string' ? JSON.parse(r.parts_used) : r.parts_used;
-        
         if (parts.length > 0) {
             partsHtml = parts.map(i => `
                 <tr>
@@ -941,8 +932,11 @@ export async function addRepair(e) {
         alert(error.message);
     } else {
         e.target.reset(); 
-        await showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
+        
+        // Print immediately to prevent pop-up block
         printRepairTicket(data);
+        
+        await showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
         await loadRepairs(); 
     }
 }
@@ -1084,9 +1078,10 @@ export async function finalizeRepair() {
     
     const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
     
+    // Print before async success prompt
     reprintFinalBill(freshRepair);
-    await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     
+    await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     await loadRepairs(); 
 }
 
@@ -1404,7 +1399,6 @@ export async function deleteWorker(id) {
     if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
         const sb = getSupabase();
         
-        // Ensure Foreign Key safety by deleting child records first
         await sb.from('attendance').delete().eq('worker_id', id);
         await sb.from('advances').delete().eq('worker_id', id);
         
@@ -1584,7 +1578,7 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
         return;
     }
 
-    document.getElementById('view-att-name').innerText = data.worker.name + ` (${data.worker.worker_uid})`;
+    document.getElementById('view-att-name').innerText = data.worker.name;
     document.getElementById('view-att-gross').innerText = formatCurrency(data.grossEarnings);
     document.getElementById('view-att-net').innerText = formatCurrency(data.netPay);
     
