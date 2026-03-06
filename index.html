@@ -75,7 +75,7 @@
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
-    <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[60]">
+    <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[110]">
         <div id="modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
             <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
                 <i id="modal-icon" class="fas fa-info-circle text-2xl"></i>
@@ -121,11 +121,11 @@
                 </button>
             </div>
             <div class="p-4 border-b dark:border-gray-700 flex gap-2 overflow-x-auto bg-white dark:bg-darkcard">
-                <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition" data-period="today">Today</button>
-                <button onclick="window.posModule.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="week">This Week</button>
-                <button onclick="window.posModule.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="month">This Month</button>
-                <button onclick="window.posModule.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="year">This Year</button>
-                <button onclick="window.posModule.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300" data-period="all">All Time</button>
+                <button onclick="window.posModule.filterSales('today')" class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap" data-period="today">Today</button>
+                <button onclick="window.posModule.filterSales('week')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300 whitespace-nowrap" data-period="week">This Week</button>
+                <button onclick="window.posModule.filterSales('month')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300 whitespace-nowrap" data-period="month">This Month</button>
+                <button onclick="window.posModule.filterSales('year')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300 whitespace-nowrap" data-period="year">This Year</button>
+                <button onclick="window.posModule.filterSales('all')" class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition hover:bg-gray-300 whitespace-nowrap" data-period="all">All Time</button>
             </div>
             <div class="flex-grow overflow-auto p-4">
                 <table class="w-full text-left border-collapse">
@@ -201,17 +201,17 @@
 
                 <div>
                     <label class="text-[10px] text-gray-500 font-bold uppercase tracking-widest ml-1 text-blue-500">Qty Received</label>
-                    <input id="qr-add-qty" name="add_qty" type="number" class="w-full p-3 rounded-xl border-2 border-blue-200 dark:bg-slate-700 dark:border-blue-900/50 dark:text-white text-center font-black text-xl outline-none focus:border-blue-500" required>
+                    <input id="qr-add-qty" name="add_qty" type="number" min="1" oninput="this.value = Math.abs(this.value) || 1" class="w-full p-3 rounded-xl border-2 border-blue-200 dark:bg-slate-700 dark:border-blue-900/50 dark:text-white text-center font-black text-xl outline-none focus:border-blue-500" required>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] text-gray-500 font-bold uppercase tracking-widest ml-1">Buying Price</label>
-                        <input id="qr-buy-price" name="buying_price" type="number" step="0.01" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:border-gray-600 dark:text-white text-center font-bold outline-none focus:border-orange-500" required>
+                        <input id="qr-buy-price" name="buying_price" type="number" step="0.01" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:border-gray-600 dark:text-white text-center font-bold outline-none focus:border-orange-500" required>
                     </div>
                     <div>
                         <label class="text-[10px] text-gray-500 font-bold uppercase tracking-widest ml-1">Selling Price</label>
-                        <input id="qr-sell-price" name="selling_price" type="number" step="0.01" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:border-gray-600 dark:text-white text-center font-bold text-green-600 outline-none focus:border-green-500" required>
+                        <input id="qr-sell-price" name="selling_price" type="number" step="0.01" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 rounded-lg border dark:bg-slate-700 dark:border-gray-600 dark:text-white text-center font-bold text-green-600 outline-none focus:border-green-500" required>
                     </div>
                 </div>
 
@@ -238,7 +238,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Advance (LKR)</label>
-                    <input id="edit-repair-advance" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
+                    <input id="edit-repair-advance" type="number" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Due Date</label>
@@ -266,7 +266,7 @@
                 <label class="text-xs font-bold uppercase text-gray-500">Add Replacement Parts</label>
                 <div class="flex gap-2 mt-1">
                     <select id="rep-part-select" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm"></select>
-                    <input id="rep-part-qty" type="number" value="1" class="w-16 p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold">
+                    <input id="rep-part-qty" type="number" value="1" min="1" oninput="this.value = Math.abs(this.value) || 1" class="w-16 p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold">
                     <button type="button" onclick="window.posModule.addRepairPart()" class="bg-blue-600 hover:bg-blue-700 transition text-white px-3 rounded-lg">
                         <i class="fas fa-plus"></i>
                     </button>
@@ -281,7 +281,7 @@
             
             <div class="mb-4">
                 <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
-                <input id="rep-labor" type="number" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 font-bold text-lg" oninput="window.posModule.recalcRepairTotal()" placeholder="0.00"> 
+                <input id="rep-labor" type="number" min="0" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 font-bold text-lg" oninput="this.value = Math.abs(this.value); window.posModule.recalcRepairTotal()" placeholder="0.00"> 
             </div>
             
             <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mb-4 border dark:border-gray-600 shadow-inner">
@@ -334,7 +334,7 @@
                 <div class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-600 mt-2">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Daily Salary (LKR)</label>
-                        <input id="ew-salary" name="salary" type="number" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-500 font-bold text-green-600" required>
+                        <input id="ew-salary" name="salary" type="number" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-500 font-bold text-green-600" required>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Portal PIN</label>
@@ -610,7 +610,7 @@
                             <div>
                                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Quantity</label>
                                 <div class="flex gap-2 mt-1">
-                                    <input id="pos-qty" type="number" value="1" min="1" class="w-full p-3 border border-gray-300 rounded-xl dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold text-lg shadow-sm outline-none focus:ring-2 focus:ring-green-500">
+                                    <input id="pos-qty" type="number" value="1" min="1" oninput="this.value = Math.abs(this.value) || 1" class="w-full p-3 border border-gray-300 rounded-xl dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold text-lg shadow-sm outline-none focus:ring-2 focus:ring-green-500">
                                     <button onclick="window.posModule.addToCart()" class="bg-green-600 text-white px-4 rounded-xl hover:bg-green-700 transition shadow-md hover:scale-105 active:scale-95 text-lg">
                                         <i class="fas fa-plus"></i>
                                     </button>
@@ -656,7 +656,7 @@
                         <div class="relative">
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Labor / Service Cost (LKR)</label>
                             <div class="absolute top-[28px] left-4 text-gray-400 font-bold">Rs.</div>
-                            <input name="service_cost" id="pos-service-cost" type="number" placeholder="0.00" oninput="window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full mt-1 pl-12 pr-4 py-4 rounded-xl border border-gray-200 bg-white dark:bg-slate-700 dark:border-gray-600 dark:text-white font-black text-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition shadow-sm text-right">
+                            <input name="service_cost" id="pos-service-cost" type="number" min="0" placeholder="0.00" oninput="this.value = Math.abs(this.value); window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full mt-1 pl-12 pr-4 py-4 rounded-xl border border-gray-200 bg-white dark:bg-slate-700 dark:border-gray-600 dark:text-white font-black text-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition shadow-sm text-right">
                         </div>
                         
                         <div class="bg-gray-800 dark:bg-black p-5 rounded-2xl mt-6 border-4 border-gray-700 dark:border-gray-800 shadow-2xl relative overflow-hidden">
@@ -700,19 +700,19 @@
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase">Initial Stock</label>
-                                <input name="stock" type="number" placeholder="Qty" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-center font-bold" required>
+                                <input name="stock" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="Qty" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-center font-bold" required>
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase text-red-400">Reorder Alert Lvl</label>
-                                <input name="reorder_level" type="number" placeholder="Lvl" class="w-full p-3 rounded-lg border border-red-200 dark:bg-slate-700 dark:text-white dark:border-red-900 focus:border-red-500 outline-none text-center font-bold text-red-500" required>
+                                <input name="reorder_level" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="Lvl" class="w-full p-3 rounded-lg border border-red-200 dark:bg-slate-700 dark:text-white dark:border-red-900 focus:border-red-500 outline-none text-center font-bold text-red-500" required>
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase">Buy Price</label>
-                                <input name="buying_price" type="number" step="0.01" placeholder="LKR" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-right font-bold text-gray-600" required>
+                                <input name="buying_price" type="number" step="0.01" min="0" oninput="this.value = Math.abs(this.value)" placeholder="LKR" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-right font-bold text-gray-600" required>
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase">Sell Price</label>
-                                <input name="unit_price" type="number" step="0.01" placeholder="LKR" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-right font-bold text-green-600" required>
+                                <input name="unit_price" type="number" step="0.01" min="0" oninput="this.value = Math.abs(this.value)" placeholder="LKR" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-orange-500 outline-none text-right font-bold text-green-600" required>
                             </div>
                         </div>
                         <div class="mt-4 flex justify-end">
@@ -774,7 +774,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-500 font-bold ml-1 uppercase">Customer Name</label>
-                                <input name="customer_name" placeholder="John Doe" class="w-full p-3 rounded-lg border border-gray-200 dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-blue-500 outline-none font-bold" required>
+                                <input name="customer_name" placeholder="Nimal Silva" class="w-full p-3 rounded-lg border border-gray-200 dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-blue-500 outline-none font-bold" required>
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-500 font-bold ml-1 uppercase">Phone Number</label>
@@ -782,7 +782,7 @@
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-500 font-bold ml-1 uppercase text-green-600">Advance Paid (LKR)</label>
-                                <input name="advance" type="number" placeholder="0.00" class="w-full p-3 rounded-lg border border-gray-200 dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-blue-500 outline-none font-bold text-right text-green-600" required>
+                                <input name="advance" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="0.00" class="w-full p-3 rounded-lg border border-gray-200 dark:bg-slate-700 dark:text-white dark:border-gray-600 focus:border-blue-500 outline-none font-bold text-right text-green-600" required>
                             </div>
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-500 font-bold ml-1 uppercase text-red-500">Promised Date</label>
@@ -879,7 +879,7 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Full Name</label>
-                                    <input name="name" placeholder="John Doe" class="w-full mt-1 p-2.5 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white font-bold outline-none focus:border-purple-500" required>
+                                    <input name="name" placeholder="Kamal Perera" class="w-full mt-1 p-2.5 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white font-bold outline-none focus:border-purple-500" required>
                                 </div>
                                 <div>
                                     <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Phone</label>
@@ -907,7 +907,7 @@
                                 <div class="col-span-2 relative">
                                     <label class="text-[10px] uppercase font-black text-green-600 ml-1">Daily Salary Base</label>
                                     <div class="absolute bottom-[10px] left-3 text-gray-400 font-bold text-sm">Rs.</div>
-                                    <input name="daily_salary" type="number" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-2.5 rounded-lg border border-green-200 bg-green-50 dark:bg-slate-700 dark:border-green-900/50 dark:text-white font-black text-green-700 outline-none focus:ring-2 focus:ring-green-400 shadow-inner" required>
+                                    <input name="daily_salary" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-2.5 rounded-lg border border-green-200 bg-green-50 dark:bg-slate-700 dark:border-green-900/50 dark:text-white font-black text-green-700 outline-none focus:ring-2 focus:ring-green-400 shadow-inner" required>
                                 </div>
                                 <div class="col-span-1 flex items-end">
                                     <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-lg transition shadow-md shadow-purple-500/30">Save Info</button>
@@ -989,7 +989,7 @@
                                     <div class="relative">
                                         <label class="text-[10px] uppercase font-black text-red-500 ml-1">Advance Amount</label>
                                         <div class="absolute bottom-[13px] left-3 text-red-400 font-bold text-sm">Rs.</div>
-                                        <input name="amount" type="number" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-3 rounded-xl border border-red-200 bg-red-50 dark:bg-slate-700 dark:border-red-900/50 dark:text-white font-black text-red-600 outline-none focus:ring-2 focus:ring-red-400 shadow-inner" required>
+                                        <input name="amount" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-3 rounded-xl border border-red-200 bg-red-50 dark:bg-slate-700 dark:border-red-900/50 dark:text-white font-black text-red-600 outline-none focus:ring-2 focus:ring-red-400 shadow-inner" required>
                                     </div>
                                 </div>
                                 <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg shadow-red-500/30 flex items-center justify-center gap-2">
