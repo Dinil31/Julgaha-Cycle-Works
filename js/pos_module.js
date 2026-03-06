@@ -109,8 +109,8 @@ export async function confirmQuickRestock(e) {
     const newBuy = parseFloat(form.get('buying_price'));
     const newSell = parseFloat(form.get('selling_price'));
 
-    if (!addQty || addQty <= 0) {
-        return alert("Please enter a valid quantity.");
+    if (!addQty || addQty <= 0 || isNaN(addQty)) {
+        return alert("Please enter a valid positive quantity.");
     }
 
     const sb = getSupabase();
@@ -157,20 +157,12 @@ export async function generateRestockPDF() {
         
         tbody.innerHTML += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
-                <td class="p-3 font-mono text-xs text-gray-500">
-                    ${p.code}
-                </td>
-                <td class="p-3 font-bold dark:text-white">
-                    ${p.name}
-                </td>
-                <td class="p-3 text-center text-red-500 font-bold">
-                    ${p.stock}
-                </td>
-                <td class="p-3 text-center text-gray-500">
-                    ${p.reorder_level}
-                </td>
+                <td class="p-3 font-mono text-xs text-gray-500">${p.code}</td>
+                <td class="p-3 font-bold dark:text-white">${p.name}</td>
+                <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
+                <td class="p-3 text-center text-gray-500">${p.reorder_level}</td>
                 <td class="p-3 text-center">
-                    <input type="number" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
+                    <input type="number" min="1" oninput="this.value = Math.abs(this.value)" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
                 </td>
                 <td class="p-3 text-center">
                     <button onclick="document.getElementById('restock-row-${index}').remove()" class="text-red-400 hover:text-red-600 transition bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
@@ -322,6 +314,10 @@ export function addToCart() {
     const p = productsCache.find(x => String(x.id) === String(id)); 
     const qty = parseInt(qtyInput.value);
     
+    if (qty <= 0 || isNaN(qty)) {
+        return alert("Quantity must be greater than 0.");
+    }
+
     if (qty > p.stock) {
         return alert(`Low Stock! Only ${p.stock} units available.`);
     }
@@ -578,6 +574,7 @@ export function filterSales(period) {
 }
 
 export async function deleteSale(id) { 
+    // Z-Index fix ensures this shows above the sales report modal
     if (await showCustomConfirm("Delete Record?", "This will remove the sale and restore item stock.", "danger")) { 
         const sb = getSupabase();
         
@@ -896,52 +893,6 @@ export async function addRepair(e) {
     }
 }
 
-export function printRepairTicket(repair) {
-    const w = window.open('', '', 'width=400,height=600');
-    const websiteUrl = window.location.origin + "/track.html";
-    
-    w.document.write(`
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; } 
-                .box { border: 2px dashed black; padding: 15px; margin: 15px 0; background: #f9f9f9; } 
-                .id { font-size: 22px; font-weight: bold; color: #333; } 
-                p { margin: 5px 0; font-size: 14px; }
-            </style>
-        </head>
-        <body>
-            <h2>CycleSense Repair</h2>
-            <p>Date: ${new Date().toLocaleDateString()}</p>
-            
-            <div class="box">
-                <p style="margin-bottom:5px; font-size:12px;">TICKET ID:</p>
-                <div class="id">${repair.repair_id}</div>
-            </div>
-            
-            <p style="text-align:left;"><b>Customer:</b> ${repair.customer_name}</p>
-            <p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
-            <p style="text-align:left;"><b>Est Finish:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
-            <p style="text-align:left;"><b>Advance Paid:</b> ${formatCurrency(repair.advance)}</p>
-            
-            <hr style="margin: 20px 0;">
-            
-            <h3 style="margin-bottom:5px;">Track Live Status</h3>
-            <p>Visit link:</p>
-            <p style="font-weight:bold;">${websiteUrl}</p>
-            <p>Enter your Ticket ID: <b>${repair.repair_id}</b></p>
-            
-            <hr style="margin: 20px 0;">
-            <p style="font-size:10px;">Please bring this ticket to collect your bicycle.</p>
-            
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    
-    w.document.close();
-}
-
 export async function openCompleteRepairModal(id) {
     try {
         currentRepairId = id; 
@@ -983,8 +934,8 @@ export function addRepairPart() {
     const id = select.value; 
     const qtyInput = document.getElementById('rep-part-qty').value;
     
-    if (!id) {
-        return; 
+    if (!id || parseInt(qtyInput) <= 0 || isNaN(qtyInput)) {
+        return alert("Please enter a valid positive quantity."); 
     }
     
     const option = select.options[select.selectedIndex];
@@ -1083,7 +1034,7 @@ export async function finalizeRepair() {
 }
 
 export async function deleteRepair(id) { 
-    if (await showCustomConfirm("Delete Ticket?", "Are you sure?", "danger")) { 
+    if (await showCustomConfirm("Delete Ticket?", "Are you sure you want to permanently delete this repair ticket?", "danger")) { 
         const sb = getSupabase();
         await sb.from('repairs').delete().eq('id', id); 
         loadRepairs(); 
@@ -1671,11 +1622,12 @@ export async function generatePayroll(e) {
                 <span>Employee Name:</span> 
                 <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
             </div>
+            
             <div class="row">
                 <span>Daily Rate Base:</span> 
                 <span>${formatCurrency(data.worker.daily_salary)}</span>
             </div>
-
+            
             <div class="section-title">Earnings & Deductions</div>
             <div class="row">
                 <span>Full Days (${data.full})</span> 
@@ -1705,16 +1657,17 @@ export async function generatePayroll(e) {
                 <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
             </div>
             ${advancesHtml}
+            
             <div class="row">
                 <span>EPF Deduction (8%)</span> 
                 <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
             </div>
-
+            
             <div class="total-row">
                 <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
                 <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
             </div>
-
+            
             <div class="section-title">Employer Contributions (Info Only)</div>
             <div class="row">
                 <span>EPF Contribution (12%)</span> 
@@ -1724,7 +1677,7 @@ export async function generatePayroll(e) {
                 <span>ETF Contribution (3%)</span> 
                 <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
             </div>
-
+            
             <div style="margin-top: 50px; display: flex; justify-content: space-between;">
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
@@ -1777,6 +1730,7 @@ async function renderCalendar(month, year) {
     document.getElementById('cal-month-year').innerText = `${monthNames[month]} ${year}`;
     
     const daysContainer = document.getElementById('cal-days');
+    
     if (!daysContainer) {
         return;
     }
@@ -1795,6 +1749,16 @@ async function renderCalendar(month, year) {
         .select('*')
         .gte('event_date', sDate)
         .lte('event_date', eDate);
+        
+    const slHolidays = {
+        "01-01": "New Year's Day",
+        "01-14": "Tamil Thai Pongal",
+        "02-04": "Independence Day",
+        "04-13": "Sinhala/Tamil New Year Eve",
+        "04-14": "Sinhala/Tamil New Year",
+        "05-01": "May Day",
+        "12-25": "Christmas Day"
+    };
     
     for (let i = 0; i < firstDay; i++) { 
         daysContainer.innerHTML += `
@@ -1804,15 +1768,24 @@ async function renderCalendar(month, year) {
     
     for (let day = 1; day <= daysInMonth; day++) {
         const fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const monthDayStr = `${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         
         let eventHtml = '';
+        
+        if (slHolidays[monthDayStr]) {
+            eventHtml += `
+                <div class="bg-red-100 text-red-800 text-[10px] p-1 rounded mt-1 truncate font-bold shadow-sm" title="${slHolidays[monthDayStr]}">
+                    🎌 ${slHolidays[monthDayStr]}
+                </div>
+            `;
+        }
         
         if (events) {
             const dayEvents = events.filter(e => e.event_date === fullDate);
             dayEvents.forEach(e => { 
                 eventHtml += `
-                    <div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate" title="${e.title}">
-                        ${e.title}
+                    <div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate shadow-sm" title="${e.title}">
+                        📍 ${e.title}
                     </div>
                 `; 
             });
