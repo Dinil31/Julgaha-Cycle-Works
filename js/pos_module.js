@@ -33,16 +33,42 @@ export async function loadInventory() {
             <tr class="border-b dark:border-gray-700">
                 <td class="p-4 font-mono text-sm text-gray-500">${p.code}</td>
                 <td class="p-4 font-bold dark:text-white">${p.name}</td>
-                <td class="p-4 ${isLow ? 'text-red-500 animate-pulse' : 'text-green-500'} font-bold">${p.stock}</td>
-                <td class="p-4 text-gray-500">${p.reorder_level}</td>
-                <td class="p-4 dark:text-gray-300">${formatCurrency(p.unit_price)}</td>
                 <td class="p-4">
-                    <span class="px-2 py-1 text-xs font-bold rounded-full ${isLow ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                    <div class="flex items-center gap-3">
+                        <span class="${isLow ? 'text-red-500 animate-pulse font-black text-lg' : 'text-green-500 font-bold'}">${p.stock}</span>
+                        <button onclick="window.posModule.promptAddStock('${p.id}', '${p.name}', ${p.stock})" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </td>
+                <td class="p-4 text-gray-500 font-bold">${p.reorder_level}</td>
+                <td class="p-4 dark:text-gray-300 font-bold text-green-600">${formatCurrency(p.unit_price)}</td>
+                <td class="p-4">
+                    <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${isLow ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                         ${isLow ? 'Low Stock' : 'In Stock'}
                     </span>
                 </td>
             </tr>`;
     });
+}
+
+// QUICK RESTOCK FUNCTION
+export async function promptAddStock(id, name, currentStock) {
+    const addQty = prompt(`Enter new quantity received for "${name}"\n(Current Stock: ${currentStock}):`);
+    
+    if (!addQty || isNaN(addQty) || parseInt(addQty) <= 0) return;
+    
+    const newStock = currentStock + parseInt(addQty);
+    const sb = getSupabase();
+    
+    const { error } = await sb.from('products').update({ stock: newStock }).eq('id', id);
+    
+    if (error) {
+        alert("Error updating stock: " + error.message);
+    } else {
+        loadInventory();
+        await showCustomConfirm("Stock Updated", `${name} stock is now ${newStock}.`, "success-green");
+    }
 }
 
 export async function generateRestockPDF() {
@@ -59,7 +85,7 @@ export async function generateRestockPDF() {
     tbody.innerHTML = '';
     
     lowStockItems.forEach((p, index) => {
-        // Calculate a suggested order quantity (e.g. 3x the reorder level to build safe stock)
+        // Suggested Order: Bring stock up to 3x the danger level
         const suggestedOrder = (p.reorder_level * 3) - p.stock;
         const defaultQty = suggestedOrder > 0 ? suggestedOrder : 10;
         
@@ -70,10 +96,10 @@ export async function generateRestockPDF() {
                 <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
                 <td class="p-3 text-center text-gray-500">${p.reorder_level}</td>
                 <td class="p-3 text-center">
-                    <input type="number" class="w-16 border rounded text-center dark:bg-slate-700 dark:text-white font-bold" value="${defaultQty}">
+                    <input type="number" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
                 </td>
                 <td class="p-3 text-center">
-                    <button onclick="document.getElementById('restock-row-${index}').remove()" class="text-red-400 hover:text-red-600 transition">
+                    <button onclick="document.getElementById('restock-row-${index}').remove()" class="text-red-400 hover:text-red-600 transition bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -89,14 +115,15 @@ export function printRestockFinal() {
     
     rows.forEach(row => {
         const cols = row.querySelectorAll('td');
-        const orderQty = row.querySelector('input').value;
+        const orderQty = row.querySelector('input').value; // Grabs exact number typed by user
+        
         printRows += `
             <tr>
-                <td style="padding:10px; border:1px solid #ddd;">${cols[0].innerText}</td>
-                <td style="padding:10px; border:1px solid #ddd;">${cols[1].innerText}</td>
-                <td style="text-align:center; padding:10px; border:1px solid #ddd;">${cols[2].innerText}</td>
-                <td style="text-align:center; font-weight:bold; padding:10px; border:1px solid #ddd;">${orderQty}</td>
-                <td style="border:1px solid #ddd; width:50px;"></td>
+                <td style="padding:10px; border:1px solid #ddd; font-family: monospace;">${cols[0].innerText}</td>
+                <td style="padding:10px; border:1px solid #ddd; font-weight: bold;">${cols[1].innerText}</td>
+                <td style="text-align:center; padding:10px; border:1px solid #ddd; color: red;">${cols[2].innerText}</td>
+                <td style="text-align:center; font-weight:bold; padding:10px; border:1px solid #ddd; font-size: 16px;">${orderQty}</td>
+                <td style="border:1px solid #ddd; width:60px;"></td>
             </tr>`;
     });
 
@@ -106,21 +133,21 @@ export function printRestockFinal() {
         <head>
             <title>Restock Order List</title>
             <style>
-                body { font-family: sans-serif; padding: 20px; } 
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; } 
                 table { width: 100%; border-collapse: collapse; margin-top: 20px; } 
-                th { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; text-align: left; }
+                th { background: #f4f4f4; padding: 12px; border: 1px solid #ddd; text-align: left; text-transform: uppercase; font-size: 12px; color: #555; }
             </style>
         </head>
         <body>
-            <h2>📦 Inventory Restock Order</h2>
-            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+            <h2 style="margin-bottom: 5px;">📦 CycleSense Inventory Order</h2>
+            <p style="margin-top: 0; color: #666;">Generated on: ${new Date().toLocaleString()}</p>
             <table>
                 <tr>
-                    <th>Code</th>
-                    <th>Product</th>
+                    <th>Item Code</th>
+                    <th>Product Description</th>
                     <th style="text-align:center;">Current Stock</th>
                     <th style="text-align:center;">Order Qty</th>
-                    <th>Check</th>
+                    <th>Supplier Check</th>
                 </tr>
                 ${printRows}
             </table>
@@ -212,11 +239,11 @@ export function renderCart() {
         total += item.price * item.qty; 
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
-                <td class="p-2">${item.name}</td>
-                <td align="center" class="p-2">${item.qty}</td>
-                <td align="right" class="p-2">${formatCurrency(item.price * item.qty)}</td>
+                <td class="p-2 font-bold dark:text-white">${item.name}</td>
+                <td align="center" class="p-2 font-black">${item.qty}</td>
+                <td align="right" class="p-2 text-green-600 font-bold">${formatCurrency(item.price * item.qty)}</td>
                 <td align="center" class="p-2">
-                    <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 transition"><i class="fas fa-trash"></i></button>
+                    <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`; 
     });
@@ -254,6 +281,9 @@ export async function processSale(e) {
 
     if (error) return alert("Error saving sale: " + error.message);
 
+    // FIXED: Create a hard copy of the cart BEFORE clearing it to pass into the bill generator
+    const itemsForBill = [...cart];
+
     if (cart.length > 0) {
         const itemsToInsert = cart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
         await sb.from('sale_items').insert(itemsToInsert);
@@ -268,7 +298,9 @@ export async function processSale(e) {
     e.target.reset(); 
     renderCart(); 
     initPOS(); 
-    generateBill(sale, cart);
+    
+    // Generate Bill using the saved copy
+    generateBill(sale, itemsForBill);
     await showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
 }
 
@@ -279,25 +311,24 @@ function generateBill(sale, items) {
     if (items && items.length > 0) {
         itemsHtml = items.map(i => `
             <tr>
-                <td>${i.name}</td>
-                <td align="center">${i.qty}</td>
-                <td align="right">${(i.price * i.qty).toFixed(2)}</td>
+                <td style="padding: 5px 0;">${i.name}</td>
+                <td align="center" style="padding: 5px 0;">${i.qty}</td>
+                <td align="right" style="padding: 5px 0;">${(i.price * i.qty).toFixed(2)}</td>
             </tr>
         `).join('');
     } else {
-        itemsHtml = '<tr><td colspan="3" align="center" style="font-style:italic;">Service Only</td></tr>';
+        itemsHtml = '<tr><td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">Service Only</td></tr>';
     }
 
     w.document.write(`
         <html>
         <head>
             <style>
-                body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; }
+                body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
                 h2, p { margin: 0; padding: 2px 0; }
-                hr { border-top: 1px dashed #000; border-bottom: none; }
+                hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
                 table { width: 100%; border-collapse: collapse; margin: 10px 0; }
                 th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
-                td { padding: 5px 0; }
             </style>
         </head>
         <body>
@@ -319,8 +350,10 @@ function generateBill(sale, items) {
                 ${itemsHtml}
             </table>
             <hr>
-            <p align="right">Labor / Service: ${sale.service_cost.toFixed(2)}</p>
-            <h3 align="right">TOTAL: ${sale.total_amount.toFixed(2)} LKR</h3>
+            <div style="text-align: right;">
+                ${sale.service_cost > 0 ? `<p>Labor / Service: ${sale.service_cost.toFixed(2)}</p>` : ''}
+                <h3 style="margin-top: 10px;">TOTAL: ${sale.total_amount.toFixed(2)} LKR</h3>
+            </div>
             <hr>
             <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
             <script>window.print();</script>
@@ -330,6 +363,7 @@ function generateBill(sale, items) {
     w.document.close();
 }
 
+// Sales Report Modal
 let allSales = [];
 
 export async function openReportModal() { 
@@ -372,10 +406,10 @@ export function filterSales(period) {
             <tr class="border-b dark:border-gray-700">
                 <td class="p-3">${new Date(s.date).toLocaleDateString()}</td>
                 <td class="p-3 font-mono text-blue-500">${s.receipt_no || s.id}</td>
-                <td class="p-3">${s.customer_name}</td>
-                <td class="p-3 text-right font-bold text-green-600">${formatCurrency(s.total_amount)}</td>
+                <td class="p-3 font-bold">${s.customer_name}</td>
+                <td class="p-3 text-right font-black text-green-600">${formatCurrency(s.total_amount)}</td>
                 <td class="p-3 text-center">
-                    <button onclick="window.posModule.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700 transition">
+                    <button onclick="window.posModule.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -389,7 +423,6 @@ export async function deleteSale(id) {
     if (await showCustomConfirm("Delete Record?", "This will remove the sale and restore item stock.", "danger")) { 
         const sb = getSupabase();
         
-        // Restore stock first
         const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', id);
         if (items) {
             for (let item of items) {
@@ -418,7 +451,6 @@ export async function loadRepairs() {
     const { data } = await sb.from('repairs').select('*').order('id', { ascending: false }); 
     repairsData = data || []; 
     
-    // Prevent past dates in repair calendar
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.querySelector('input[name="predicted_date"]');
     if(dateInput) dateInput.setAttribute('min', today);
@@ -440,7 +472,7 @@ export function filterRepairs() {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500">No tickets found for this filter.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500 font-bold uppercase tracking-widest">No tickets found.</td></tr>`;
         return;
     }
 
@@ -448,18 +480,19 @@ export function filterRepairs() {
         const isPending = r.status !== 'Completed';
         
         const rowClass = isPending 
-            ? 'bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 animate-pulse' 
+            ? 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 animate-pulse' 
             : 'bg-white dark:bg-darkcard border-l-4 border-green-500';
             
+        // FIXED: Ensured window.posModule is called cleanly
         const statusHtml = isPending
-            ? `<button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-sm transition">Mark Complete</button>`
-            : `<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200">Completed</span>`;
+            ? `<button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition">Mark Complete</button>`
+            : `<span class="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest border border-green-200">Completed</span>`;
 
         const actionsHtml = `
             <div class="flex gap-2 justify-center">
-                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 transition" title="Edit"><i class="fas fa-edit"></i></button>
-                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 transition" title="Print Ticket"><i class="fas fa-print"></i></button>
-                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 transition" title="Delete"><i class="fas fa-trash"></i></button>
+                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit"><i class="fas fa-edit"></i></button>
+                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket"><i class="fas fa-print"></i></button>
+                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete"><i class="fas fa-trash"></i></button>
             </div>
         `;
 
@@ -467,9 +500,9 @@ export function filterRepairs() {
             <tr class="${rowClass} border-b dark:border-gray-700 transition">
                 <td class="p-4 font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">${r.repair_id}</td>
                 <td class="p-4 font-bold text-gray-800 dark:text-gray-200">${r.customer_name}</td>
-                <td class="p-4 text-sm text-gray-600 dark:text-gray-400">${r.phone}</td>
-                <td class="p-4 font-bold text-gray-700 dark:text-gray-300">${formatCurrency(r.advance)}</td>
-                <td class="p-4 text-sm text-gray-600 dark:text-gray-400">${new Date(r.predicted_date).toLocaleDateString()}</td>
+                <td class="p-4 text-sm text-gray-600 dark:text-gray-400 font-bold">${r.phone}</td>
+                <td class="p-4 font-bold text-green-600">${formatCurrency(r.advance)}</td>
+                <td class="p-4 text-sm text-gray-600 dark:text-gray-400 font-bold">${new Date(r.predicted_date).toLocaleDateString()}</td>
                 <td class="p-4 text-center">${statusHtml}</td>
                 <td class="p-4 text-center">${actionsHtml}</td>
             </tr>`;
@@ -577,26 +610,34 @@ export function printRepairTicket(repair) {
     w.document.close();
 }
 
+// FIXED: Robust error handling for the Complete Modal
 export async function openCompleteRepairModal(id) {
-    currentRepairId = id; 
-    repairCart = []; 
-    const sb = getSupabase();
-    
-    const { data: r } = await sb.from('repairs').select('*').eq('id', id).single();
-    
-    document.getElementById('rep-modal-customer').innerText = r.customer_name; 
-    document.getElementById('rep-modal-adv').innerText = formatCurrency(r.advance);
-    document.getElementById('repair-finalize-modal').classList.remove('hidden'); 
-    
-    const select = document.getElementById('rep-part-select'); 
-    select.innerHTML = '<option value="">Select Replacement Part...</option>';
-    
-    const prods = await fetchAll('products'); 
-    prods.forEach(p => {
-        select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`;
-    });
-    
-    renderRepairCart(r.advance);
+    try {
+        currentRepairId = id; 
+        repairCart = []; 
+        document.getElementById('rep-labor').value = ''; // Reset Labor input
+        
+        const sb = getSupabase();
+        
+        const { data: r, error } = await sb.from('repairs').select('*').eq('id', id).single();
+        if (error) throw error;
+        
+        document.getElementById('rep-modal-customer').innerText = r.customer_name; 
+        document.getElementById('rep-modal-adv').innerText = formatCurrency(r.advance);
+        document.getElementById('repair-finalize-modal').classList.remove('hidden'); 
+        
+        const select = document.getElementById('rep-part-select'); 
+        select.innerHTML = '<option value="">Select Replacement Part...</option>';
+        
+        const prods = await fetchAll('products'); 
+        prods.forEach(p => {
+            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`;
+        });
+        
+        renderRepairCart(r.advance);
+    } catch (err) {
+        alert("Error loading ticket data: " + err.message);
+    }
 }
 
 export function addRepairPart() { 
@@ -628,9 +669,9 @@ function renderRepairCart(advanceAmount) {
         totalParts += item.price * item.qty; 
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-600">
-                <td class="p-2">${item.name}</td>
+                <td class="p-2 font-bold">${item.name}</td>
                 <td class="p-2 text-center">${item.qty}</td>
-                <td class="p-2 text-right">${formatCurrency(item.price * item.qty)}</td>
+                <td class="p-2 text-right text-green-500 font-bold">${formatCurrency(item.price * item.qty)}</td>
             </tr>`; 
     }); 
     
@@ -661,6 +702,9 @@ export async function finalizeRepair() {
         date: new Date().toISOString() 
     }).select().single();
     
+    // FIXED: Save a hard copy of the cart for printing before we wipe it
+    const partsForBill = [...repairCart];
+
     if (repairCart.length > 0) {
         const itemsToInsert = repairCart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
         await sb.from('sale_items').insert(itemsToInsert);
@@ -680,7 +724,7 @@ export async function finalizeRepair() {
     }).eq('id', currentRepairId); 
     
     document.getElementById('repair-finalize-modal').classList.add('hidden'); 
-    generateBill(sale, repairCart);
+    generateBill(sale, partsForBill);
     await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     loadRepairs(); 
 }
@@ -741,12 +785,10 @@ export async function loadHR() {
     if (advSelect) advSelect.innerHTML = optionsHtml;
     if (paySelect) paySelect.innerHTML = optionsHtml;
     
-    // Default dates to today
     const todayStr = new Date().toISOString().split('T')[0];
     if (document.getElementById('hr-att-date')) document.getElementById('hr-att-date').value = todayStr;
     if (document.getElementById('hr-adv-date')) document.getElementById('hr-adv-date').value = todayStr;
 
-    // Load the Live Dashboard Math
     loadHRDashboardSummary();
 }
 
@@ -758,7 +800,6 @@ async function loadHRDashboardSummary() {
     const startOfMonth = `${year}-${month}-01`;
     const todayStr = today.toISOString().split('T')[0];
 
-    // 1. Check for Birthdays
     let birthdayMessages = "";
     workersData.forEach(w => {
         if (w.dob) {
@@ -779,8 +820,6 @@ async function loadHRDashboardSummary() {
         }
     }
 
-    // 2. Salary Date Reminder
-    // If today is between the 18th and 25th of the month
     const salAlertEl = document.getElementById('salary-alert');
     if (salAlertEl) {
         if (today.getDate() >= 18 && today.getDate() <= 25) {
@@ -791,7 +830,6 @@ async function loadHRDashboardSummary() {
         }
     }
 
-    // 3. Calculate Live Accrued Payroll Math
     const { data: attData } = await sb.from('attendance').select('*').gte('date', startOfMonth).lte('date', todayStr);
     const { data: advData } = await sb.from('advances').select('*').gte('date', startOfMonth).lte('date', todayStr);
 
@@ -807,26 +845,23 @@ async function loadHRDashboardSummary() {
         let myGross = 0;
         
         myAtt.forEach(a => {
-            // Base day logic
             if (a.status === 'Full Day' || a.status === 'Short Leave') {
                 myGross += w.daily_salary;
             } else if (a.status === 'Half Day') {
                 myGross += (w.daily_salary / 2);
             }
 
-            // Time Penalty logic for Full Days
             if (a.status === 'Full Day' && a.in_time && a.out_time) {
                 const parseTime = t => { const [hr, mn] = t.split(':').map(Number); return hr * 60 + mn; };
                 const inMins = parseTime(a.in_time); 
                 const outMins = parseTime(a.out_time);
                 
                 let missedMins = 0;
-                // Standard Shift: 10:00 (600m) to 17:00 (1020m)
                 if (inMins > 600) missedMins += (inMins - 600);
                 if (outMins < 1020) missedMins += (1020 - outMins);
                 
                 if (missedMins > 0) {
-                    const ratePerMin = w.daily_salary / 420; // 420 mins = 7 hours
+                    const ratePerMin = w.daily_salary / 420; 
                     myGross -= (missedMins * ratePerMin);
                 }
             }
@@ -851,7 +886,6 @@ export async function addWorker(e) {
     const sb = getSupabase();
     const form = new FormData(e.target);
     
-    // W2026001 Auto Generator
     const year = new Date().getFullYear();
     const { data: lastWorker } = await sb.from('workers')
         .select('worker_uid')
@@ -939,7 +973,6 @@ export async function markAttendance(e) {
     const wId = form.get('worker_id'); 
     const d = form.get('date');
     
-    // Delete existing record for this specific day to prevent duplicate errors
     await sb.from('attendance').delete().match({ worker_id: wId, date: d });
     
     const { error } = await sb.from('attendance').insert({ 
@@ -988,7 +1021,6 @@ export async function calculateWorkerSalary(wId, monthStr) {
 
     const [year, month] = monthStr.split('-');
     
-    // Assuming standard month cycle (can be adapted to 26th-25th later if needed)
     const startDate = `${monthStr}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
@@ -1074,10 +1106,10 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
         }
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700 text-sm">
-                <td class="p-2">${a.date}</td>
-                <td class="p-2 font-bold">${a.status}</td>
+                <td class="p-2 font-bold">${a.date}</td>
+                <td class="p-2">${a.status}</td>
                 <td class="p-2">${a.in_time || '-'} to ${a.out_time || '-'}</td>
-                <td class="p-2 text-red-500">${penText}</td>
+                <td class="p-2 text-red-500 font-bold">${penText}</td>
             </tr>`;
     });
     
@@ -1210,12 +1242,10 @@ async function renderCalendar(month, year) {
     const { data: events } = await sb.from('calendar_events')
         .select('*').gte('event_date', sDate).lte('event_date', eDate);
     
-    // Empty boxes for previous month days
     for (let i = 0; i < firstDay; i++) { 
         daysContainer.innerHTML += `<div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>`; 
     }
     
-    // Actual days
     for (let day = 1; day <= daysInMonth; day++) {
         const fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         const dayEvents = (events || []).filter(e => e.event_date === fullDate);
