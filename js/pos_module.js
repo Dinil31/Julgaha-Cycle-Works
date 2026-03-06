@@ -14,83 +14,93 @@ const formatCurrency = (val) => {
 };
 
 async function fetchAll(table) {
-    const sb = getSupabase();
-    const { data, error } = await sb.from(table).select('*').order('id', { ascending: false });
-    
-    if (error) { 
-        console.error(`Error fetching from ${table}:`, error.message); 
-        return []; 
+    try {
+        const sb = getSupabase();
+        const { data, error } = await sb.from(table).select('*').order('id', { ascending: false });
+        
+        if (error) { 
+            console.error(`Error fetching from ${table}:`, error.message); 
+            return []; 
+        }
+        return data || [];
+    } catch (err) {
+        console.error("Database Connection Error:", err);
+        return [];
     }
-    
-    return data;
 }
 
 
 // ==========================================
 // 1. INVENTORY & RESTOCK SYSTEM
 // ==========================================
-let inventoryData = []; // Store globally for safe lookup
+let inventoryData = [];
 
 export async function loadInventory() {
-    inventoryData = await fetchAll('products');
-    const tbody = document.getElementById('inventory-table-body');
-    
-    if (!tbody) {
-        return; 
-    }
-    
-    tbody.innerHTML = '';
-    
-    inventoryData.forEach(p => {
-        const isLow = p.stock <= p.reorder_level;
+    try {
+        inventoryData = await fetchAll('products');
+        const tbody = document.getElementById('inventory-table-body');
         
-        let stockClass = 'text-green-500 font-bold';
-        let badgeClass = 'bg-green-100 text-green-800';
-        let badgeText = 'In Stock';
+        if (!tbody) return; 
         
-        if (isLow) {
-            stockClass = 'text-red-500 animate-pulse font-black text-lg';
-            badgeClass = 'bg-red-100 text-red-800';
-            badgeText = 'Low Stock';
-        }
+        let htmlContent = '';
         
-        tbody.innerHTML += `
-            <tr class="border-b dark:border-gray-700">
-                <td class="p-4 font-mono text-sm text-gray-500">
-                    ${p.code}
-                </td>
-                <td class="p-4 font-bold dark:text-white">
-                    ${p.name}
-                </td>
-                <td class="p-4">
-                    <div class="flex items-center gap-3">
-                        <span class="${stockClass}">
-                            ${p.stock}
+        inventoryData.forEach(p => {
+            const isLow = p.stock <= p.reorder_level;
+            
+            let stockClass = 'text-green-500 font-bold';
+            let badgeClass = 'bg-green-100 text-green-800';
+            let badgeText = 'In Stock';
+            
+            if (isLow) {
+                stockClass = 'text-red-500 animate-pulse font-black text-lg';
+                badgeClass = 'bg-red-100 text-red-800';
+                badgeText = 'Low Stock';
+            }
+            
+            htmlContent += `
+                <tr class="border-b dark:border-gray-700">
+                    <td class="p-4 font-mono text-sm text-gray-500">
+                        ${p.code}
+                    </td>
+                    <td class="p-4 font-bold dark:text-white">
+                        ${p.name}
+                    </td>
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <span class="${stockClass}">
+                                ${p.stock}
+                            </span>
+                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-4 text-gray-500 font-bold">
+                        ${p.reorder_level}
+                    </td>
+                    <td class="p-4 dark:text-gray-300">
+                        <div class="text-xs text-gray-400 font-bold">
+                            Buy: ${formatCurrency(p.buying_price)}
+                        </div>
+                        <div class="font-bold text-green-600">
+                            Sell: ${formatCurrency(p.unit_price)}
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${badgeClass}">
+                            ${badgeText}
                         </span>
-                        <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </td>
-                <td class="p-4 text-gray-500 font-bold">
-                    ${p.reorder_level}
-                </td>
-                <td class="p-4 dark:text-gray-300">
-                    <div class="text-xs text-gray-400 font-bold">
-                        Buy: ${formatCurrency(p.buying_price)}
-                    </div>
-                    <div class="font-bold text-green-600">
-                        Sell: ${formatCurrency(p.unit_price)}
-                    </div>
-                </td>
-                <td class="p-4">
-                    <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${badgeClass}">
-                        ${badgeText}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
+                    </td>
+                </tr>
+            `;
+        });
+        
+        // Render all at once to prevent screen flickering/blanking
+        tbody.innerHTML = htmlContent;
+        
+    } catch (error) {
+        console.error("Error rendering inventory:", error);
+    }
 }
 
 export function promptAddStock(id) {
@@ -156,13 +166,13 @@ export async function generateRestockPDF() {
     }
     
     const tbody = document.getElementById('restock-table-body'); 
-    tbody.innerHTML = '';
+    let htmlContent = '';
     
     lowStockItems.forEach((p, index) => {
         const suggestedOrder = (p.reorder_level * 3) - p.stock;
         const defaultQty = suggestedOrder > 0 ? suggestedOrder : 10;
         
-        tbody.innerHTML += `
+        htmlContent += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
                 <td class="p-3 font-mono text-xs text-gray-500">${p.code}</td>
                 <td class="p-3 font-bold dark:text-white">${p.name}</td>
@@ -180,6 +190,7 @@ export async function generateRestockPDF() {
         `;
     });
     
+    tbody.innerHTML = htmlContent;
     document.getElementById('restock-modal').classList.remove('hidden');
 }
 
@@ -213,49 +224,38 @@ export function printRestockFinal() {
     const printWindow = window.open('', '', 'width=800,height=600');
     
     if (printWindow) {
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>Restock Order List</title>
-                <style>
-                    body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                        padding: 20px; 
-                    } 
-                    table { 
-                        width: 100%; 
-                        border-collapse: collapse; 
-                        margin-top: 20px; 
-                    } 
-                    th { 
-                        background: #f4f4f4; 
-                        padding: 12px; 
-                        border: 1px solid #ddd; 
-                        text-align: left; 
-                        text-transform: uppercase; 
-                        font-size: 12px; 
-                        color: #555; 
-                    }
-                </style>
-            </head>
-            <body>
-                <h2 style="margin-bottom: 5px;">📦 CycleSense Inventory Order</h2>
-                <p style="margin-top: 0; color: #666;">Generated on: ${new Date().toLocaleString()}</p>
-                <table>
-                    <tr>
-                        <th>Item Code</th>
-                        <th>Product Description</th>
-                        <th style="text-align:center;">Current Stock</th>
-                        <th style="text-align:center;">Order Qty</th>
-                        <th>Supplier Check</th>
-                    </tr>
-                    ${printRows}
-                </table>
-                <script>window.print();</script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+        // Delay slighty to bypass popup blocker limitations
+        setTimeout(() => {
+            printWindow.document.open();
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Restock Order List</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; } 
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; } 
+                        th { background: #f4f4f4; padding: 12px; border: 1px solid #ddd; text-align: left; text-transform: uppercase; font-size: 12px; color: #555; }
+                    </style>
+                </head>
+                <body>
+                    <h2 style="margin-bottom: 5px;">📦 CycleSense Inventory Order</h2>
+                    <p style="margin-top: 0; color: #666;">Generated on: ${new Date().toLocaleString()}</p>
+                    <table>
+                        <tr>
+                            <th>Item Code</th>
+                            <th>Product Description</th>
+                            <th style="text-align:center;">Current Stock</th>
+                            <th style="text-align:center;">Order Qty</th>
+                            <th>Supplier Check</th>
+                        </tr>
+                        ${printRows}
+                    </table>
+                    <script>window.print();</script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }, 100);
     }
 }
 
@@ -288,21 +288,24 @@ export async function addProduct(e) {
 // 2. POS & SALES SYSTEM
 // ==========================================
 let cart = []; 
-let productsCache = [];
 
 export async function initPOS() {
-    productsCache = await fetchAll('products'); 
-    const select = document.getElementById('pos-product-select');
-    
-    if (select) { 
-        select.innerHTML = '<option value="">Select Product...</option>'; 
-        productsCache.forEach(p => {
-            select.innerHTML += `
-                <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
-                    ${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}
-                </option>
-            `;
-        }); 
+    try {
+        inventoryData = await fetchAll('products'); 
+        const select = document.getElementById('pos-product-select');
+        
+        if (select) { 
+            select.innerHTML = '<option value="">Select Product...</option>'; 
+            inventoryData.forEach(p => {
+                select.innerHTML += `
+                    <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
+                        ${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}
+                    </option>
+                `;
+            }); 
+        }
+    } catch (err) {
+        console.error("POS Init Error:", err);
     }
 }
 
@@ -319,7 +322,7 @@ export function addToCart() {
     const option = select.options[select.selectedIndex];
     const name = option.getAttribute('data-name');
     const price = parseFloat(option.getAttribute('data-price'));
-    const p = productsCache.find(x => String(x.id) === String(id)); 
+    const p = inventoryData.find(x => String(x.id) === String(id)); 
     const qty = parseInt(qtyInput.value);
     
     if (qty <= 0 || isNaN(qty)) {
@@ -346,17 +349,15 @@ export function renderCart() {
     const tbody = document.getElementById('cart-table-body'); 
     const totalEl = document.getElementById('pos-total');
     
-    if (!tbody) {
-        return; 
-    }
+    if (!tbody) return; 
     
-    tbody.innerHTML = ''; 
+    let htmlContent = ''; 
     let total = 0;
     
     cart.forEach((item, idx) => { 
         total += item.price * item.qty; 
         
-        tbody.innerHTML += `
+        htmlContent += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-2 font-bold dark:text-white">
                     ${item.name}
@@ -375,6 +376,8 @@ export function renderCart() {
             </tr>
         `; 
     });
+    
+    tbody.innerHTML = htmlContent;
     
     const serviceCost = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
     totalEl.innerText = formatCurrency(total + serviceCost);
@@ -430,7 +433,7 @@ export async function processSale(e) {
         await sb.from('sale_items').insert(itemsToInsert);
         
         for (let item of cart) { 
-            const p = productsCache.find(x => String(x.id) === String(item.id)); 
+            const p = inventoryData.find(x => String(x.id) === String(item.id)); 
             if (p) {
                 await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id); 
             }
@@ -470,56 +473,53 @@ function populateBill(w, sale, items) {
         `;
     }
 
-    w.document.open();
-    w.document.write(`
-        <html>
-        <head>
-            <style>
-                body { 
-                    font-family: 'Courier New', Courier, monospace; 
-                    padding: 20px; 
-                    font-size: 14px; 
-                    color: #000; 
-                }
-                h2, p { margin: 0; padding: 2px 0; }
-                hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
-                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
-            </style>
-        </head>
-        <body>
-            <center>
-                <h2>CycleSense</h2>
-                <p>Tel: 075 633 9536</p>
-                <p>Receipt: ${sale.receipt_no}</p>
-            </center>
-            <hr>
-            <p>Date: ${new Date(sale.date).toLocaleString()}</p>
-            <p>Cust: ${sale.customer_name}</p>
-            <hr>
-            <table>
-                <tr>
-                    <th>Item</th>
-                    <th style="text-align:center;">Qty</th>
-                    <th style="text-align:right;">Price</th>
-                </tr>
-                ${itemsHtml}
-            </table>
-            <hr>
-            <div style="text-align: right;">
-                ${sale.service_cost > 0 ? `<p>Labor / Service: ${sale.service_cost.toFixed(2)}</p>` : ''}
-                <h3 style="margin-top: 10px;">TOTAL: ${sale.total_amount.toFixed(2)} LKR</h3>
-            </div>
-            <hr>
-            <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    
-    w.document.close();
+    setTimeout(() => {
+        w.document.open();
+        w.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
+                    h2, p { margin: 0; padding: 2px 0; }
+                    hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
+                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                    th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
+                </style>
+            </head>
+            <body>
+                <center>
+                    <h2>CycleSense</h2>
+                    <p>Tel: 075 633 9536</p>
+                    <p>Receipt: ${sale.receipt_no}</p>
+                </center>
+                <hr>
+                <p>Date: ${new Date(sale.date).toLocaleString()}</p>
+                <p>Cust: ${sale.customer_name}</p>
+                <hr>
+                <table>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Price</th>
+                    </tr>
+                    ${itemsHtml}
+                </table>
+                <hr>
+                <div style="text-align: right;">
+                    ${sale.service_cost > 0 ? `<p>Labor / Service: ${sale.service_cost.toFixed(2)}</p>` : ''}
+                    <h3 style="margin-top: 10px;">TOTAL: ${sale.total_amount.toFixed(2)} LKR</h3>
+                </div>
+                <hr>
+                <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    }, 100);
 }
 
+// --- Sales Report Logic ---
 let allSales = [];
 
 export async function openReportModal() { 
@@ -539,11 +539,9 @@ export function closeReportModal() {
 export function filterSales(period) {
     const t = document.getElementById('report-table-body'); 
     
-    if (!t) {
-        return; 
-    }
+    if (!t) return; 
     
-    t.innerHTML = ''; 
+    let htmlContent = ''; 
     let totalRevenue = 0; 
     
     const now = new Date(); 
@@ -564,7 +562,7 @@ export function filterSales(period) {
     filtered.forEach(s => {
         totalRevenue += Number(s.total_amount); 
         
-        t.innerHTML += `
+        htmlContent += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-3">
                     ${new Date(s.date).toLocaleDateString()}
@@ -590,6 +588,7 @@ export function filterSales(period) {
         `;
     });
     
+    t.innerHTML = htmlContent;
     document.getElementById('report-total-sales').innerText = formatCurrency(totalRevenue);
 }
 
@@ -649,30 +648,30 @@ let repairsData = [];
 let currentRepairId = null; 
 
 export async function loadRepairs() { 
-    const sb = getSupabase();
-    const { data } = await sb.from('repairs').select('*').order('id', { ascending: false }); 
-    
-    repairsData = data || []; 
-    
-    const today = new Date().toISOString().split('T')[0];
-    const dateInput = document.querySelector('input[name="predicted_date"]');
-    
-    if (dateInput) {
-        dateInput.setAttribute('min', today);
+    try {
+        const sb = getSupabase();
+        const { data } = await sb.from('repairs').select('*').order('id', { ascending: false }); 
+        
+        repairsData = data || []; 
+        
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.querySelector('input[name="predicted_date"]');
+        
+        if (dateInput) {
+            dateInput.setAttribute('min', today);
+        }
+        
+        filterRepairs(); 
+    } catch (err) {
+        console.error("Error loading repairs:", err);
     }
-    
-    filterRepairs(); 
 }
 
 export function filterRepairs() {
     const filter = document.getElementById('repair-filter')?.value || 'all'; 
     const tbody = document.getElementById('repairs-table-body'); 
     
-    if (!tbody) {
-        return; 
-    }
-    
-    tbody.innerHTML = '';
+    if (!tbody) return; 
     
     const filtered = repairsData.filter(r => {
         if (filter === 'pending') { 
@@ -697,6 +696,8 @@ export function filterRepairs() {
         `;
         return;
     }
+
+    let htmlContent = '';
 
     filtered.forEach(r => {
         let statusHtml = ''; 
@@ -768,7 +769,7 @@ export function filterRepairs() {
             `;
         }
 
-        tbody.innerHTML += `
+        htmlContent += `
             <tr class="${rowClass} border-b dark:border-gray-700 transition">
                 <td class="p-4 font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">${r.repair_id}</td>
                 <td class="p-4 font-bold text-gray-800 dark:text-gray-200">${r.customer_name}</td>
@@ -780,6 +781,9 @@ export function filterRepairs() {
             </tr>
         `;
     });
+    
+    // Assign at once for speed and stability
+    tbody.innerHTML = htmlContent;
 }
 
 export async function markAsCollected(id) {
@@ -807,46 +811,48 @@ export function printRepairTicket(id) {
 function populateRepairTicket(w, repair) {
     const websiteUrl = window.location.origin + "/track.html";
     
-    w.document.open();
-    w.document.write(`
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; } 
-                .box { border: 2px dashed black; padding: 15px; margin: 15px 0; background: #f9f9f9; } 
-                .id { font-size: 22px; font-weight: bold; color: #333; } 
-                p { margin: 5px 0; font-size: 14px; }
-            </style>
-        </head>
-        <body>
-            <h2>CycleSense Repair</h2>
-            <p>Date: ${new Date().toLocaleDateString()}</p>
-            
-            <div class="box">
-                <p style="margin-bottom:5px; font-size:12px;">TICKET ID:</p>
-                <div class="id">${repair.repair_id}</div>
-            </div>
-            
-            <p style="text-align:left;"><b>Customer:</b> ${repair.customer_name}</p>
-            <p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
-            <p style="text-align:left;"><b>Est Finish:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
-            <p style="text-align:left;"><b>Advance Paid:</b> ${formatCurrency(repair.advance)}</p>
-            
-            <hr style="margin: 20px 0;">
-            
-            <h3 style="margin-bottom:5px;">Track Live Status</h3>
-            <p>Visit link:</p>
-            <p style="font-weight:bold;">${websiteUrl}</p>
-            <p>Enter your Ticket ID: <b>${repair.repair_id}</b></p>
-            
-            <hr style="margin: 20px 0;">
-            <p style="font-size:10px;">Please bring this ticket to collect your bicycle.</p>
-            
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    w.document.close();
+    setTimeout(() => {
+        w.document.open();
+        w.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; } 
+                    .box { border: 2px dashed black; padding: 15px; margin: 15px 0; background: #f9f9f9; } 
+                    .id { font-size: 22px; font-weight: bold; color: #333; } 
+                    p { margin: 5px 0; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <h2>CycleSense Repair</h2>
+                <p>Date: ${new Date().toLocaleDateString()}</p>
+                
+                <div class="box">
+                    <p style="margin-bottom:5px; font-size:12px;">TICKET ID:</p>
+                    <div class="id">${repair.repair_id}</div>
+                </div>
+                
+                <p style="text-align:left;"><b>Customer:</b> ${repair.customer_name}</p>
+                <p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
+                <p style="text-align:left;"><b>Est Finish:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
+                <p style="text-align:left;"><b>Advance Paid:</b> ${formatCurrency(repair.advance)}</p>
+                
+                <hr style="margin: 20px 0;">
+                
+                <h3 style="margin-bottom:5px;">Track Live Status</h3>
+                <p>Visit link:</p>
+                <p style="font-weight:bold;">${websiteUrl}</p>
+                <p>Enter your Ticket ID: <b>${repair.repair_id}</b></p>
+                
+                <hr style="margin: 20px 0;">
+                <p style="font-size:10px;">Please bring this ticket to collect your bicycle.</p>
+                
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    }, 100);
 }
 
 export function reprintFinalBill(id) {
@@ -883,57 +889,57 @@ function populateFinalBill(w, r) {
         `;
     }
 
-    w.document.open();
-    w.document.write(`
-        <html>
-        <head>
-            <style>
-                body { 
-                    font-family: 'Courier New', Courier, monospace; 
-                    padding: 20px; 
-                    font-size: 14px; 
-                    color: #000; 
-                }
-                h2, p { margin: 0; padding: 2px 0; }
-                hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
-                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
-            </style>
-        </head>
-        <body>
-            <center>
-                <h2>CycleSense Repair Bill</h2>
-                <p>Tel: 075 633 9536</p>
-                <p>Ticket: ${r.repair_id}</p>
-            </center>
-            <hr>
-            <p>Cust: ${r.customer_name}</p>
-            <p>Phone: ${r.phone}</p>
-            <hr>
-            <table>
-                <tr>
-                    <th>Item/Service</th>
-                    <th style="text-align:center;">Qty</th>
-                    <th style="text-align:right;">Price</th>
-                </tr>
-                ${partsHtml}
-            </table>
-            <hr>
-            <div style="text-align: right;">
-                <p>Total Amount: ${r.final_amount.toFixed(2)}</p>
-                <p style="color: red;">Advance Paid: -${r.advance.toFixed(2)}</p>
-                <h3 style="margin-top: 10px;">Balance Paid: ${r.balance_due.toFixed(2)} LKR</h3>
-            </div>
-            <hr>
-            <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    
-    w.document.close();
+    setTimeout(() => {
+        w.document.open();
+        w.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { 
+                        font-family: 'Courier New', Courier, monospace; 
+                        padding: 20px; 
+                        font-size: 14px; 
+                        color: #000; 
+                    }
+                    h2, p { margin: 0; padding: 2px 0; }
+                    hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
+                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                    th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
+                </style>
+            </head>
+            <body>
+                <center>
+                    <h2>CycleSense Repair Bill</h2>
+                    <p>Tel: 075 633 9536</p>
+                    <p>Ticket: ${r.repair_id}</p>
+                </center>
+                <hr>
+                <p>Cust: ${r.customer_name}</p>
+                <p>Phone: ${r.phone}</p>
+                <hr>
+                <table>
+                    <tr>
+                        <th>Item/Service</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Price</th>
+                    </tr>
+                    ${partsHtml}
+                </table>
+                <hr>
+                <div style="text-align: right;">
+                    <p>Total Amount: ${r.final_amount.toFixed(2)}</p>
+                    <p style="color: red;">Advance Paid: -${r.advance.toFixed(2)}</p>
+                    <h3 style="margin-top: 10px;">Balance Paid: ${r.balance_due.toFixed(2)} LKR</h3>
+                </div>
+                <hr>
+                <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    }, 100);
 }
-
 
 export async function startRepair(id) {
     const sb = getSupabase(); 
@@ -1182,81 +1188,89 @@ export async function deleteRepair(id) {
 let workersData = [];
 
 export async function loadHR() {
-    const sb = getSupabase();
-    const { data } = await sb.from('workers').select('*').order('id', { ascending: false });
-    
-    workersData = data || [];
-    
-    const list = document.getElementById('workers-list');
-    
-    if (!list) {
-        return; 
-    }
-    
-    list.innerHTML = '';
-    
-    const attSelect = document.getElementById('hr-att-worker');
-    const advSelect = document.getElementById('hr-adv-worker');
-    const paySelect = document.getElementById('hr-pay-worker');
-    
-    let optionsHtml = '<option value="">Select Worker...</option>';
+    try {
+        const sb = getSupabase();
+        const { data } = await sb.from('workers').select('*').order('id', { ascending: false });
+        
+        workersData = data || [];
+        
+        const list = document.getElementById('workers-list');
+        
+        if (!list) {
+            return; 
+        }
+        
+        list.innerHTML = '';
+        
+        const attSelect = document.getElementById('hr-att-worker');
+        const advSelect = document.getElementById('hr-adv-worker');
+        const paySelect = document.getElementById('hr-pay-worker');
+        
+        let optionsHtml = '<option value="">Select Worker...</option>';
+        let htmlContent = '';
 
-    workersData.forEach(w => {
-        list.innerHTML += `
-            <div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 hover:shadow-md transition">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h4 class="font-black text-gray-800 dark:text-white">${w.name}</h4>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-phone"></i> ${w.phone || 'N/A'}
-                        </p>
-                        <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded text-xs text-center border border-green-200 dark:border-green-800 mt-2 inline-block">
-                            ${formatCurrency(w.daily_salary)} / Day
+        workersData.forEach(w => {
+            htmlContent += `
+                <div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 hover:shadow-md transition">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-black text-gray-800 dark:text-white">${w.name}</h4>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <i class="fas fa-phone"></i> ${w.phone || 'N/A'}
+                            </p>
+                            <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded text-xs text-center border border-green-200 dark:border-green-800 mt-2 inline-block">
+                                ${formatCurrency(w.daily_salary)} / Day
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <div class="flex gap-2 justify-end">
-                            <button type="button" onclick="window.posModule.viewWorkerProfile('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Profile & PIN">
-                                <i class="fas fa-id-card"></i>
-                            </button>
-                            <button type="button" onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance">
-                                <i class="fas fa-chart-bar"></i>
-                            </button>
-                            <button type="button" onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex gap-2 justify-end">
+                                <button type="button" onclick="window.posModule.viewWorkerProfile('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Profile & PIN">
+                                    <i class="fas fa-id-card"></i>
+                                </button>
+                                <button type="button" onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance">
+                                    <i class="fas fa-chart-bar"></i>
+                                </button>
+                                <button type="button" onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-            
-        optionsHtml += `<option value="${w.id}">${w.name}</option>`;
-    });
+            `;
+                
+            optionsHtml += `<option value="${w.id}">${w.name}</option>`;
+        });
+        
+        list.innerHTML = htmlContent;
 
-    if (attSelect) {
-        attSelect.innerHTML = optionsHtml;
-    }
-    if (advSelect) {
-        advSelect.innerHTML = optionsHtml;
-    }
-    if (paySelect) {
-        paySelect.innerHTML = optionsHtml;
-    }
-    
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    if (document.getElementById('hr-att-date')) {
-        document.getElementById('hr-att-date').value = todayStr;
-    }
-    if (document.getElementById('hr-adv-date')) {
-        document.getElementById('hr-adv-date').value = todayStr;
-    }
+        if (attSelect) {
+            attSelect.innerHTML = optionsHtml;
+        }
+        if (advSelect) {
+            advSelect.innerHTML = optionsHtml;
+        }
+        if (paySelect) {
+            paySelect.innerHTML = optionsHtml;
+        }
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        if (document.getElementById('hr-att-date')) {
+            document.getElementById('hr-att-date').value = todayStr;
+        }
+        if (document.getElementById('hr-adv-date')) {
+            document.getElementById('hr-adv-date').value = todayStr;
+        }
 
-    loadHRDashboardSummary();
+        loadHRDashboardSummary();
+        
+    } catch (err) {
+        console.error("Error loading HR:", err);
+    }
 }
 
 export function viewWorkerProfile(id) {
@@ -1732,135 +1746,137 @@ export async function generatePayroll(e) {
     }
     
     if (w) {
-        w.document.open();
-        w.document.write(`
-            <html>
-            <head>
-                <style>
-                    body { 
-                        font-family: Arial, sans-serif; 
-                        padding: 40px; 
-                        color: #333; 
-                    }
-                    .header { 
-                        text-align: center; 
-                        border-bottom: 2px solid #333; 
-                        padding-bottom: 20px; 
-                        margin-bottom: 20px; 
-                    }
-                    h1 { margin: 0; color: #1e3a8a; } 
-                    h3 { margin: 5px 0; color: #666; }
-                    .row { 
-                        display: flex; 
-                        justify-content: space-between; 
-                        border-bottom: 1px dashed #eee; 
-                        padding: 10px 0; 
-                        font-size:14px; 
-                    }
-                    .bold { font-weight: bold; }
-                    .total-row { 
-                        display: flex; 
-                        justify-content: space-between; 
-                        border-top: 2px solid #333; 
-                        border-bottom: 2px solid #333; 
-                        padding: 15px 0; 
-                        font-size: 18px; 
-                        margin-top: 20px; 
-                        background: #f8fafc; 
-                    }
-                    .section-title { 
-                        margin-top: 30px; 
-                        font-size: 14px; 
-                        text-transform: uppercase; 
-                        color: #888; 
-                        border-bottom: 1px solid #ccc; 
-                        padding-bottom: 5px; 
-                    }
-                    .adv-list { 
-                        font-size: 12px; 
-                        color: #888; 
-                        padding-left: 20px; 
-                        margin: 2px 0; 
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>CycleSense</h1>
-                    <h3>Official Salary Slip</h3>
-                    <p>Month: <b>${data.monthStr}</b></p>
-                </div>
-                
-                <div class="row">
-                    <span>Employee Name:</span> 
-                    <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
-                </div>
-                
-                <div class="row">
-                    <span>Daily Rate Base:</span> 
-                    <span>${formatCurrency(data.worker.daily_salary)}</span>
-                </div>
-                
-                <div class="section-title">Earnings & Deductions</div>
-                <div class="row">
-                    <span>Full Days (${data.full})</span> 
-                    <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
-                </div>
-                <div class="row">
-                    <span>Half Days (${data.half})</span> 
-                    <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span>
-                </div>
-                <div class="row">
-                    <span>Short Leaves (${data.short})</span> 
-                    <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
-                </div>
-                <div class="row text-red">
-                    <span>Time Penalties (Late/Early)</span> 
-                    <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
-                </div>
-                
-                <div class="row" style="background:#f4f4f4;">
-                    <span><b>Gross Earnings</b></span> 
-                    <span class="bold">${formatCurrency(data.grossEarnings)}</span>
-                </div>
-                
-                <div class="section-title">Subtractions</div>
-                <div class="row">
-                    <span>Advances Taken</span> 
-                    <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
-                </div>
-                ${advancesHtml}
-                
-                <div class="row">
-                    <span>EPF Deduction (8%)</span> 
-                    <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
-                </div>
-                
-                <div class="total-row">
-                    <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
-                    <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
-                </div>
-                
-                <div class="section-title">Employer Contributions (Info Only)</div>
-                <div class="row">
-                    <span>EPF Contribution (12%)</span> 
-                    <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
-                </div>
-                <div class="row">
-                    <span>ETF Contribution (3%)</span> 
-                    <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
-                </div>
-                
-                <div style="margin-top: 50px; display: flex; justify-content: space-between;">
-                    <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
-                    <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
-                </div>
-                
-                <script>window.print();</script>
-            </body>
-            </html>
-        `);
-        w.document.close();
+        setTimeout(() => {
+            w.document.open();
+            w.document.write(`
+                <html>
+                <head>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            padding: 40px; 
+                            color: #333; 
+                        }
+                        .header { 
+                            text-align: center; 
+                            border-bottom: 2px solid #333; 
+                            padding-bottom: 20px; 
+                            margin-bottom: 20px; 
+                        }
+                        h1 { margin: 0; color: #1e3a8a; } 
+                        h3 { margin: 5px 0; color: #666; }
+                        .row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            border-bottom: 1px dashed #eee; 
+                            padding: 10px 0; 
+                            font-size:14px; 
+                        }
+                        .bold { font-weight: bold; }
+                        .total-row { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            border-top: 2px solid #333; 
+                            border-bottom: 2px solid #333; 
+                            padding: 15px 0; 
+                            font-size: 18px; 
+                            margin-top: 20px; 
+                            background: #f8fafc; 
+                        }
+                        .section-title { 
+                            margin-top: 30px; 
+                            font-size: 14px; 
+                            text-transform: uppercase; 
+                            color: #888; 
+                            border-bottom: 1px solid #ccc; 
+                            padding-bottom: 5px; 
+                        }
+                        .adv-list { 
+                            font-size: 12px; 
+                            color: #888; 
+                            padding-left: 20px; 
+                            margin: 2px 0; 
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>CycleSense</h1>
+                        <h3>Official Salary Slip</h3>
+                        <p>Month: <b>${data.monthStr}</b></p>
+                    </div>
+                    
+                    <div class="row">
+                        <span>Employee Name:</span> 
+                        <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
+                    </div>
+                    
+                    <div class="row">
+                        <span>Daily Rate Base:</span> 
+                        <span>${formatCurrency(data.worker.daily_salary)}</span>
+                    </div>
+                    
+                    <div class="section-title">Earnings & Deductions</div>
+                    <div class="row">
+                        <span>Full Days (${data.full})</span> 
+                        <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
+                    </div>
+                    <div class="row">
+                        <span>Half Days (${data.half})</span> 
+                        <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span>
+                    </div>
+                    <div class="row">
+                        <span>Short Leaves (${data.short})</span> 
+                        <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
+                    </div>
+                    <div class="row text-red">
+                        <span>Time Penalties (Late/Early)</span> 
+                        <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
+                    </div>
+                    
+                    <div class="row" style="background:#f4f4f4;">
+                        <span><b>Gross Earnings</b></span> 
+                        <span class="bold">${formatCurrency(data.grossEarnings)}</span>
+                    </div>
+                    
+                    <div class="section-title">Subtractions</div>
+                    <div class="row">
+                        <span>Advances Taken</span> 
+                        <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
+                    </div>
+                    ${advancesHtml}
+                    
+                    <div class="row">
+                        <span>EPF Deduction (8%)</span> 
+                        <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
+                    </div>
+                    
+                    <div class="total-row">
+                        <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
+                        <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
+                    </div>
+                    
+                    <div class="section-title">Employer Contributions (Info Only)</div>
+                    <div class="row">
+                        <span>EPF Contribution (12%)</span> 
+                        <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
+                    </div>
+                    <div class="row">
+                        <span>ETF Contribution (3%)</span> 
+                        <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
+                    </div>
+                    
+                    <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+                        <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
+                        <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
+                    </div>
+                    
+                    <script>window.print();</script>
+                </body>
+                </html>
+            `);
+            w.document.close();
+        }, 100);
     }
 }
 
@@ -1934,7 +1950,7 @@ async function renderCalendar(month, year) {
         "12-25": "Christmas Day"
     };
 
-    // 2026 POYA DAYS
+    // 2026 POYA DAYS (Approximated based on typical lunar cycles for 2026)
     const poyaDays = {
         "01-03": "Duruthu Full Moon Poya",
         "02-01": "Navam Full Moon Poya",
@@ -1951,9 +1967,11 @@ async function renderCalendar(month, year) {
         "12-23": "Unduvap Full Moon Poya"
     };
     
+    let htmlContent = '';
+    
     // Empty boxes for previous month days
     for (let i = 0; i < firstDay; i++) { 
-        daysContainer.innerHTML += `
+        htmlContent += `
             <div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>
         `; 
     }
@@ -1994,13 +2012,15 @@ async function renderCalendar(month, year) {
             });
         }
         
-        daysContainer.innerHTML += `
+        htmlContent += `
             <div class="p-2 border border-gray-100 dark:border-gray-700 min-h-[80px] rounded cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition" onclick="window.posModule.openEventModal('${fullDate}')">
                 <span class="font-bold text-gray-700 dark:text-gray-300">${day}</span>
                 ${eventHtml}
             </div>
         `;
     }
+    
+    daysContainer.innerHTML = htmlContent;
 }
 
 export function openEventModal(dateStr) {
