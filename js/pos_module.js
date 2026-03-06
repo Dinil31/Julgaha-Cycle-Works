@@ -133,7 +133,7 @@ export async function confirmQuickRestock(e) {
         alert("Error updating stock: " + updateError.message);
     } else {
         document.getElementById('quick-restock-modal').classList.add('hidden');
-        loadInventory();
+        await loadInventory();
         await showCustomConfirm("Stock Updated", `Added ${addQty} units. Prices updated.`, "success-green");
     }
 }
@@ -271,7 +271,7 @@ export async function addProduct(e) {
     } else {
         await showCustomConfirm("Success", "Product Added to Inventory", "success-green"); 
         e.target.reset(); 
-        loadInventory(); 
+        await loadInventory(); 
     }
 }
 
@@ -359,7 +359,7 @@ export function renderCart() {
                     ${formatCurrency(item.price * item.qty)}
                 </td>
                 <td align="center" class="p-2">
-                    <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
+                    <button type="button" onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -424,7 +424,8 @@ export async function processSale(e) {
     cart = []; 
     e.target.reset(); 
     renderCart(); 
-    initPOS(); 
+    await initPOS(); 
+    await loadInventory(); // Silently update inventory view if open
     
     generateBill(sale, itemsForBill);
     await showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
@@ -561,8 +562,11 @@ export function filterSales(period) {
                 <td class="p-3 text-right font-black text-green-600">
                     ${formatCurrency(s.total_amount)}
                 </td>
-                <td class="p-3 text-center">
-                    <button onclick="window.posModule.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
+                <td class="p-3 text-center flex justify-center gap-2">
+                    <button type="button" onclick="window.posModule.reprintSaleBill('${s.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg transition" title="View/Print Bill">
+                        <i class="fas fa-receipt"></i>
+                    </button>
+                    <button type="button" onclick="window.posModule.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete Record">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -573,8 +577,26 @@ export function filterSales(period) {
     document.getElementById('report-total-sales').innerText = formatCurrency(totalRevenue);
 }
 
+export async function reprintSaleBill(saleId) {
+    const sb = getSupabase();
+    
+    const { data: sale } = await sb.from('sales').select('*').eq('id', saleId).single();
+    if (!sale) {
+        return alert("Sale record not found.");
+    }
+
+    const { data: items } = await sb.from('sale_items').select('*, products(name)').eq('sale_id', saleId);
+    
+    const formattedItems = (items || []).map(i => ({
+        name: i.products ? i.products.name : 'Unknown Item',
+        qty: i.quantity,
+        price: i.price
+    }));
+
+    generateBill(sale, formattedItems);
+}
+
 export async function deleteSale(id) { 
-    // Z-Index fix ensures this shows above the sales report modal
     if (await showCustomConfirm("Delete Record?", "This will remove the sale and restore item stock.", "danger")) { 
         const sb = getSupabase();
         
@@ -592,7 +614,8 @@ export async function deleteSale(id) {
         await sb.from('sale_items').delete().eq('sale_id', id); 
         await sb.from('sales').delete().eq('id', id); 
         
-        openReportModal(); 
+        await openReportModal(); 
+        await loadInventory(); // Sync background inventory visually
     } 
 }
 
@@ -656,18 +679,18 @@ export function filterRepairs() {
         if (r.status === 'Pending') {
             rowClass = 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 animate-pulse';
             statusHtml = `
-                <button onclick="window.posModule.startRepair('${r.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
+                <button type="button" onclick="window.posModule.startRepair('${r.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
                     Start Repair
                 </button>
             `;
             actionsHtml = `
-                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
-                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -675,18 +698,18 @@ export function filterRepairs() {
         else if (r.status === 'Under Repair' || r.status === 'In Progress') {
             rowClass = 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500';
             statusHtml = `
-                <button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
+                <button type="button" onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
                     Finish & Bill
                 </button>
             `;
             actionsHtml = `
-                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
-                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -694,12 +717,12 @@ export function filterRepairs() {
         else if (r.status === 'Completed') {
             rowClass = 'bg-blue-50 dark:bg-blue-900/10 border-l-4 border-blue-500';
             statusHtml = `
-                <button onclick="window.posModule.markAsCollected('${r.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full flex items-center justify-center gap-1">
+                <button type="button" onclick="window.posModule.markAsCollected('${r.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full flex items-center justify-center gap-1">
                     <i class="fas fa-hand-holding-usd"></i> Collect & Pay
                 </button>
             `;
             actionsHtml = `
-                <button onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
@@ -712,7 +735,7 @@ export function filterRepairs() {
                 </span>
             `;
             actionsHtml = `
-                <button onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
@@ -740,7 +763,7 @@ export async function markAsCollected(id) {
         if (error) {
             alert("Error: " + error.message);
         } else {
-            loadRepairs();
+            await loadRepairs();
         }
     }
 }
@@ -831,7 +854,7 @@ export async function startRepair(id) {
     if (error) {
         alert("Error starting repair: " + error.message); 
     } else {
-        loadRepairs();
+        await loadRepairs();
     }
 }
 
@@ -863,7 +886,7 @@ export async function saveEditRepair(e) {
     } else {
         document.getElementById('repair-edit-modal').classList.add('hidden'); 
         await showCustomConfirm("Updated", "Repair details updated.", "success-green");
-        loadRepairs(); 
+        await loadRepairs(); 
     }
 }
 
@@ -889,7 +912,7 @@ export async function addRepair(e) {
         e.target.reset(); 
         await showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
         printRepairTicket(data);
-        loadRepairs(); 
+        await loadRepairs(); 
     }
 }
 
@@ -1030,14 +1053,14 @@ export async function finalizeRepair() {
     reprintFinalBill(freshRepair);
     await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     
-    loadRepairs(); 
+    await loadRepairs(); 
 }
 
 export async function deleteRepair(id) { 
     if (await showCustomConfirm("Delete Ticket?", "Are you sure you want to permanently delete this repair ticket?", "danger")) { 
         const sb = getSupabase();
         await sb.from('repairs').delete().eq('id', id); 
-        loadRepairs(); 
+        await loadRepairs(); 
     } 
 }
 
@@ -1068,43 +1091,40 @@ export async function loadHR() {
     let optionsHtml = '<option value="">Select Worker...</option>';
 
     workersData.forEach(w => {
+        // UI FIX: Hidden sensitive info from card. Added View Profile button.
         list.innerHTML += `
             <div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 hover:shadow-md transition">
                 <div class="flex justify-between items-start">
                     <div>
                         <h4 class="font-black text-gray-800 dark:text-white">${w.name}</h4>
-                        <div class="text-[10px] font-mono mt-1 mb-1 bg-gray-100 dark:bg-slate-800 p-1 rounded inline-block text-gray-700 dark:text-gray-300">
-                            ID: <b>${w.worker_uid || w.id}</b> | PIN: <b>${w.pin || '1234'}</b>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <i class="fas fa-id-card"></i> ${w.nic || 'No NIC'} | 
-                            <i class="fas fa-birthday-cake"></i> ${w.dob || 'No DOB'}
-                        </p>
                         <p class="text-xs text-gray-500 mt-1">
                             <i class="fas fa-phone"></i> ${w.phone || 'N/A'}
                         </p>
+                        <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded text-xs text-center border border-green-200 dark:border-green-800 mt-2 inline-block">
+                            ${formatCurrency(w.daily_salary)} / Day
+                        </div>
                     </div>
                     <div class="flex flex-col gap-2">
                         <div class="flex gap-2 justify-end">
-                            <button onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance">
+                            <button type="button" onclick="window.posModule.viewWorkerProfile('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Profile & PIN">
+                                <i class="fas fa-id-card"></i>
+                            </button>
+                            <button type="button" onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance">
                                 <i class="fas fa-chart-bar"></i>
                             </button>
-                            <button onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details">
+                            <button type="button" onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker">
+                            <button type="button" onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker">
                                 <i class="fas fa-trash"></i>
                             </button>
-                        </div>
-                        <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded text-xs text-center border border-green-200 dark:border-green-800">
-                            ${formatCurrency(w.daily_salary)} / Day
                         </div>
                     </div>
                 </div>
             </div>
         `;
             
-        optionsHtml += `<option value="${w.id}">${w.name} (${w.worker_uid || w.id})</option>`;
+        optionsHtml += `<option value="${w.id}">${w.name}</option>`;
     });
 
     if (attSelect) {
@@ -1128,6 +1148,24 @@ export async function loadHR() {
 
     loadHRDashboardSummary();
 }
+
+// Show Worker Details securely via Modal
+export function viewWorkerProfile(id) {
+    const w = workersData.find(x => String(x.id) === String(id)); 
+    if (!w) return;
+    
+    document.getElementById('vp-name').innerText = w.name;
+    document.getElementById('vp-id').innerText = w.worker_uid || w.id;
+    document.getElementById('vp-pin').innerText = w.pin || '1234';
+    document.getElementById('vp-phone').innerText = w.phone || 'N/A';
+    document.getElementById('vp-nic').innerText = w.nic || 'N/A';
+    document.getElementById('vp-dob').innerText = w.dob || 'N/A';
+    document.getElementById('vp-address').innerText = w.address || 'N/A';
+    document.getElementById('vp-salary').innerText = formatCurrency(w.daily_salary);
+    
+    document.getElementById('view-worker-profile-modal').classList.remove('hidden');
+}
+
 
 async function loadHRDashboardSummary() {
     const sb = getSupabase();
@@ -1279,7 +1317,7 @@ export async function addWorker(e) {
     } else { 
         e.target.reset(); 
         await showCustomConfirm("Success", `Worker Created!\nPortal ID: ${generatedUid}\nDefault PIN: 1234`, "success-green"); 
-        loadHR(); 
+        await loadHR(); 
     }
 }
 
@@ -1323,7 +1361,7 @@ export async function saveEditWorker(e) {
     } else { 
         document.getElementById('edit-worker-modal').classList.add('hidden'); 
         await showCustomConfirm("Success", "Worker Details Updated", "success-green"); 
-        loadHR(); 
+        await loadHR(); 
     }
 }
 
@@ -1350,7 +1388,7 @@ export async function markAttendance(e) {
     } else { 
         e.target.reset(); 
         document.getElementById('hr-att-date').value = new Date().toISOString().split('T')[0]; 
-        loadHRDashboardSummary(); 
+        await loadHRDashboardSummary(); 
         await showCustomConfirm("Saved", "Attendance Logged", "success-green"); 
     }
 }
@@ -1372,7 +1410,7 @@ export async function addAdvance(e) {
     } else { 
         e.target.reset(); 
         document.getElementById('hr-adv-date').value = new Date().toISOString().split('T')[0]; 
-        loadHRDashboardSummary(); 
+        await loadHRDashboardSummary(); 
         await showCustomConfirm("Saved", "Advance registered successfully.", "success-green"); 
     }
 }
@@ -1493,7 +1531,7 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
         return;
     }
 
-    document.getElementById('view-att-name').innerText = data.worker.name + ` (${data.worker.worker_uid})`;
+    document.getElementById('view-att-name').innerText = data.worker.name;
     document.getElementById('view-att-gross').innerText = formatCurrency(data.grossEarnings);
     document.getElementById('view-att-net').innerText = formatCurrency(data.netPay);
     
@@ -1750,16 +1788,36 @@ async function renderCalendar(month, year) {
         .gte('event_date', sDate)
         .lte('event_date', eDate);
         
+    // STATIC SRI LANKAN HOLIDAYS
     const slHolidays = {
         "01-01": "New Year's Day",
         "01-14": "Tamil Thai Pongal",
         "02-04": "Independence Day",
+        "04-03": "Good Friday",
         "04-13": "Sinhala/Tamil New Year Eve",
         "04-14": "Sinhala/Tamil New Year",
         "05-01": "May Day",
         "12-25": "Christmas Day"
     };
+
+    // 2026 POYA DAYS (Approximated based on typical lunar cycles for 2026)
+    const poyaDays = {
+        "01-03": "Duruthu Full Moon Poya",
+        "02-01": "Navam Full Moon Poya",
+        "03-03": "Medin Full Moon Poya",
+        "04-01": "Bak Full Moon Poya",
+        "05-01": "Vesak Full Moon Poya",
+        "05-30": "Poson Full Moon Poya",
+        "06-29": "Esala Full Moon Poya",
+        "07-28": "Esala Full Moon Poya (Adhi)",
+        "08-27": "Nikini Full Moon Poya",
+        "09-25": "Binara Full Moon Poya",
+        "10-25": "Vap Full Moon Poya",
+        "11-23": "Ill Full Moon Poya",
+        "12-23": "Unduvap Full Moon Poya"
+    };
     
+    // Empty boxes for previous month days
     for (let i = 0; i < firstDay; i++) { 
         daysContainer.innerHTML += `
             <div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>
@@ -1772,6 +1830,7 @@ async function renderCalendar(month, year) {
         
         let eventHtml = '';
         
+        // Check Static Holidays
         if (slHolidays[monthDayStr]) {
             eventHtml += `
                 <div class="bg-red-100 text-red-800 text-[10px] p-1 rounded mt-1 truncate font-bold shadow-sm" title="${slHolidays[monthDayStr]}">
@@ -1779,7 +1838,17 @@ async function renderCalendar(month, year) {
                 </div>
             `;
         }
+
+        // Check Poya Days
+        if (poyaDays[monthDayStr]) {
+            eventHtml += `
+                <div class="bg-yellow-100 text-yellow-800 text-[10px] p-1 rounded mt-1 truncate font-bold shadow-sm" title="${poyaDays[monthDayStr]}">
+                    🌕 Poya Day
+                </div>
+            `;
+        }
         
+        // Check Custom Database Events
         if (events) {
             const dayEvents = events.filter(e => e.event_date === fullDate);
             dayEvents.forEach(e => { 
