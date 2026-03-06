@@ -44,11 +44,11 @@
 
         <div class="mb-4 flex gap-2 items-center">
             <label class="font-bold text-gray-600 text-sm">Select Month:</label>
-            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold" onchange="window.loadDashboard()">
+            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold cursor-pointer" onchange="window.loadDashboard()">
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
                 <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
                 <div class="flex justify-between text-sm mb-1">
                     <span>Full Days (<span id="count-full">0</span>)</span> 
@@ -66,13 +66,13 @@
                     <span>Time Penalties</span> 
                     <span id="val-penalty" class="font-medium">- 0.00</span>
                 </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t text-green-600">
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
                     <span>Gross Earnings</span> 
                     <span id="val-gross">0.00</span>
                 </div>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
                 <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
                 <div class="flex justify-between text-sm mb-1 text-red-500">
                     <span>Advances</span> 
@@ -82,7 +82,7 @@
                     <span>EPF (8%)</span> 
                     <span id="val-epf">- 0.00</span>
                 </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t text-blue-600 text-lg">
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-blue-600 text-lg">
                     <span>Net Payable</span> 
                     <span id="val-net">0.00</span>
                 </div>
@@ -90,15 +90,15 @@
         </div>
 
         <h3 class="font-bold text-gray-700 mb-2">Attendance Log</h3>
-        <div class="overflow-x-auto border rounded-xl max-h-60">
+        <div class="overflow-x-auto border border-gray-200 rounded-xl max-h-60 shadow-sm">
             <table class="w-full text-sm text-left">
-                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0">
+                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0 shadow-sm">
                     <tr>
-                        <th class="p-2">Date</th>
-                        <th class="p-2">Status</th>
-                        <th class="p-2">In</th>
-                        <th class="p-2">Out</th>
-                        <th class="p-2 text-red-500">Penalty</th>
+                        <th class="p-3">Date</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3">In</th>
+                        <th class="p-3">Out</th>
+                        <th class="p-3 text-red-500">Penalty</th>
                     </tr>
                 </thead>
                 <tbody id="att-log"></tbody>
@@ -121,7 +121,7 @@
             const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
             
             if (error || !data) {
-                document.getElementById('login-error').innerText = "Invalid ID or PIN.";
+                document.getElementById('login-error').innerText = "Invalid ID or PIN. Please try again.";
                 document.getElementById('login-error').classList.remove('hidden');
             } else {
                 currentUser = data;
@@ -140,14 +140,16 @@
 
         window.changePin = async () => {
             const newPin = prompt("Enter your new 4-digit PIN:");
-            if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
+            
+            if (!newPin || newPin.length !== 4 || isNaN(newPin) || parseInt(newPin) < 0) {
                 return alert("PIN must be exactly 4 numbers.");
             }
+            
             const sb = getSupabase();
             const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
             
             if (error) {
-                alert("Failed to update PIN.");
+                alert("Failed to update PIN. " + error.message);
             } else {
                 alert("PIN successfully updated!");
             }
@@ -162,6 +164,7 @@
             const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
             const sb = getSupabase();
+            
             const { data: attData } = await sb.from('attendance')
                 .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
             
@@ -201,17 +204,17 @@
 
                     logTable.innerHTML += `
                         <tr class="border-b">
-                            <td class="p-2">${a.date}</td>
-                            <td class="p-2 font-bold">${a.status}</td>
-                            <td class="p-2">${a.in_time || '-'}</td>
-                            <td class="p-2">${a.out_time || '-'}</td>
-                            <td class="p-2 text-red-500">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
+                            <td class="p-3">${a.date}</td>
+                            <td class="p-3 font-bold">${a.status}</td>
+                            <td class="p-3">${a.in_time || '-'}</td>
+                            <td class="p-3">${a.out_time || '-'}</td>
+                            <td class="p-3 text-red-500 font-bold">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
                         </tr>`;
                 });
             }
 
             if (!attData || attData.length === 0) {
-                logTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No attendance records for this month.</td></tr>`;
+                logTable.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-bold uppercase tracking-widest">No attendance records for this month.</td></tr>`;
             }
 
             const baseEarn = (full * currentUser.daily_salary) + (short * currentUser.daily_salary) + (half * (currentUser.daily_salary / 2));
