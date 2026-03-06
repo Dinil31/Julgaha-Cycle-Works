@@ -2,7 +2,10 @@
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
-// --- Global Formatters & Helpers ---
+// ==========================================
+// GLOBAL FORMATTERS & HELPERS
+// ==========================================
+
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-LK', { 
         style: 'currency', 
@@ -24,7 +27,7 @@ async function fetchAll(table) {
 
 
 // ==========================================
-// 1. INVENTORY & RESTOCK
+// 1. INVENTORY & RESTOCK SYSTEM
 // ==========================================
 
 export async function loadInventory() {
@@ -115,6 +118,7 @@ export async function confirmQuickRestock(e) {
 
     const sb = getSupabase();
     
+    // Fetch latest stock directly to prevent overwriting issues
     const { data: p, error: fetchError } = await sb.from('products').select('stock').eq('id', id).single();
     
     if (fetchError) {
@@ -213,50 +217,51 @@ export function printRestockFinal() {
 
     const printWindow = window.open('', '', 'width=800,height=600');
     
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Restock Order List</title>
-            <style>
-                body { 
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-                    padding: 20px; 
-                } 
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    margin-top: 20px; 
-                } 
-                th { 
-                    background: #f4f4f4; 
-                    padding: 12px; 
-                    border: 1px solid #ddd; 
-                    text-align: left; 
-                    text-transform: uppercase; 
-                    font-size: 12px; 
-                    color: #555; 
-                }
-            </style>
-        </head>
-        <body>
-            <h2 style="margin-bottom: 5px;">📦 CycleSense Inventory Order</h2>
-            <p style="margin-top: 0; color: #666;">Generated on: ${new Date().toLocaleString()}</p>
-            <table>
-                <tr>
-                    <th>Item Code</th>
-                    <th>Product Description</th>
-                    <th style="text-align:center;">Current Stock</th>
-                    <th style="text-align:center;">Order Qty</th>
-                    <th>Supplier Check</th>
-                </tr>
-                ${printRows}
-            </table>
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Restock Order List</title>
+                <style>
+                    body { 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                        padding: 20px; 
+                    } 
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-top: 20px; 
+                    } 
+                    th { 
+                        background: #f4f4f4; 
+                        padding: 12px; 
+                        border: 1px solid #ddd; 
+                        text-align: left; 
+                        text-transform: uppercase; 
+                        font-size: 12px; 
+                        color: #555; 
+                    }
+                </style>
+            </head>
+            <body>
+                <h2 style="margin-bottom: 5px;">📦 CycleSense Inventory Order</h2>
+                <p style="margin-top: 0; color: #666;">Generated on: ${new Date().toLocaleString()}</p>
+                <table>
+                    <tr>
+                        <th>Item Code</th>
+                        <th>Product Description</th>
+                        <th style="text-align:center;">Current Stock</th>
+                        <th style="text-align:center;">Order Qty</th>
+                        <th>Supplier Check</th>
+                    </tr>
+                    ${printRows}
+                </table>
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
 }
 
 export async function addProduct(e) {
@@ -285,7 +290,7 @@ export async function addProduct(e) {
 
 
 // ==========================================
-// 2. POS & SALES
+// 2. POS & SALES SYSTEM
 // ==========================================
 let cart = []; 
 let productsCache = [];
@@ -355,6 +360,7 @@ export function renderCart() {
     
     cart.forEach((item, idx) => { 
         total += item.price * item.qty; 
+        
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-2 font-bold dark:text-white">
@@ -396,9 +402,9 @@ export async function processSale(e) {
         return showCustomConfirm("Error", "Cannot process an empty cart.", "danger");
     }
 
-    // OPEN WINDOW INSTANTLY TO BYPASS BROWSER POPUP BLOCKER
+    // Instantly open window before async operations block the pop-up
     const w = window.open('', '', 'width=400,height=600');
-    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill...</p>');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill...</p>');
 
     const receiptNo = Date.now().toString().slice(-8) + Math.floor(Math.random() * 100);
 
@@ -412,7 +418,7 @@ export async function processSale(e) {
     }).select().single();
 
     if (error) {
-        w.close();
+        if(w) w.close();
         return alert("Error saving sale: " + error.message);
     }
 
@@ -440,8 +446,7 @@ export async function processSale(e) {
     e.target.reset(); 
     renderCart(); 
     
-    // Launch printer in the already-opened window
-    populateBill(w, sale, itemsForBill);
+    if (w) populateBill(w, sale, itemsForBill);
     
     await initPOS(); 
     await loadInventory(); 
@@ -449,7 +454,6 @@ export async function processSale(e) {
     showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
 }
 
-// Rewritten to accept the window object
 function populateBill(w, sale, items) {
     let itemsHtml = '';
     
@@ -521,7 +525,6 @@ function populateBill(w, sale, items) {
     w.document.close();
 }
 
-// --- Sales Report Logic ---
 let allSales = [];
 
 export async function openReportModal() { 
@@ -597,14 +600,14 @@ export function filterSales(period) {
 
 export async function reprintSaleBill(saleId) {
     const w = window.open('', '', 'width=400,height=600');
-    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Loading Bill...</p>');
+    if(w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Loading Bill...</p>');
 
     const sb = getSupabase();
     
     const { data: sale } = await sb.from('sales').select('*').eq('id', saleId).single();
     
     if (!sale) {
-        w.close();
+        if(w) w.close();
         return alert("Sale record not found.");
     }
 
@@ -616,7 +619,7 @@ export async function reprintSaleBill(saleId) {
         price: i.price
     }));
 
-    populateBill(w, sale, formattedItems);
+    if (w) populateBill(w, sale, formattedItems);
 }
 
 export async function deleteSale(id) { 
@@ -800,7 +803,7 @@ export async function markAsCollected(id) {
 
 export function reprintRepairTicket(repair) {
     const w = window.open('', '', 'width=400,height=600');
-    populateRepairTicket(w, repair);
+    if (w) populateRepairTicket(w, repair);
 }
 
 function populateRepairTicket(w, repair) {
@@ -850,7 +853,7 @@ function populateRepairTicket(w, repair) {
 
 export function reprintFinalBill(r) {
     const w = window.open('', '', 'width=400,height=600');
-    populateFinalBill(w, r);
+    if (w) populateFinalBill(w, r);
 }
 
 function populateFinalBill(w, r) {
@@ -930,7 +933,6 @@ function populateFinalBill(w, r) {
     w.document.close();
 }
 
-
 export async function startRepair(id) {
     const sb = getSupabase(); 
     
@@ -978,9 +980,9 @@ export async function saveEditRepair(e) {
 export async function addRepair(e) { 
     e.preventDefault(); 
     
-    // Open immediately to bypass popup blocker
+    // INSTANT WINDOW TO BEAT POPUP BLOCKER
     const w = window.open('', '', 'width=400,height=600');
-    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
 
     const form = new FormData(e.target); 
     const sb = getSupabase();
@@ -996,12 +998,12 @@ export async function addRepair(e) {
     }).select().single(); 
     
     if (error) {
-        w.close();
+        if (w) w.close();
         alert(error.message);
     } else {
         e.target.reset(); 
         
-        populateRepairTicket(w, data);
+        if (w) populateRepairTicket(w, data);
         
         await loadRepairs(); 
         showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
@@ -1094,9 +1096,9 @@ export function recalcRepairTotal() {
 }
 
 export async function finalizeRepair() { 
-    // Open immediately to bypass popup blocker
+    // INSTANT WINDOW TO BEAT POPUP BLOCKER
     const w = window.open('', '', 'width=400,height=600');
-    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill...</p>');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill...</p>');
 
     const sb = getSupabase();
     const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
@@ -1119,7 +1121,7 @@ export async function finalizeRepair() {
     }).select().single();
     
     if (saleError) {
-        w.close();
+        if (w) w.close();
         return alert("Error saving bill: " + saleError.message);
     }
     
@@ -1154,7 +1156,7 @@ export async function finalizeRepair() {
     
     const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
     
-    populateFinalBill(w, freshRepair);
+    if (w) populateFinalBill(w, freshRepair);
     
     await loadRepairs(); 
     showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
@@ -1474,7 +1476,6 @@ export async function deleteWorker(id) {
     if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
         const sb = getSupabase();
         
-        // Ensure Foreign Key safety by deleting child records first
         await sb.from('attendance').delete().eq('worker_id', id);
         await sb.from('advances').delete().eq('worker_id', id);
         
@@ -1701,9 +1702,9 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
 export async function generatePayroll(e) {
     e.preventDefault(); 
     
-    // OPEN WINDOW INSTANTLY
+    // INSTANT WINDOW OPEN FOR POPUP BLOCKER BYPASS
     const w = window.open('', '', 'width=600,height=800');
-    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll...</p>');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll...</p>');
 
     const form = new FormData(e.target); 
     const wId = form.get('worker_id'); 
@@ -1712,10 +1713,10 @@ export async function generatePayroll(e) {
     const data = await calculateWorkerSalary(wId, mStr);
     
     if (!data) {
-        w.close();
+        if (w) w.close();
         return alert("Error locating worker.");
     }
-
+    
     let advancesHtml = '';
     if (data.advData) {
         advancesHtml = data.advData.map(a => `
@@ -1725,136 +1726,137 @@ export async function generatePayroll(e) {
         `).join('');
     }
     
-    w.document.open();
-    w.document.write(`
-        <html>
-        <head>
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    padding: 40px; 
-                    color: #333; 
-                }
-                .header { 
-                    text-align: center; 
-                    border-bottom: 2px solid #333; 
-                    padding-bottom: 20px; 
-                    margin-bottom: 20px; 
-                }
-                h1 { margin: 0; color: #1e3a8a; } 
-                h3 { margin: 5px 0; color: #666; }
-                .row { 
-                    display: flex; 
-                    justify-content: space-between; 
-                    border-bottom: 1px dashed #eee; 
-                    padding: 10px 0; 
-                    font-size:14px; 
-                }
-                .bold { font-weight: bold; }
-                .total-row { 
-                    display: flex; 
-                    justify-content: space-between; 
-                    border-top: 2px solid #333; 
-                    border-bottom: 2px solid #333; 
-                    padding: 15px 0; 
-                    font-size: 18px; 
-                    margin-top: 20px; 
-                    background: #f8fafc; 
-                }
-                .section-title { 
-                    margin-top: 30px; 
-                    font-size: 14px; 
-                    text-transform: uppercase; 
-                    color: #888; 
-                    border-bottom: 1px solid #ccc; 
-                    padding-bottom: 5px; 
-                }
-                .adv-list { 
-                    font-size: 12px; 
-                    color: #888; 
-                    padding-left: 20px; 
-                    margin: 2px 0; 
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>CycleSense</h1>
-                <h3>Official Salary Slip</h3>
-                <p>Month: <b>${data.monthStr}</b></p>
-            </div>
-            
-            <div class="row">
-                <span>Employee Name:</span> 
-                <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
-            </div>
-            
-            <div class="row">
-                <span>Daily Rate Base:</span> 
-                <span>${formatCurrency(data.worker.daily_salary)}</span>
-            </div>
-            
-            <div class="section-title">Earnings & Deductions</div>
-            <div class="row">
-                <span>Full Days (${data.full})</span> 
-                <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
-            </div>
-            <div class="row">
-                <span>Half Days (${data.half})</span> 
-                <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span>
-            </div>
-            <div class="row">
-                <span>Short Leaves (${data.short})</span> 
-                <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
-            </div>
-            <div class="row text-red">
-                <span>Time Penalties (Late/Early)</span> 
-                <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
-            </div>
-            
-            <div class="row" style="background:#f4f4f4;">
-                <span><b>Gross Earnings</b></span> 
-                <span class="bold">${formatCurrency(data.grossEarnings)}</span>
-            </div>
-            
-            <div class="section-title">Subtractions</div>
-            <div class="row">
-                <span>Advances Taken</span> 
-                <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
-            </div>
-            ${advancesHtml}
-            
-            <div class="row">
-                <span>EPF Deduction (8%)</span> 
-                <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
-            </div>
-            
-            <div class="total-row">
-                <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
-                <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
-            </div>
-            
-            <div class="section-title">Employer Contributions (Info Only)</div>
-            <div class="row">
-                <span>EPF Contribution (12%)</span> 
-                <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
-            </div>
-            <div class="row">
-                <span>ETF Contribution (3%)</span> 
-                <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
-            </div>
-            
-            <div style="margin-top: 50px; display: flex; justify-content: space-between;">
-                <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
-                <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
-            </div>
-            
-            <script>window.print();</script>
-        </body>
-        </html>
-    `);
-    
-    w.document.close();
+    if (w) {
+        w.document.open();
+        w.document.write(`
+            <html>
+            <head>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        padding: 40px; 
+                        color: #333; 
+                    }
+                    .header { 
+                        text-align: center; 
+                        border-bottom: 2px solid #333; 
+                        padding-bottom: 20px; 
+                        margin-bottom: 20px; 
+                    }
+                    h1 { margin: 0; color: #1e3a8a; } 
+                    h3 { margin: 5px 0; color: #666; }
+                    .row { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        border-bottom: 1px dashed #eee; 
+                        padding: 10px 0; 
+                        font-size:14px; 
+                    }
+                    .bold { font-weight: bold; }
+                    .total-row { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        border-top: 2px solid #333; 
+                        border-bottom: 2px solid #333; 
+                        padding: 15px 0; 
+                        font-size: 18px; 
+                        margin-top: 20px; 
+                        background: #f8fafc; 
+                    }
+                    .section-title { 
+                        margin-top: 30px; 
+                        font-size: 14px; 
+                        text-transform: uppercase; 
+                        color: #888; 
+                        border-bottom: 1px solid #ccc; 
+                        padding-bottom: 5px; 
+                    }
+                    .adv-list { 
+                        font-size: 12px; 
+                        color: #888; 
+                        padding-left: 20px; 
+                        margin: 2px 0; 
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>CycleSense</h1>
+                    <h3>Official Salary Slip</h3>
+                    <p>Month: <b>${data.monthStr}</b></p>
+                </div>
+                
+                <div class="row">
+                    <span>Employee Name:</span> 
+                    <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
+                </div>
+                
+                <div class="row">
+                    <span>Daily Rate Base:</span> 
+                    <span>${formatCurrency(data.worker.daily_salary)}</span>
+                </div>
+                
+                <div class="section-title">Earnings & Deductions</div>
+                <div class="row">
+                    <span>Full Days (${data.full})</span> 
+                    <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
+                </div>
+                <div class="row">
+                    <span>Half Days (${data.half})</span> 
+                    <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span>
+                </div>
+                <div class="row">
+                    <span>Short Leaves (${data.short})</span> 
+                    <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
+                </div>
+                <div class="row text-red">
+                    <span>Time Penalties (Late/Early)</span> 
+                    <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
+                </div>
+                
+                <div class="row" style="background:#f4f4f4;">
+                    <span><b>Gross Earnings</b></span> 
+                    <span class="bold">${formatCurrency(data.grossEarnings)}</span>
+                </div>
+                
+                <div class="section-title">Subtractions</div>
+                <div class="row">
+                    <span>Advances Taken</span> 
+                    <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
+                </div>
+                ${advancesHtml}
+                
+                <div class="row">
+                    <span>EPF Deduction (8%)</span> 
+                    <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
+                </div>
+                
+                <div class="total-row">
+                    <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
+                    <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
+                </div>
+                
+                <div class="section-title">Employer Contributions (Info Only)</div>
+                <div class="row">
+                    <span>EPF Contribution (12%)</span> 
+                    <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
+                </div>
+                <div class="row">
+                    <span>ETF Contribution (3%)</span> 
+                    <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
+                </div>
+                
+                <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+                    <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
+                    <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
+                </div>
+                
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    }
 }
 
 
@@ -1927,7 +1929,7 @@ async function renderCalendar(month, year) {
         "12-25": "Christmas Day"
     };
 
-    // 2026 POYA DAYS (Approximated based on typical lunar cycles for 2026)
+    // 2026 POYA DAYS
     const poyaDays = {
         "01-03": "Duruthu Full Moon Poya",
         "02-01": "Navam Full Moon Poya",
