@@ -120,7 +120,7 @@
             const sb = getSupabase();
             const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
             
-            if(error || !data) {
+            if (error || !data) {
                 document.getElementById('login-error').innerText = "Invalid ID or PIN.";
                 document.getElementById('login-error').classList.remove('hidden');
             } else {
@@ -140,12 +140,13 @@
 
         window.changePin = async () => {
             const newPin = prompt("Enter your new 4-digit PIN:");
-            if(!newPin || newPin.length !== 4 || isNaN(newPin)) {
+            if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
                 return alert("PIN must be exactly 4 numbers.");
             }
             const sb = getSupabase();
             const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
-            if(error) {
+            
+            if (error) {
                 alert("Failed to update PIN.");
             } else {
                 alert("PIN successfully updated!");
@@ -153,7 +154,7 @@
         };
 
         window.loadDashboard = async () => {
-            if(!currentUser) return;
+            if (!currentUser) return;
             const monthStr = document.getElementById('month-selector').value;
             const [year, month] = monthStr.split('-');
             
@@ -171,39 +172,45 @@
             const logTable = document.getElementById('att-log');
             logTable.innerHTML = '';
 
-            (attData || []).forEach(a => {
-                let dayPenalty = 0;
-                
-                if(a.status === 'Full Day') {
-                    full++;
-                    if(a.in_time && a.out_time) {
-                        const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
-                        const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
-                        
-                        let missed = 0;
-                        if(inMins > 600) missed += (inMins - 600); // Late after 10:00
-                        if(outMins < 1020) missed += (1020 - outMins); // Early before 17:00
-                        
-                        if(missed > 0) {
-                            dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
-                            totalPenalty += dayPenalty;
+            if (attData) {
+                attData.forEach(a => {
+                    let dayPenalty = 0;
+                    
+                    if (a.status === 'Full Day') {
+                        full++;
+                        if (a.in_time && a.out_time) {
+                            const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
+                            const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
+                            
+                            let missed = 0;
+                            if (inMins > 600) missed += (inMins - 600); // Late after 10:00
+                            if (outMins < 1020) missed += (1020 - outMins); // Early before 17:00
+                            
+                            if (missed > 0) {
+                                dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
+                                totalPenalty += dayPenalty;
+                            }
                         }
+                    } 
+                    else if (a.status === 'Half Day') { 
+                        half++; 
                     }
-                } 
-                else if(a.status === 'Half Day') { half++; }
-                else if(a.status === 'Short Leave') { short++; }
+                    else if (a.status === 'Short Leave') { 
+                        short++; 
+                    }
 
-                logTable.innerHTML += `
-                    <tr class="border-b">
-                        <td class="p-2">${a.date}</td>
-                        <td class="p-2 font-bold">${a.status}</td>
-                        <td class="p-2">${a.in_time || '-'}</td>
-                        <td class="p-2">${a.out_time || '-'}</td>
-                        <td class="p-2 text-red-500">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
-                    </tr>`;
-            });
+                    logTable.innerHTML += `
+                        <tr class="border-b">
+                            <td class="p-2">${a.date}</td>
+                            <td class="p-2 font-bold">${a.status}</td>
+                            <td class="p-2">${a.in_time || '-'}</td>
+                            <td class="p-2">${a.out_time || '-'}</td>
+                            <td class="p-2 text-red-500">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
+                        </tr>`;
+                });
+            }
 
-            if(!attData || attData.length === 0) {
+            if (!attData || attData.length === 0) {
                 logTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">No attendance records for this month.</td></tr>`;
             }
 
