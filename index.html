@@ -229,11 +229,11 @@
             <form onsubmit="window.posModule.saveEditRepair(event)" class="space-y-4">
                 <input type="hidden" id="edit-repair-id">
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold">Customer</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold">Customer Name</label>
                     <input id="edit-repair-customer" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold">Phone</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold">Phone Number</label>
                     <input id="edit-repair-phone" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
                 <div>
@@ -281,7 +281,7 @@
             
             <div class="mb-4">
                 <label class="text-xs font-bold uppercase text-gray-500">Labor Cost (LKR)</label>
-                <input id="rep-labor" type="number" min="0" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 font-bold text-lg" oninput="this.value = Math.abs(this.value); window.posModule.recalcRepairTotal()" placeholder="0.00"> 
+                <input id="rep-labor" type="number" min="0" oninput="this.value = Math.abs(this.value); window.posModule.recalcRepairTotal()" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 font-bold text-lg" placeholder="0.00"> 
             </div>
             
             <div class="flex justify-between items-center bg-gray-100 dark:bg-slate-800 p-4 rounded-xl mb-4 border dark:border-gray-600 shadow-inner">
@@ -312,7 +312,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Phone</label>
-                        <input id="ew-phone" name="phone" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required placeholder="Phone">
+                        <input id="ew-phone" name="phone" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required placeholder="07x xxxxxxx">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">NIC Number</label>
@@ -347,6 +347,31 @@
                     <button type="submit" class="w-1/2 bg-purple-600 hover:bg-purple-700 transition text-white py-2 rounded-lg font-bold shadow-md">Save Changes</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="view-worker-profile-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-sm p-6 rounded-3xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+            <button onclick="document.getElementById('view-worker-profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl transition"><i class="fas fa-times"></i></button>
+            
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm border border-purple-200">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <h2 class="text-2xl font-black dark:text-white" id="vp-name">Name</h2>
+                <div class="inline-block bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-lg mt-2 border dark:border-gray-600">
+                    <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">Portal Login Info</p>
+                    <p class="font-mono text-blue-600 dark:text-blue-400 font-bold text-sm">ID: <span id="vp-id"></span> | PIN: <span id="vp-pin"></span></p>
+                </div>
+            </div>
+
+            <div class="space-y-3 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600 text-sm">
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Phone:</span> <span class="font-medium dark:text-gray-200" id="vp-phone"></span></div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">NIC:</span> <span class="font-medium dark:text-gray-200" id="vp-nic"></span></div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Date of Birth:</span> <span class="font-medium dark:text-gray-200" id="vp-dob"></span></div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Address:</span> <span class="font-medium dark:text-gray-200 text-right w-1/2" id="vp-address"></span></div>
+                <div class="flex justify-between pt-1"><span class="text-gray-500 font-bold">Daily Salary:</span> <span class="font-black text-green-600" id="vp-salary"></span></div>
+            </div>
         </div>
     </div>
 
@@ -404,7 +429,7 @@
                 </div>
                 <div>
                     <label class="text-xs font-bold uppercase text-gray-500">Event Title</label>
-                    <input id="event-title" type="text" placeholder="e.g., Shop Holiday / Poya Day" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required>
+                    <input id="event-title" type="text" placeholder="e.g., Shop Holiday" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required>
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button type="button" onclick="document.getElementById('calendar-event-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 hover:bg-gray-300 transition py-3 rounded-lg font-bold text-gray-700">Cancel</button>
@@ -413,6 +438,7 @@
             </form>
         </div>
     </div>
+
 
     <div id="login-section" class="min-h-screen flex flex-col items-center justify-center grid-pattern relative overflow-hidden">
         
@@ -610,7 +636,7 @@
                             <div>
                                 <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Quantity</label>
                                 <div class="flex gap-2 mt-1">
-                                    <input id="pos-qty" type="number" value="1" min="1" oninput="this.value = Math.abs(this.value) || 1" class="w-full p-3 border border-gray-300 rounded-xl dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold text-lg shadow-sm outline-none focus:ring-2 focus:ring-green-500">
+                                    <input id="pos-qty" type="number" min="1" oninput="this.value = Math.abs(this.value) || 1" value="1" class="w-full p-3 border border-gray-300 rounded-xl dark:bg-slate-700 dark:text-white dark:border-gray-600 text-center font-bold text-lg shadow-sm outline-none focus:ring-2 focus:ring-green-500">
                                     <button onclick="window.posModule.addToCart()" class="bg-green-600 text-white px-4 rounded-xl hover:bg-green-700 transition shadow-md hover:scale-105 active:scale-95 text-lg">
                                         <i class="fas fa-plus"></i>
                                     </button>
@@ -883,7 +909,7 @@
                                 </div>
                                 <div>
                                     <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Phone</label>
-                                    <input name="phone" placeholder="07x" class="w-full mt-1 p-2.5 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-purple-500" required>
+                                    <input name="phone" placeholder="07x xxxxxxx" class="w-full mt-1 p-2.5 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-purple-500" required>
                                 </div>
                             </div>
                             
