@@ -2,7 +2,10 @@
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
-// --- Global Formatters & Helpers ---
+// ==========================================
+// GLOBAL FORMATTERS & HELPERS
+// ==========================================
+
 const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-LK', { 
         style: 'currency', 
@@ -24,7 +27,7 @@ async function fetchAll(table) {
 
 
 // ==========================================
-// 1. INVENTORY & RESTOCK
+// 1. INVENTORY & RESTOCK SYSTEM
 // ==========================================
 
 export async function loadInventory() {
@@ -115,6 +118,7 @@ export async function confirmQuickRestock(e) {
 
     const sb = getSupabase();
     
+    // Fetch latest stock directly to prevent overwriting issues
     const { data: p, error: fetchError } = await sb.from('products').select('stock').eq('id', id).single();
     
     if (fetchError) {
@@ -157,10 +161,18 @@ export async function generateRestockPDF() {
         
         tbody.innerHTML += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
-                <td class="p-3 font-mono text-xs text-gray-500">${p.code}</td>
-                <td class="p-3 font-bold dark:text-white">${p.name}</td>
-                <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
-                <td class="p-3 text-center text-gray-500">${p.reorder_level}</td>
+                <td class="p-3 font-mono text-xs text-gray-500">
+                    ${p.code}
+                </td>
+                <td class="p-3 font-bold dark:text-white">
+                    ${p.name}
+                </td>
+                <td class="p-3 text-center text-red-500 font-bold">
+                    ${p.stock}
+                </td>
+                <td class="p-3 text-center text-gray-500">
+                    ${p.reorder_level}
+                </td>
                 <td class="p-3 text-center">
                     <input type="number" min="1" oninput="this.value = Math.abs(this.value)" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
                 </td>
@@ -277,7 +289,7 @@ export async function addProduct(e) {
 
 
 // ==========================================
-// 2. POS & SALES
+// 2. POS & SALES SYSTEM
 // ==========================================
 let cart = []; 
 let productsCache = [];
@@ -327,7 +339,12 @@ export function addToCart() {
     if (existingItem) {
         existingItem.qty += qty; 
     } else {
-        cart.push({ id, name, price, qty });
+        cart.push({ 
+            id: id, 
+            name: name, 
+            price: price, 
+            qty: qty 
+        });
     }
     
     renderCart(); 
@@ -347,6 +364,7 @@ export function renderCart() {
     
     cart.forEach((item, idx) => { 
         total += item.price * item.qty; 
+        
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
                 <td class="p-2 font-bold dark:text-white">
@@ -403,6 +421,7 @@ export async function processSale(e) {
         return alert("Error saving sale: " + error.message);
     }
 
+    // Save a hard copy of the cart BEFORE clearing it to pass into the bill generator
     const itemsForBill = [...cart];
 
     if (cart.length > 0) {
@@ -417,15 +436,18 @@ export async function processSale(e) {
         
         for (let item of cart) { 
             const p = productsCache.find(x => String(x.id) === String(item.id)); 
-            await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id); 
+            if (p) {
+                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id); 
+            }
         }
     }
     
     cart = []; 
     e.target.reset(); 
     renderCart(); 
+    
     await initPOS(); 
-    await loadInventory(); // Silently update inventory view if open
+    await loadInventory(); // Sync background inventory
     
     generateBill(sale, itemsForBill);
     await showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
@@ -581,6 +603,7 @@ export async function reprintSaleBill(saleId) {
     const sb = getSupabase();
     
     const { data: sale } = await sb.from('sales').select('*').eq('id', saleId).single();
+    
     if (!sale) {
         return alert("Sale record not found.");
     }
@@ -621,7 +644,7 @@ export async function deleteSale(id) {
 
 
 // ==========================================
-// 3. REPAIRS SYSTEM
+// 3. REPAIRS WORKSHOP SYSTEM
 // ==========================================
 let repairCart = []; 
 let repairsData = [];
@@ -654,9 +677,15 @@ export function filterRepairs() {
     tbody.innerHTML = '';
     
     const filtered = repairsData.filter(r => {
-        if (filter === 'pending') { return r.status === 'Pending' || r.status === 'Under Repair'; }
-        if (filter === 'completed') { return r.status === 'Completed'; }
-        if (filter === 'collected') { return r.status === 'Collected'; }
+        if (filter === 'pending') { 
+            return r.status === 'Pending' || r.status === 'Under Repair'; 
+        }
+        if (filter === 'completed') { 
+            return r.status === 'Completed'; 
+        }
+        if (filter === 'collected') { 
+            return r.status === 'Collected'; 
+        }
         return true;
     });
 
@@ -758,6 +787,7 @@ export function filterRepairs() {
 export async function markAsCollected(id) {
     if (await showCustomConfirm("Collect & Pay", "Confirm the customer has paid the balance and collected the bicycle.", "confirm")) {
         const sb = getSupabase();
+        
         const { error } = await sb.from('repairs').update({ status: 'Collected' }).eq('id', id);
         
         if (error) {
@@ -775,6 +805,7 @@ export function reprintFinalBill(r) {
     
     if (r.parts_used) {
         const parts = typeof r.parts_used === 'string' ? JSON.parse(r.parts_used) : r.parts_used;
+        
         if (parts.length > 0) {
             partsHtml = parts.map(i => `
                 <tr>
@@ -938,6 +969,7 @@ export async function openCompleteRepairModal(id) {
         select.innerHTML = '<option value="">Select Replacement Part...</option>';
         
         const prods = await fetchAll('products'); 
+        
         prods.forEach(p => { 
             select.innerHTML += `
                 <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
@@ -981,6 +1013,7 @@ export function recalcRepairTotal() {
     
     repairCart.forEach(item => { 
         totalParts += item.price * item.qty; 
+        
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-600">
                 <td class="p-2 font-bold">${item.name}</td>
@@ -993,6 +1026,7 @@ export function recalcRepairTotal() {
     const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
     const advanceAmount = parseFloat(advStr) || 0;
     const laborCost = parseFloat(document.getElementById('rep-labor').value || 0);
+    
     const balanceDue = (totalParts + laborCost) - advanceAmount;
     
     document.getElementById('rep-total-due').innerText = formatCurrency(balanceDue); 
@@ -1091,7 +1125,6 @@ export async function loadHR() {
     let optionsHtml = '<option value="">Select Worker...</option>';
 
     workersData.forEach(w => {
-        // UI FIX: Hidden sensitive info from card. Added View Profile button.
         list.innerHTML += `
             <div class="p-4 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-gray-100 dark:border-gray-600 hover:shadow-md transition">
                 <div class="flex justify-between items-start">
@@ -1149,10 +1182,12 @@ export async function loadHR() {
     loadHRDashboardSummary();
 }
 
-// Show Worker Details securely via Modal
 export function viewWorkerProfile(id) {
     const w = workersData.find(x => String(x.id) === String(id)); 
-    if (!w) return;
+    
+    if (!w) {
+        return;
+    }
     
     document.getElementById('vp-name').innerText = w.name;
     document.getElementById('vp-id').innerText = w.worker_uid || w.id;
@@ -1365,6 +1400,24 @@ export async function saveEditWorker(e) {
     }
 }
 
+export async function deleteWorker(id) { 
+    if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
+        const sb = getSupabase();
+        
+        // Ensure Foreign Key safety by deleting child records first
+        await sb.from('attendance').delete().eq('worker_id', id);
+        await sb.from('advances').delete().eq('worker_id', id);
+        
+        const { error } = await sb.from('workers').delete().eq('id', id); 
+        
+        if (error) {
+            alert("Error deleting worker: " + error.message);
+        } else {
+            await loadHR(); 
+        }
+    } 
+}
+
 export async function markAttendance(e) {
     e.preventDefault(); 
     
@@ -1531,7 +1584,7 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
         return;
     }
 
-    document.getElementById('view-att-name').innerText = data.worker.name;
+    document.getElementById('view-att-name').innerText = data.worker.name + ` (${data.worker.worker_uid})`;
     document.getElementById('view-att-gross').innerText = formatCurrency(data.grossEarnings);
     document.getElementById('view-att-net').innerText = formatCurrency(data.netPay);
     
@@ -1565,7 +1618,8 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
                     <td class="p-2">${a.status}</td>
                     <td class="p-2">${a.in_time || '-'} to ${a.out_time || '-'}</td>
                     <td class="p-2 text-red-500 font-bold">${penText}</td>
-                </tr>`;
+                </tr>
+            `;
         });
     }
     
