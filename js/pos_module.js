@@ -3,7 +3,12 @@ import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
 // --- Global Formatters & Helpers ---
-const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
+const formatCurrency = (val) => {
+    return new Intl.NumberFormat('en-LK', { 
+        style: 'currency', 
+        currency: 'LKR' 
+    }).format(val || 0);
+};
 
 async function fetchAll(table) {
     const sb = getSupabase();
@@ -16,6 +21,7 @@ async function fetchAll(table) {
     
     return data;
 }
+
 
 // ==========================================
 // 1. INVENTORY & RESTOCK
@@ -34,33 +40,55 @@ export async function loadInventory() {
     products.forEach(p => {
         const isLow = p.stock <= p.reorder_level;
         
+        let stockClass = 'text-green-500 font-bold';
+        let badgeClass = 'bg-green-100 text-green-800';
+        let badgeText = 'In Stock';
+        
+        if (isLow) {
+            stockClass = 'text-red-500 animate-pulse font-black text-lg';
+            badgeClass = 'bg-red-100 text-red-800';
+            badgeText = 'Low Stock';
+        }
+        
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
-                <td class="p-4 font-mono text-sm text-gray-500">${p.code}</td>
-                <td class="p-4 font-bold dark:text-white">${p.name}</td>
+                <td class="p-4 font-mono text-sm text-gray-500">
+                    ${p.code}
+                </td>
+                <td class="p-4 font-bold dark:text-white">
+                    ${p.name}
+                </td>
                 <td class="p-4">
                     <div class="flex items-center gap-3">
-                        <span class="${isLow ? 'text-red-500 animate-pulse font-black text-lg' : 'text-green-500 font-bold'}">${p.stock}</span>
+                        <span class="${stockClass}">
+                            ${p.stock}
+                        </span>
                         <button onclick="window.posModule.promptAddStock('${p.id}', '${p.name}', ${p.stock}, ${p.buying_price || 0}, ${p.unit_price})" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
                             <i class="fas fa-plus"></i> Add
                         </button>
                     </div>
                 </td>
-                <td class="p-4 text-gray-500 font-bold">${p.reorder_level}</td>
+                <td class="p-4 text-gray-500 font-bold">
+                    ${p.reorder_level}
+                </td>
                 <td class="p-4 dark:text-gray-300">
-                    <div class="text-xs text-gray-400 font-bold">Buy: ${formatCurrency(p.buying_price)}</div>
-                    <div class="font-bold text-green-600">Sell: ${formatCurrency(p.unit_price)}</div>
+                    <div class="text-xs text-gray-400 font-bold">
+                        Buy: ${formatCurrency(p.buying_price)}
+                    </div>
+                    <div class="font-bold text-green-600">
+                        Sell: ${formatCurrency(p.unit_price)}
+                    </div>
                 </td>
                 <td class="p-4">
-                    <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${isLow ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                        ${isLow ? 'Low Stock' : 'In Stock'}
+                    <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${badgeClass}">
+                        ${badgeText}
                     </span>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     });
 }
 
-// OPEN CUSTOM RESTOCK MODAL
 export function promptAddStock(id, name, currentStock, buyPrice, sellPrice) {
     document.getElementById('qr-id').value = id;
     document.getElementById('qr-name').innerText = name;
@@ -72,7 +100,6 @@ export function promptAddStock(id, name, currentStock, buyPrice, sellPrice) {
     document.getElementById('quick-restock-modal').classList.remove('hidden');
 }
 
-// SUBMIT CUSTOM RESTOCK MODAL
 export async function confirmQuickRestock(e) {
     e.preventDefault();
     
@@ -88,18 +115,22 @@ export async function confirmQuickRestock(e) {
 
     const sb = getSupabase();
     
-    // Get latest stock to avoid overwriting issues
-    const { data: p } = await sb.from('products').select('stock').eq('id', id).single();
+    const { data: p, error: fetchError } = await sb.from('products').select('stock').eq('id', id).single();
+    
+    if (fetchError) {
+        return alert("Error checking current stock: " + fetchError.message);
+    }
+    
     const newStock = (p ? p.stock : 0) + addQty;
 
-    const { error } = await sb.from('products').update({ 
+    const { error: updateError } = await sb.from('products').update({ 
         stock: newStock,
         buying_price: newBuy,
         unit_price: newSell
     }).eq('id', id);
     
-    if (error) {
-        alert("Error updating stock: " + error.message);
+    if (updateError) {
+        alert("Error updating stock: " + updateError.message);
     } else {
         document.getElementById('quick-restock-modal').classList.add('hidden');
         loadInventory();
@@ -126,10 +157,18 @@ export async function generateRestockPDF() {
         
         tbody.innerHTML += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
-                <td class="p-3 font-mono text-xs text-gray-500">${p.code}</td>
-                <td class="p-3 font-bold dark:text-white">${p.name}</td>
-                <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
-                <td class="p-3 text-center text-gray-500">${p.reorder_level}</td>
+                <td class="p-3 font-mono text-xs text-gray-500">
+                    ${p.code}
+                </td>
+                <td class="p-3 font-bold dark:text-white">
+                    ${p.name}
+                </td>
+                <td class="p-3 text-center text-red-500 font-bold">
+                    ${p.stock}
+                </td>
+                <td class="p-3 text-center text-gray-500">
+                    ${p.reorder_level}
+                </td>
                 <td class="p-3 text-center">
                     <input type="number" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
                 </td>
@@ -138,7 +177,8 @@ export async function generateRestockPDF() {
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     });
     
     document.getElementById('restock-modal').classList.remove('hidden');
@@ -154,12 +194,21 @@ export function printRestockFinal() {
         
         printRows += `
             <tr>
-                <td style="padding:10px; border:1px solid #ddd; font-family: monospace;">${cols[0].innerText}</td>
-                <td style="padding:10px; border:1px solid #ddd; font-weight: bold;">${cols[1].innerText}</td>
-                <td style="text-align:center; padding:10px; border:1px solid #ddd; color: red;">${cols[2].innerText}</td>
-                <td style="text-align:center; font-weight:bold; padding:10px; border:1px solid #ddd; font-size: 16px;">${orderQty}</td>
+                <td style="padding:10px; border:1px solid #ddd; font-family: monospace;">
+                    ${cols[0].innerText}
+                </td>
+                <td style="padding:10px; border:1px solid #ddd; font-weight: bold;">
+                    ${cols[1].innerText}
+                </td>
+                <td style="text-align:center; padding:10px; border:1px solid #ddd; color: red;">
+                    ${cols[2].innerText}
+                </td>
+                <td style="text-align:center; font-weight:bold; padding:10px; border:1px solid #ddd; font-size: 16px;">
+                    ${orderQty}
+                </td>
                 <td style="border:1px solid #ddd; width:60px;"></td>
-            </tr>`;
+            </tr>
+        `;
     });
 
     const printWindow = window.open('', '', 'width=800,height=600');
@@ -169,9 +218,24 @@ export function printRestockFinal() {
         <head>
             <title>Restock Order List</title>
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; } 
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; } 
-                th { background: #f4f4f4; padding: 12px; border: 1px solid #ddd; text-align: left; text-transform: uppercase; font-size: 12px; color: #555; }
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    padding: 20px; 
+                } 
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 20px; 
+                } 
+                th { 
+                    background: #f4f4f4; 
+                    padding: 12px; 
+                    border: 1px solid #ddd; 
+                    text-align: left; 
+                    text-transform: uppercase; 
+                    font-size: 12px; 
+                    color: #555; 
+                }
             </style>
         </head>
         <body>
@@ -197,6 +261,7 @@ export function printRestockFinal() {
 
 export async function addProduct(e) {
     e.preventDefault(); 
+    
     const form = new FormData(e.target);
     const sb = getSupabase();
     
@@ -232,7 +297,11 @@ export async function initPOS() {
     if (select) { 
         select.innerHTML = '<option value="">Select Product...</option>'; 
         productsCache.forEach(p => {
-            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}</option>`;
+            select.innerHTML += `
+                <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
+                    ${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}
+                </option>
+            `;
         }); 
     }
 }
@@ -284,15 +353,22 @@ export function renderCart() {
         total += item.price * item.qty; 
         tbody.innerHTML += `
             <tr class="border-b dark:border-gray-700">
-                <td class="p-2 font-bold dark:text-white">${item.name}</td>
-                <td align="center" class="p-2 font-black">${item.qty}</td>
-                <td align="right" class="p-2 text-green-600 font-bold">${formatCurrency(item.price * item.qty)}</td>
+                <td class="p-2 font-bold dark:text-white">
+                    ${item.name}
+                </td>
+                <td align="center" class="p-2 font-black">
+                    ${item.qty}
+                </td>
+                <td align="right" class="p-2 text-green-600 font-bold">
+                    ${formatCurrency(item.price * item.qty)}
+                </td>
                 <td align="center" class="p-2">
                     <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            </tr>`; 
+            </tr>
+        `; 
     });
     
     const serviceCost = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
@@ -331,7 +407,6 @@ export async function processSale(e) {
         return alert("Error saving sale: " + error.message);
     }
 
-    // Save a hard copy of the cart BEFORE clearing it to pass into the bill generator
     const itemsForBill = [...cart];
 
     if (cart.length > 0) {
@@ -373,14 +448,25 @@ function generateBill(sale, items) {
             </tr>
         `).join('');
     } else {
-        itemsHtml = '<tr><td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">Service Only</td></tr>';
+        itemsHtml = `
+            <tr>
+                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">
+                    Service Only
+                </td>
+            </tr>
+        `;
     }
 
     w.document.write(`
         <html>
         <head>
             <style>
-                body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
+                body { 
+                    font-family: 'Courier New', Courier, monospace; 
+                    padding: 20px; 
+                    font-size: 14px; 
+                    color: #000; 
+                }
                 h2, p { margin: 0; padding: 2px 0; }
                 hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
                 table { width: 100%; border-collapse: collapse; margin: 10px 0; }
@@ -439,7 +525,10 @@ export function closeReportModal() {
 
 export function filterSales(period) {
     const t = document.getElementById('report-table-body'); 
-    if (!t) return; 
+    
+    if (!t) {
+        return; 
+    }
     
     t.innerHTML = ''; 
     let totalRevenue = 0; 
@@ -452,27 +541,37 @@ export function filterSales(period) {
 
     const filtered = allSales.filter(s => {
         const d = new Date(s.date);
-        if (period === 'today') return d >= startOfDay;
-        if (period === 'week') return d >= startOfWeek;
-        if (period === 'month') return d >= startOfMonth;
-        if (period === 'year') return d >= startOfYear;
+        if (period === 'today') { return d >= startOfDay; }
+        if (period === 'week') { return d >= startOfWeek; }
+        if (period === 'month') { return d >= startOfMonth; }
+        if (period === 'year') { return d >= startOfYear; }
         return true;
     });
 
     filtered.forEach(s => {
         totalRevenue += Number(s.total_amount); 
+        
         t.innerHTML += `
             <tr class="border-b dark:border-gray-700">
-                <td class="p-3">${new Date(s.date).toLocaleDateString()}</td>
-                <td class="p-3 font-mono text-blue-500">${s.receipt_no || s.id}</td>
-                <td class="p-3 font-bold">${s.customer_name}</td>
-                <td class="p-3 text-right font-black text-green-600">${formatCurrency(s.total_amount)}</td>
+                <td class="p-3">
+                    ${new Date(s.date).toLocaleDateString()}
+                </td>
+                <td class="p-3 font-mono text-blue-500">
+                    ${s.receipt_no || s.id}
+                </td>
+                <td class="p-3 font-bold">
+                    ${s.customer_name}
+                </td>
+                <td class="p-3 text-right font-black text-green-600">
+                    ${formatCurrency(s.total_amount)}
+                </td>
                 <td class="p-3 text-center">
                     <button onclick="window.posModule.deleteSale('${s.id}')" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            </tr>`;
+            </tr>
+        `;
     });
     
     document.getElementById('report-total-sales').innerText = formatCurrency(totalRevenue);
@@ -495,6 +594,7 @@ export async function deleteSale(id) {
         
         await sb.from('sale_items').delete().eq('sale_id', id); 
         await sb.from('sales').delete().eq('id', id); 
+        
         openReportModal(); 
     } 
 }
@@ -527,39 +627,43 @@ export function filterRepairs() {
     const filter = document.getElementById('repair-filter')?.value || 'all'; 
     const tbody = document.getElementById('repairs-table-body'); 
     
-    if (!tbody) return; 
+    if (!tbody) {
+        return; 
+    }
+    
     tbody.innerHTML = '';
     
     const filtered = repairsData.filter(r => {
-        if (filter === 'pending') return r.status !== 'Completed';
-        if (filter === 'completed') return r.status === 'Completed';
+        if (filter === 'pending') { return r.status === 'Pending' || r.status === 'Under Repair'; }
+        if (filter === 'completed') { return r.status === 'Completed'; }
+        if (filter === 'collected') { return r.status === 'Collected'; }
         return true;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500 font-bold uppercase tracking-widest">No tickets found.</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-6 text-gray-500 font-bold uppercase tracking-widest">
+                    No tickets found.
+                </td>
+            </tr>
+        `;
         return;
     }
 
     filtered.forEach(r => {
         let statusHtml = ''; 
         let rowClass = '';
+        let actionsHtml = '';
 
         if (r.status === 'Pending') {
             rowClass = 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 animate-pulse';
-            statusHtml = `<button onclick="window.posModule.startRepair('${r.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition">Start Repair</button>`;
-        } 
-        else if (r.status === 'Under Repair' || r.status === 'In Progress') {
-            rowClass = 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500';
-            statusHtml = `<button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition">Finish & Bill</button>`;
-        } 
-        else {
-            rowClass = 'bg-white dark:bg-darkcard border-l-4 border-green-500';
-            statusHtml = `<span class="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest border border-green-200">Completed</span>`;
-        }
-
-        const actionsHtml = `
-            <div class="flex gap-2 justify-center">
+            statusHtml = `
+                <button onclick="window.posModule.startRepair('${r.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
+                    Start Repair
+                </button>
+            `;
+            actionsHtml = `
                 <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -569,8 +673,53 @@ export function filterRepairs() {
                 <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
-            </div>
-        `;
+            `;
+        } 
+        else if (r.status === 'Under Repair' || r.status === 'In Progress') {
+            rowClass = 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-500';
+            statusHtml = `
+                <button onclick="window.posModule.openCompleteRepairModal('${r.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full">
+                    Finish & Bill
+                </button>
+            `;
+            actionsHtml = `
+                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                    <i class="fas fa-print"></i>
+                </button>
+                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        } 
+        else if (r.status === 'Completed') {
+            rowClass = 'bg-blue-50 dark:bg-blue-900/10 border-l-4 border-blue-500';
+            statusHtml = `
+                <button onclick="window.posModule.markAsCollected('${r.id}')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition w-full flex items-center justify-center gap-1">
+                    <i class="fas fa-hand-holding-usd"></i> Collect & Pay
+                </button>
+            `;
+            actionsHtml = `
+                <button onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                    <i class="fas fa-receipt"></i> Print Bill
+                </button>
+            `;
+        }
+        else if (r.status === 'Collected') {
+            rowClass = 'bg-white dark:bg-darkcard border-l-4 border-green-500';
+            statusHtml = `
+                <span class="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest border border-green-200 block text-center">
+                    <i class="fas fa-check-circle"></i> Collected
+                </span>
+            `;
+            actionsHtml = `
+                <button onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                    <i class="fas fa-receipt"></i> Print Bill
+                </button>
+            `;
+        }
 
         tbody.innerHTML += `
             <tr class="${rowClass} border-b dark:border-gray-700 transition">
@@ -579,10 +728,102 @@ export function filterRepairs() {
                 <td class="p-4 text-sm text-gray-600 dark:text-gray-400 font-bold">${r.phone}</td>
                 <td class="p-4 font-bold text-green-600">${formatCurrency(r.advance)}</td>
                 <td class="p-4 text-sm text-gray-600 dark:text-gray-400 font-bold">${new Date(r.predicted_date).toLocaleDateString()}</td>
-                <td class="p-4 text-center">${statusHtml}</td>
-                <td class="p-4 text-center">${actionsHtml}</td>
-            </tr>`;
+                <td class="p-4 align-middle">${statusHtml}</td>
+                <td class="p-4 text-center flex gap-1 justify-center align-middle">${actionsHtml}</td>
+            </tr>
+        `;
     });
+}
+
+export async function markAsCollected(id) {
+    if (await showCustomConfirm("Collect & Pay", "Confirm the customer has paid the balance and collected the bicycle.", "confirm")) {
+        const sb = getSupabase();
+        const { error } = await sb.from('repairs').update({ status: 'Collected' }).eq('id', id);
+        
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            loadRepairs();
+        }
+    }
+}
+
+export function reprintFinalBill(r) {
+    const w = window.open('', '', 'width=400,height=600');
+    
+    let partsHtml = '';
+    
+    if (r.parts_used) {
+        const parts = typeof r.parts_used === 'string' ? JSON.parse(r.parts_used) : r.parts_used;
+        if (parts.length > 0) {
+            partsHtml = parts.map(i => `
+                <tr>
+                    <td style="padding: 5px 0;">${i.name}</td>
+                    <td align="center" style="padding: 5px 0;">${i.qty}</td>
+                    <td align="right" style="padding: 5px 0;">${(i.price * i.qty).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    if (partsHtml === '') {
+        partsHtml = `
+            <tr>
+                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">
+                    Service / Labor Only
+                </td>
+            </tr>
+        `;
+    }
+
+    w.document.write(`
+        <html>
+        <head>
+            <style>
+                body { 
+                    font-family: 'Courier New', Courier, monospace; 
+                    padding: 20px; 
+                    font-size: 14px; 
+                    color: #000; 
+                }
+                h2, p { margin: 0; padding: 2px 0; }
+                hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
+            </style>
+        </head>
+        <body>
+            <center>
+                <h2>CycleSense Repair Bill</h2>
+                <p>Tel: 075 633 9536</p>
+                <p>Ticket: ${r.repair_id}</p>
+            </center>
+            <hr>
+            <p>Cust: ${r.customer_name}</p>
+            <p>Phone: ${r.phone}</p>
+            <hr>
+            <table>
+                <tr>
+                    <th>Item/Service</th>
+                    <th style="text-align:center;">Qty</th>
+                    <th style="text-align:right;">Price</th>
+                </tr>
+                ${partsHtml}
+            </table>
+            <hr>
+            <div style="text-align: right;">
+                <p>Total Amount: ${r.final_amount.toFixed(2)}</p>
+                <p style="color: red;">Advance Paid: -${r.advance.toFixed(2)}</p>
+                <h3 style="margin-top: 10px;">Balance Paid: ${r.balance_due.toFixed(2)} LKR</h3>
+            </div>
+            <hr>
+            <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
+            <script>window.print();</script>
+        </body>
+        </html>
+    `);
+    
+    w.document.close();
 }
 
 export async function startRepair(id) {
@@ -611,8 +852,9 @@ export async function saveEditRepair(e) {
     e.preventDefault(); 
     
     const id = document.getElementById('edit-repair-id').value; 
+    const sb = getSupabase();
     
-    const { error } = await getSupabase().from('repairs').update({ 
+    const { error } = await sb.from('repairs').update({ 
         customer_name: document.getElementById('edit-repair-customer').value, 
         phone: document.getElementById('edit-repair-phone').value, 
         advance: parseFloat(document.getElementById('edit-repair-advance').value), 
@@ -632,9 +874,10 @@ export async function addRepair(e) {
     e.preventDefault(); 
     
     const form = new FormData(e.target); 
+    const sb = getSupabase();
     const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
     
-    const { data, error } = await getSupabase().from('repairs').insert({ 
+    const { data, error } = await sb.from('repairs').insert({ 
         repair_id: repairId, 
         customer_name: form.get('customer_name'), 
         phone: form.get('phone'), 
@@ -705,7 +948,9 @@ export async function openCompleteRepairModal(id) {
         repairCart = []; 
         document.getElementById('rep-labor').value = ''; 
         
-        const { data: r, error } = await getSupabase().from('repairs').select('*').eq('id', id).single();
+        const sb = getSupabase();
+        
+        const { data: r, error } = await sb.from('repairs').select('*').eq('id', id).single();
         
         if (error) {
             throw error;
@@ -720,7 +965,11 @@ export async function openCompleteRepairModal(id) {
         
         const prods = await fetchAll('products'); 
         prods.forEach(p => { 
-            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`; 
+            select.innerHTML += `
+                <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
+                    ${p.name} - ${formatCurrency(p.unit_price)}
+                </option>
+            `; 
         });
         
         recalcRepairTotal();
@@ -763,7 +1012,8 @@ export function recalcRepairTotal() {
                 <td class="p-2 font-bold">${item.name}</td>
                 <td class="p-2 text-center">${item.qty}</td>
                 <td class="p-2 text-right text-green-500 font-bold">${formatCurrency(item.price * item.qty)}</td>
-            </tr>`; 
+            </tr>
+        `; 
     }); 
     
     const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
@@ -775,9 +1025,10 @@ export function recalcRepairTotal() {
 }
 
 export async function finalizeRepair() { 
+    const sb = getSupabase();
     const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
     
-    const { data: repair } = await getSupabase().from('repairs').select('*').eq('id', currentRepairId).single(); 
+    const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single(); 
     
     const partsTotal = repairCart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
     const finalTotalAmount = partsTotal + labor; 
@@ -785,7 +1036,7 @@ export async function finalizeRepair() {
     
     const receiptNo = "REP-" + Date.now().toString().slice(-8);
 
-    const { data: sale } = await getSupabase().from('sales').insert({ 
+    const { data: sale } = await sb.from('sales').insert({ 
         receipt_no: receiptNo, 
         customer_name: repair.customer_name + " (Repair Checkout)", 
         phone: repair.phone, 
@@ -797,29 +1048,46 @@ export async function finalizeRepair() {
     const partsForBill = [...repairCart];
 
     if (repairCart.length > 0) {
-        const itemsToInsert = repairCart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
-        await getSupabase().from('sale_items').insert(itemsToInsert);
+        const itemsToInsert = repairCart.map(i => ({ 
+            sale_id: sale.id, 
+            product_id: i.id, 
+            quantity: i.qty, 
+            price: i.price 
+        }));
+        
+        await sb.from('sale_items').insert(itemsToInsert);
         
         for (let item of repairCart) { 
-            const { data: p } = await getSupabase().from('products').select('stock').eq('id', item.id).single();
+            const { data: p } = await sb.from('products').select('stock').eq('id', item.id).single();
             if (p) {
-                await getSupabase().from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
+                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
             }
         }
     }
 
-    await getSupabase().from('repairs').update({ 
+    await sb.from('repairs').update({ 
         status: 'Completed', 
         final_amount: finalTotalAmount, 
-        balance_due: balanceDue 
+        balance_due: balanceDue,
+        parts_used: JSON.stringify(partsForBill)
     }).eq('id', currentRepairId); 
     
     document.getElementById('repair-finalize-modal').classList.add('hidden'); 
     
-    generateBill(sale, partsForBill);
+    const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
+    
+    reprintFinalBill(freshRepair);
     await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     
     loadRepairs(); 
+}
+
+export async function deleteRepair(id) { 
+    if (await showCustomConfirm("Delete Ticket?", "Are you sure?", "danger")) { 
+        const sb = getSupabase();
+        await sb.from('repairs').delete().eq('id', id); 
+        loadRepairs(); 
+    } 
 }
 
 
@@ -829,10 +1097,13 @@ export async function finalizeRepair() {
 let workersData = [];
 
 export async function loadHR() {
-    const { data } = await getSupabase().from('workers').select('*').order('id', { ascending: false });
+    const sb = getSupabase();
+    const { data } = await sb.from('workers').select('*').order('id', { ascending: false });
+    
     workersData = data || [];
     
     const list = document.getElementById('workers-list');
+    
     if (!list) {
         return; 
     }
@@ -842,6 +1113,7 @@ export async function loadHR() {
     const attSelect = document.getElementById('hr-att-worker');
     const advSelect = document.getElementById('hr-adv-worker');
     const paySelect = document.getElementById('hr-pay-worker');
+    
     let optionsHtml = '<option value="">Select Worker...</option>';
 
     workersData.forEach(w => {
@@ -878,7 +1150,8 @@ export async function loadHR() {
                         </div>
                     </div>
                 </div>
-            </div>`;
+            </div>
+        `;
             
         optionsHtml += `<option value="${w.id}">${w.name} (${w.worker_uid || w.id})</option>`;
     });
@@ -925,6 +1198,7 @@ async function loadHRDashboardSummary() {
     });
     
     const bdayAlertEl = document.getElementById('bday-alert');
+    
     if (bdayAlertEl) {
         if (birthdayMessages !== "") { 
             bdayAlertEl.classList.remove('hidden'); 
@@ -935,6 +1209,7 @@ async function loadHRDashboardSummary() {
     }
 
     const salAlertEl = document.getElementById('salary-alert');
+    
     if (salAlertEl) {
         if (today.getDate() >= 18 && today.getDate() <= 25) {
             salAlertEl.classList.remove('hidden');
@@ -1019,10 +1294,11 @@ async function loadHRDashboardSummary() {
 export async function addWorker(e) {
     e.preventDefault(); 
     
+    const sb = getSupabase();
     const form = new FormData(e.target);
     const year = new Date().getFullYear();
     
-    const { data: lastWorker } = await getSupabase().from('workers')
+    const { data: lastWorker } = await sb.from('workers')
         .select('worker_uid')
         .ilike('worker_uid', `W${year}%`)
         .order('worker_uid', { ascending: false })
@@ -1033,9 +1309,10 @@ export async function addWorker(e) {
         const lastNumStr = lastWorker[0].worker_uid.slice(-3);
         nextNumber = parseInt(lastNumStr) + 1;
     }
+    
     const generatedUid = `W${year}${String(nextNumber).padStart(3, '0')}`;
 
-    const { error } = await getSupabase().from('workers').insert({ 
+    const { error } = await sb.from('workers').insert({ 
         worker_uid: generatedUid, 
         name: form.get('name'), 
         phone: form.get('phone'), 
@@ -1077,9 +1354,10 @@ export function openEditWorker(id) {
 export async function saveEditWorker(e) {
     e.preventDefault(); 
     
+    const sb = getSupabase();
     const form = new FormData(e.target);
     
-    const { error } = await getSupabase().from('workers').update({ 
+    const { error } = await sb.from('workers').update({ 
         name: form.get('name'), 
         phone: form.get('phone'), 
         nic: form.get('nic'), 
@@ -1098,23 +1376,17 @@ export async function saveEditWorker(e) {
     }
 }
 
-export async function deleteWorker(id) { 
-    if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
-        await getSupabase().from('workers').delete().eq('id', id); 
-        loadHR(); 
-    } 
-}
-
 export async function markAttendance(e) {
     e.preventDefault(); 
     
+    const sb = getSupabase();
     const form = new FormData(e.target); 
     const wId = form.get('worker_id'); 
     const d = form.get('date');
     
-    await getSupabase().from('attendance').delete().match({ worker_id: wId, date: d });
+    await sb.from('attendance').delete().match({ worker_id: wId, date: d });
     
-    const { error } = await getSupabase().from('attendance').insert({ 
+    const { error } = await sb.from('attendance').insert({ 
         worker_id: wId, 
         date: d, 
         status: form.get('status'), 
@@ -1135,9 +1407,10 @@ export async function markAttendance(e) {
 export async function addAdvance(e) {
     e.preventDefault(); 
     
+    const sb = getSupabase();
     const form = new FormData(e.target);
     
-    const { error } = await getSupabase().from('advances').insert({ 
+    const { error } = await sb.from('advances').insert({ 
         worker_id: form.get('worker_id'), 
         date: form.get('date'), 
         amount: Number(form.get('amount')) 
@@ -1154,6 +1427,7 @@ export async function addAdvance(e) {
 }
 
 export async function calculateWorkerSalary(wId, monthStr) {
+    const sb = getSupabase();
     const worker = workersData.find(w => String(w.id) === String(wId));
     
     if (!worker) {
@@ -1164,11 +1438,18 @@ export async function calculateWorkerSalary(wId, monthStr) {
     const startDate = `${monthStr}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    const { data: attData } = await getSupabase().from('attendance')
-        .select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate).order('date', {ascending:true});
+    const { data: attData } = await sb.from('attendance')
+        .select('*')
+        .eq('worker_id', wId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', {ascending:true});
         
-    const { data: advData } = await getSupabase().from('advances')
-        .select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate);
+    const { data: advData } = await sb.from('advances')
+        .select('*')
+        .eq('worker_id', wId)
+        .gte('date', startDate)
+        .lte('date', endDate);
 
     let full = 0;
     let half = 0;
@@ -1243,6 +1524,7 @@ export async function viewWorkerAttendance(id) {
     document.getElementById('view-att-wid').value = id;
     
     await renderWorkerAttendanceUI(id, monthStr);
+    
     document.getElementById('view-attendance-modal').classList.remove('hidden');
 }
 
@@ -1307,7 +1589,10 @@ export async function generatePayroll(e) {
     e.preventDefault(); 
     
     const form = new FormData(e.target); 
-    const data = await calculateWorkerSalary(form.get('worker_id'), form.get('month'));
+    const wId = form.get('worker_id'); 
+    const mStr = form.get('month');
+    
+    const data = await calculateWorkerSalary(wId, mStr);
     
     if (!data) {
         return alert("Error locating worker.");
@@ -1317,22 +1602,62 @@ export async function generatePayroll(e) {
     
     let advancesHtml = '';
     if (data.advData) {
-        advancesHtml = data.advData.map(a => `<div class="adv-list">${a.date} : ${formatCurrency(a.amount)}</div>`).join('');
+        advancesHtml = data.advData.map(a => `
+            <div class="adv-list">
+                ${a.date} : ${formatCurrency(a.amount)}
+            </div>
+        `).join('');
     }
     
     const html = `
         <html>
         <head>
             <style>
-                body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+                body { 
+                    font-family: Arial, sans-serif; 
+                    padding: 40px; 
+                    color: #333; 
+                }
+                .header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 20px; 
+                    margin-bottom: 20px; 
+                }
                 h1 { margin: 0; color: #1e3a8a; } 
                 h3 { margin: 5px 0; color: #666; }
-                .row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 10px 0; font-size:14px; }
+                .row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    border-bottom: 1px dashed #eee; 
+                    padding: 10px 0; 
+                    font-size:14px; 
+                }
                 .bold { font-weight: bold; }
-                .total-row { display: flex; justify-content: space-between; border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 15px 0; font-size: 18px; margin-top: 20px; background: #f8fafc; }
-                .section-title { margin-top: 30px; font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-                .adv-list { font-size: 12px; color: #888; padding-left: 20px; margin: 2px 0; }
+                .total-row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    border-top: 2px solid #333; 
+                    border-bottom: 2px solid #333; 
+                    padding: 15px 0; 
+                    font-size: 18px; 
+                    margin-top: 20px; 
+                    background: #f8fafc; 
+                }
+                .section-title { 
+                    margin-top: 30px; 
+                    font-size: 14px; 
+                    text-transform: uppercase; 
+                    color: #888; 
+                    border-bottom: 1px solid #ccc; 
+                    padding-bottom: 5px; 
+                }
+                .adv-list { 
+                    font-size: 12px; 
+                    color: #888; 
+                    padding-left: 20px; 
+                    margin: 2px 0; 
+                }
             </style>
         </head>
         <body>
@@ -1346,17 +1671,28 @@ export async function generatePayroll(e) {
                 <span>Employee Name:</span> 
                 <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
             </div>
-            
             <div class="row">
                 <span>Daily Rate Base:</span> 
                 <span>${formatCurrency(data.worker.daily_salary)}</span>
             </div>
-            
+
             <div class="section-title">Earnings & Deductions</div>
-            <div class="row"><span>Full Days (${data.full})</span> <span>${formatCurrency(data.full * data.worker.daily_salary)}</span></div>
-            <div class="row"><span>Half Days (${data.half})</span> <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span></div>
-            <div class="row"><span>Short Leaves (${data.short})</span> <span>${formatCurrency(data.short * data.worker.daily_salary)}</span></div>
-            <div class="row text-red"><span>Time Penalties (Late/Early)</span> <span style="color:red">- ${formatCurrency(data.timePenalty)}</span></div>
+            <div class="row">
+                <span>Full Days (${data.full})</span> 
+                <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
+            </div>
+            <div class="row">
+                <span>Half Days (${data.half})</span> 
+                <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span>
+            </div>
+            <div class="row">
+                <span>Short Leaves (${data.short})</span> 
+                <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
+            </div>
+            <div class="row text-red">
+                <span>Time Penalties (Late/Early)</span> 
+                <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
+            </div>
             
             <div class="row" style="background:#f4f4f4;">
                 <span><b>Gross Earnings</b></span> 
@@ -1364,20 +1700,31 @@ export async function generatePayroll(e) {
             </div>
             
             <div class="section-title">Subtractions</div>
-            <div class="row"><span>Advances Taken</span> <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span></div>
+            <div class="row">
+                <span>Advances Taken</span> 
+                <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
+            </div>
             ${advancesHtml}
-            
-            <div class="row"><span>EPF Deduction (8%)</span> <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span></div>
-            
+            <div class="row">
+                <span>EPF Deduction (8%)</span> 
+                <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
+            </div>
+
             <div class="total-row">
                 <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
                 <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
             </div>
-            
+
             <div class="section-title">Employer Contributions (Info Only)</div>
-            <div class="row"><span>EPF Contribution (12%)</span> <span>${formatCurrency(data.grossEarnings * 0.12)}</span></div>
-            <div class="row"><span>ETF Contribution (3%)</span> <span>${formatCurrency(data.grossEarnings * 0.03)}</span></div>
-            
+            <div class="row">
+                <span>EPF Contribution (12%)</span> 
+                <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
+            </div>
+            <div class="row">
+                <span>ETF Contribution (3%)</span> 
+                <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
+            </div>
+
             <div style="margin-top: 50px; display: flex; justify-content: space-between;">
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
@@ -1422,11 +1769,14 @@ export function prevMonth() {
 }
 
 async function renderCalendar(month, year) {
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June", 
+        "July", "August", "September", "October", "November", "December"
+    ];
+    
     document.getElementById('cal-month-year').innerText = `${monthNames[month]} ${year}`;
     
     const daysContainer = document.getElementById('cal-days');
-    
     if (!daysContainer) {
         return;
     }
@@ -1439,20 +1789,32 @@ async function renderCalendar(month, year) {
     const sDate = `${year}-${String(month+1).padStart(2,'0')}-01`;
     const eDate = `${year}-${String(month+1).padStart(2,'0')}-${daysInMonth}`;
     
-    const { data: events } = await getSupabase().from('calendar_events').select('*').gte('event_date', sDate).lte('event_date', eDate);
+    const sb = getSupabase();
+    
+    const { data: events } = await sb.from('calendar_events')
+        .select('*')
+        .gte('event_date', sDate)
+        .lte('event_date', eDate);
     
     for (let i = 0; i < firstDay; i++) { 
-        daysContainer.innerHTML += `<div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>`; 
+        daysContainer.innerHTML += `
+            <div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>
+        `; 
     }
     
     for (let day = 1; day <= daysInMonth; day++) {
         const fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         
         let eventHtml = '';
+        
         if (events) {
             const dayEvents = events.filter(e => e.event_date === fullDate);
             dayEvents.forEach(e => { 
-                eventHtml += `<div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate" title="${e.title}">${e.title}</div>`; 
+                eventHtml += `
+                    <div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate" title="${e.title}">
+                        ${e.title}
+                    </div>
+                `; 
             });
         }
         
@@ -1460,7 +1822,8 @@ async function renderCalendar(month, year) {
             <div class="p-2 border border-gray-100 dark:border-gray-700 min-h-[80px] rounded cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition" onclick="window.posModule.openEventModal('${fullDate}')">
                 <span class="font-bold text-gray-700 dark:text-gray-300">${day}</span>
                 ${eventHtml}
-            </div>`;
+            </div>
+        `;
     }
 }
 
@@ -1473,15 +1836,19 @@ export function openEventModal(dateStr) {
 export async function saveCalendarEvent(e) {
     e.preventDefault();
     
-    const { error } = await getSupabase().from('calendar_events').insert({ 
-        event_date: document.getElementById('event-date').value, 
-        title: document.getElementById('event-title').value 
+    const sb = getSupabase();
+    const dateStr = document.getElementById('event-date').value;
+    const title = document.getElementById('event-title').value;
+    
+    const { error } = await sb.from('calendar_events').insert({ 
+        event_date: dateStr, 
+        title: title 
     });
     
     if (error) {
         alert("Error saving event: " + error.message);
-    } else { 
-        document.getElementById('calendar-event-modal').classList.add('hidden'); 
-        renderCalendar(currentMonth, currentYear); 
+    } else {
+        document.getElementById('calendar-event-modal').classList.add('hidden');
+        renderCalendar(currentMonth, currentYear);
     }
 }
