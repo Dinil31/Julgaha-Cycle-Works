@@ -8,21 +8,26 @@ const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currenc
 async function fetchAll(table) {
     const sb = getSupabase();
     const { data, error } = await sb.from(table).select('*').order('id', { ascending: false });
+    
     if (error) { 
         console.error(`Error fetching from ${table}:`, error.message); 
         return []; 
     }
+    
     return data;
 }
-
 
 // ==========================================
 // 1. INVENTORY & RESTOCK
 // ==========================================
+
 export async function loadInventory() {
     const products = await fetchAll('products');
     const tbody = document.getElementById('inventory-table-body');
-    if (!tbody) return; 
+    
+    if (!tbody) {
+        return; 
+    }
     
     tbody.innerHTML = '';
     
@@ -36,13 +41,16 @@ export async function loadInventory() {
                 <td class="p-4">
                     <div class="flex items-center gap-3">
                         <span class="${isLow ? 'text-red-500 animate-pulse font-black text-lg' : 'text-green-500 font-bold'}">${p.stock}</span>
-                        <button onclick="window.posModule.promptAddStock('${p.id}', '${p.name}', ${p.stock})" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
+                        <button onclick="window.posModule.promptAddStock('${p.id}', '${p.name}', ${p.stock}, ${p.buying_price || 0}, ${p.unit_price})" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
                             <i class="fas fa-plus"></i> Add
                         </button>
                     </div>
                 </td>
                 <td class="p-4 text-gray-500 font-bold">${p.reorder_level}</td>
-                <td class="p-4 dark:text-gray-300 font-bold text-green-600">${formatCurrency(p.unit_price)}</td>
+                <td class="p-4 dark:text-gray-300">
+                    <div class="text-xs text-gray-400 font-bold">Buy: ${formatCurrency(p.buying_price)}</div>
+                    <div class="font-bold text-green-600">Sell: ${formatCurrency(p.unit_price)}</div>
+                </td>
                 <td class="p-4">
                     <span class="px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${isLow ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
                         ${isLow ? 'Low Stock' : 'In Stock'}
@@ -52,22 +60,50 @@ export async function loadInventory() {
     });
 }
 
-// QUICK RESTOCK FUNCTION
-export async function promptAddStock(id, name, currentStock) {
-    const addQty = prompt(`Enter new quantity received for "${name}"\n(Current Stock: ${currentStock}):`);
+// OPEN CUSTOM RESTOCK MODAL
+export function promptAddStock(id, name, currentStock, buyPrice, sellPrice) {
+    document.getElementById('qr-id').value = id;
+    document.getElementById('qr-name').innerText = name;
+    document.getElementById('qr-current').innerText = currentStock;
+    document.getElementById('qr-add-qty').value = '';
+    document.getElementById('qr-buy-price').value = buyPrice;
+    document.getElementById('qr-sell-price').value = sellPrice;
     
-    if (!addQty || isNaN(addQty) || parseInt(addQty) <= 0) return;
+    document.getElementById('quick-restock-modal').classList.remove('hidden');
+}
+
+// SUBMIT CUSTOM RESTOCK MODAL
+export async function confirmQuickRestock(e) {
+    e.preventDefault();
     
-    const newStock = currentStock + parseInt(addQty);
+    const form = new FormData(e.target);
+    const id = form.get('id');
+    const addQty = parseInt(form.get('add_qty'));
+    const newBuy = parseFloat(form.get('buying_price'));
+    const newSell = parseFloat(form.get('selling_price'));
+
+    if (!addQty || addQty <= 0) {
+        return alert("Please enter a valid quantity.");
+    }
+
     const sb = getSupabase();
     
-    const { error } = await sb.from('products').update({ stock: newStock }).eq('id', id);
+    // Get latest stock to avoid overwriting issues
+    const { data: p } = await sb.from('products').select('stock').eq('id', id).single();
+    const newStock = (p ? p.stock : 0) + addQty;
+
+    const { error } = await sb.from('products').update({ 
+        stock: newStock,
+        buying_price: newBuy,
+        unit_price: newSell
+    }).eq('id', id);
     
     if (error) {
         alert("Error updating stock: " + error.message);
     } else {
+        document.getElementById('quick-restock-modal').classList.add('hidden');
         loadInventory();
-        await showCustomConfirm("Stock Updated", `${name} stock is now ${newStock}.`, "success-green");
+        await showCustomConfirm("Stock Updated", `Added ${addQty} units. Prices updated.`, "success-green");
     }
 }
 
@@ -85,7 +121,6 @@ export async function generateRestockPDF() {
     tbody.innerHTML = '';
     
     lowStockItems.forEach((p, index) => {
-        // Suggested Order: Bring stock up to 3x the danger level
         const suggestedOrder = (p.reorder_level * 3) - p.stock;
         const defaultQty = suggestedOrder > 0 ? suggestedOrder : 10;
         
@@ -115,7 +150,7 @@ export function printRestockFinal() {
     
     rows.forEach(row => {
         const cols = row.querySelectorAll('td');
-        const orderQty = row.querySelector('input').value; // Grabs exact number typed by user
+        const orderQty = row.querySelector('input').value; 
         
         printRows += `
             <tr>
@@ -128,6 +163,7 @@ export function printRestockFinal() {
     });
 
     const printWindow = window.open('', '', 'width=800,height=600');
+    
     printWindow.document.write(`
         <html>
         <head>
@@ -155,6 +191,7 @@ export function printRestockFinal() {
         </body>
         </html>
     `);
+    
     printWindow.document.close();
 }
 
@@ -168,6 +205,7 @@ export async function addProduct(e) {
         name: form.get('name'), 
         stock: Number(form.get('stock')), 
         reorder_level: Number(form.get('reorder_level')), 
+        buying_price: Number(form.get('buying_price')), 
         unit_price: Number(form.get('unit_price')) 
     });
     
@@ -204,7 +242,10 @@ export function addToCart() {
     const qtyInput = document.getElementById('pos-qty');
     
     const id = select.value; 
-    if (!id) return alert("Please select a product first.");
+    
+    if (!id) {
+        return alert("Please select a product first.");
+    }
     
     const option = select.options[select.selectedIndex];
     const name = option.getAttribute('data-name');
@@ -217,6 +258,7 @@ export function addToCart() {
     }
     
     const existingItem = cart.find(i => i.id === id); 
+    
     if (existingItem) {
         existingItem.qty += qty; 
     } else {
@@ -231,7 +273,10 @@ export function renderCart() {
     const tbody = document.getElementById('cart-table-body'); 
     const totalEl = document.getElementById('pos-total');
     
-    if (!tbody) return; 
+    if (!tbody) {
+        return; 
+    }
+    
     tbody.innerHTML = ''; 
     let total = 0;
     
@@ -243,7 +288,9 @@ export function renderCart() {
                 <td align="center" class="p-2 font-black">${item.qty}</td>
                 <td align="right" class="p-2 text-green-600 font-bold">${formatCurrency(item.price * item.qty)}</td>
                 <td align="center" class="p-2">
-                    <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition"><i class="fas fa-trash"></i></button>
+                    <button onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             </tr>`; 
     });
@@ -259,6 +306,7 @@ export function removeCartItem(idx) {
 
 export async function processSale(e) {
     e.preventDefault(); 
+    
     const sb = getSupabase();
     const form = new FormData(e.target); 
     const svc = parseFloat(form.get('service_cost') || 0); 
@@ -279,13 +327,21 @@ export async function processSale(e) {
         date: new Date().toISOString()
     }).select().single();
 
-    if (error) return alert("Error saving sale: " + error.message);
+    if (error) {
+        return alert("Error saving sale: " + error.message);
+    }
 
-    // Create a hard copy of the cart BEFORE clearing it to pass into the bill generator
+    // Save a hard copy of the cart BEFORE clearing it to pass into the bill generator
     const itemsForBill = [...cart];
 
     if (cart.length > 0) {
-        const itemsToInsert = cart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
+        const itemsToInsert = cart.map(i => ({ 
+            sale_id: sale.id, 
+            product_id: i.id, 
+            quantity: i.qty, 
+            price: i.price 
+        }));
+        
         await sb.from('sale_items').insert(itemsToInsert);
         
         for (let item of cart) { 
@@ -307,6 +363,7 @@ function generateBill(sale, items) {
     const w = window.open('', '', 'width=400,height=600');
     
     let itemsHtml = '';
+    
     if (items && items.length > 0) {
         itemsHtml = items.map(i => `
             <tr>
@@ -359,16 +416,19 @@ function generateBill(sale, items) {
         </body>
         </html>
     `);
+    
     w.document.close();
 }
 
-// Sales Report Modal
+// --- Sales Report Logic ---
 let allSales = [];
 
 export async function openReportModal() { 
     document.getElementById('sales-report-modal').classList.remove('hidden'); 
+    
     const sb = getSupabase();
     const { data } = await sb.from('sales').select('*').order('date', { ascending: false }); 
+    
     allSales = data || []; 
     filterSales('today'); 
 }
@@ -381,7 +441,7 @@ export function filterSales(period) {
     const t = document.getElementById('report-table-body'); 
     if (!t) return; 
     
-    t.innerHTML = '';
+    t.innerHTML = ''; 
     let totalRevenue = 0; 
     
     const now = new Date(); 
@@ -422,8 +482,8 @@ export async function deleteSale(id) {
     if (await showCustomConfirm("Delete Record?", "This will remove the sale and restore item stock.", "danger")) { 
         const sb = getSupabase();
         
-        // Restore stock first
         const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', id);
+        
         if (items) {
             for (let item of items) {
                 const { data: p } = await sb.from('products').select('stock').eq('id', item.product_id).single();
@@ -432,7 +492,7 @@ export async function deleteSale(id) {
                 }
             }
         }
-
+        
         await sb.from('sale_items').delete().eq('sale_id', id); 
         await sb.from('sales').delete().eq('id', id); 
         openReportModal(); 
@@ -445,19 +505,21 @@ export async function deleteSale(id) {
 // ==========================================
 let repairCart = []; 
 let repairsData = [];
-// FIXED: Declare currentRepairId globally at the module level
 let currentRepairId = null; 
 
 export async function loadRepairs() { 
     const sb = getSupabase();
     const { data } = await sb.from('repairs').select('*').order('id', { ascending: false }); 
+    
     repairsData = data || []; 
     
-    // Prevent past dates in repair calendar
     const today = new Date().toISOString().split('T')[0];
     const dateInput = document.querySelector('input[name="predicted_date"]');
-    if(dateInput) dateInput.setAttribute('min', today);
-
+    
+    if (dateInput) {
+        dateInput.setAttribute('min', today);
+    }
+    
     filterRepairs(); 
 }
 
@@ -480,10 +542,9 @@ export function filterRepairs() {
     }
 
     filtered.forEach(r => {
-        let statusHtml = '';
+        let statusHtml = ''; 
         let rowClass = '';
 
-        // Dynamic Row Colors & Action Buttons based on flow
         if (r.status === 'Pending') {
             rowClass = 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500 animate-pulse';
             statusHtml = `<button onclick="window.posModule.startRepair('${r.id}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-[10px] uppercase font-black tracking-widest shadow-md transition">Start Repair</button>`;
@@ -499,9 +560,15 @@ export function filterRepairs() {
 
         const actionsHtml = `
             <div class="flex gap-2 justify-center">
-                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit"><i class="fas fa-edit"></i></button>
-                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket"><i class="fas fa-print"></i></button>
-                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete"><i class="fas fa-trash"></i></button>
+                <button onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                    <i class="fas fa-print"></i>
+                </button>
+                <button onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
 
@@ -518,12 +585,16 @@ export function filterRepairs() {
     });
 }
 
-// Start Repair Logic
 export async function startRepair(id) {
-    const sb = getSupabase();
+    const sb = getSupabase(); 
+    
     const { error } = await sb.from('repairs').update({ status: 'Under Repair' }).eq('id', id);
-    if (error) alert("Error starting repair: " + error.message);
-    else loadRepairs();
+    
+    if (error) {
+        alert("Error starting repair: " + error.message); 
+    } else {
+        loadRepairs();
+    }
 }
 
 export function editRepair(r) { 
@@ -532,15 +603,16 @@ export function editRepair(r) {
     document.getElementById('edit-repair-phone').value = r.phone; 
     document.getElementById('edit-repair-advance').value = r.advance; 
     document.getElementById('edit-repair-date').value = r.predicted_date; 
+    
     document.getElementById('repair-edit-modal').classList.remove('hidden'); 
 }
 
 export async function saveEditRepair(e) { 
     e.preventDefault(); 
-    const sb = getSupabase();
+    
     const id = document.getElementById('edit-repair-id').value; 
     
-    const { error } = await sb.from('repairs').update({ 
+    const { error } = await getSupabase().from('repairs').update({ 
         customer_name: document.getElementById('edit-repair-customer').value, 
         phone: document.getElementById('edit-repair-phone').value, 
         advance: parseFloat(document.getElementById('edit-repair-advance').value), 
@@ -558,18 +630,17 @@ export async function saveEditRepair(e) {
 
 export async function addRepair(e) { 
     e.preventDefault(); 
-    const sb = getSupabase();
-    const form = new FormData(e.target); 
     
+    const form = new FormData(e.target); 
     const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
     
-    const { data, error } = await sb.from('repairs').insert({ 
+    const { data, error } = await getSupabase().from('repairs').insert({ 
         repair_id: repairId, 
         customer_name: form.get('customer_name'), 
         phone: form.get('phone'), 
         advance: Number(form.get('advance')), 
         predicted_date: form.get('predicted_date'), 
-        status: 'Pending' // Start as Pending
+        status: 'Pending'
     }).select().single(); 
     
     if (error) {
@@ -584,7 +655,6 @@ export async function addRepair(e) {
 
 export function printRepairTicket(repair) {
     const w = window.open('', '', 'width=400,height=600');
-    // Detect current website domain for the tracking link
     const websiteUrl = window.location.origin + "/track.html";
     
     w.document.write(`
@@ -593,7 +663,7 @@ export function printRepairTicket(repair) {
             <style>
                 body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; } 
                 .box { border: 2px dashed black; padding: 15px; margin: 15px 0; background: #f9f9f9; } 
-                .id { font-size: 22px; font-weight: bold; color: #333; }
+                .id { font-size: 22px; font-weight: bold; color: #333; } 
                 p { margin: 5px 0; font-size: 14px; }
             </style>
         </head>
@@ -625,20 +695,21 @@ export function printRepairTicket(repair) {
         </body>
         </html>
     `);
+    
     w.document.close();
 }
 
-// FIXED: Robust error handling and variable scope for the Complete Modal
 export async function openCompleteRepairModal(id) {
     try {
-        currentRepairId = id; // Assigned properly
+        currentRepairId = id; 
         repairCart = []; 
-        document.getElementById('rep-labor').value = ''; // Reset Labor input
+        document.getElementById('rep-labor').value = ''; 
         
-        const sb = getSupabase();
+        const { data: r, error } = await getSupabase().from('repairs').select('*').eq('id', id).single();
         
-        const { data: r, error } = await sb.from('repairs').select('*').eq('id', id).single();
-        if (error) throw error;
+        if (error) {
+            throw error;
+        }
         
         document.getElementById('rep-modal-customer').innerText = r.customer_name; 
         document.getElementById('rep-modal-adv').innerText = formatCurrency(r.advance);
@@ -648,13 +719,13 @@ export async function openCompleteRepairModal(id) {
         select.innerHTML = '<option value="">Select Replacement Part...</option>';
         
         const prods = await fetchAll('products'); 
-        prods.forEach(p => {
-            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`;
+        prods.forEach(p => { 
+            select.innerHTML += `<option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">${p.name} - ${formatCurrency(p.unit_price)}</option>`; 
         });
         
-        renderRepairCart(r.advance);
-    } catch (err) {
-        alert("Error loading ticket data: " + err.message);
+        recalcRepairTotal();
+    } catch (err) { 
+        alert("Error loading ticket data: " + err.message); 
     }
 }
 
@@ -663,7 +734,9 @@ export function addRepairPart() {
     const id = select.value; 
     const qtyInput = document.getElementById('rep-part-qty').value;
     
-    if (!id) return; 
+    if (!id) {
+        return; 
+    }
     
     const option = select.options[select.selectedIndex];
     
@@ -674,12 +747,12 @@ export function addRepairPart() {
         qty: parseInt(qtyInput) 
     }); 
     
-    const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
-    renderRepairCart(parseFloat(advStr)); 
+    recalcRepairTotal(); 
 }
 
-function renderRepairCart(advanceAmount) { 
+export function recalcRepairTotal() {
     const tbody = document.getElementById('rep-parts-body'); 
+    
     tbody.innerHTML = ''; 
     let totalParts = 0; 
     
@@ -693,6 +766,8 @@ function renderRepairCart(advanceAmount) {
             </tr>`; 
     }); 
     
+    const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
+    const advanceAmount = parseFloat(advStr) || 0;
     const laborCost = parseFloat(document.getElementById('rep-labor').value || 0);
     const balanceDue = (totalParts + laborCost) - advanceAmount;
     
@@ -700,10 +775,9 @@ function renderRepairCart(advanceAmount) {
 }
 
 export async function finalizeRepair() { 
-    const sb = getSupabase();
     const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
     
-    const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single(); 
+    const { data: repair } = await getSupabase().from('repairs').select('*').eq('id', currentRepairId).single(); 
     
     const partsTotal = repairCart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
     const finalTotalAmount = partsTotal + labor; 
@@ -711,7 +785,7 @@ export async function finalizeRepair() {
     
     const receiptNo = "REP-" + Date.now().toString().slice(-8);
 
-    const { data: sale } = await sb.from('sales').insert({ 
+    const { data: sale } = await getSupabase().from('sales').insert({ 
         receipt_no: receiptNo, 
         customer_name: repair.customer_name + " (Repair Checkout)", 
         phone: repair.phone, 
@@ -720,30 +794,31 @@ export async function finalizeRepair() {
         date: new Date().toISOString() 
     }).select().single();
     
-    // Save a hard copy of the cart for printing
     const partsForBill = [...repairCart];
 
     if (repairCart.length > 0) {
         const itemsToInsert = repairCart.map(i => ({ sale_id: sale.id, product_id: i.id, quantity: i.qty, price: i.price }));
-        await sb.from('sale_items').insert(itemsToInsert);
+        await getSupabase().from('sale_items').insert(itemsToInsert);
         
         for (let item of repairCart) { 
-            const { data: p } = await sb.from('products').select('stock').eq('id', item.id).single();
+            const { data: p } = await getSupabase().from('products').select('stock').eq('id', item.id).single();
             if (p) {
-                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
+                await getSupabase().from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
             }
         }
     }
 
-    await sb.from('repairs').update({ 
+    await getSupabase().from('repairs').update({ 
         status: 'Completed', 
         final_amount: finalTotalAmount, 
         balance_due: balanceDue 
     }).eq('id', currentRepairId); 
     
     document.getElementById('repair-finalize-modal').classList.add('hidden'); 
+    
     generateBill(sale, partsForBill);
     await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
+    
     loadRepairs(); 
 }
 
@@ -754,12 +829,13 @@ export async function finalizeRepair() {
 let workersData = [];
 
 export async function loadHR() {
-    const sb = getSupabase();
-    const { data } = await sb.from('workers').select('*').order('id', { ascending: false });
+    const { data } = await getSupabase().from('workers').select('*').order('id', { ascending: false });
     workersData = data || [];
     
     const list = document.getElementById('workers-list');
-    if (!list) return; 
+    if (!list) {
+        return; 
+    }
     
     list.innerHTML = '';
     
@@ -781,13 +857,21 @@ export async function loadHR() {
                             <i class="fas fa-id-card"></i> ${w.nic || 'No NIC'} | 
                             <i class="fas fa-birthday-cake"></i> ${w.dob || 'No DOB'}
                         </p>
-                        <p class="text-xs text-gray-500 mt-1"><i class="fas fa-phone"></i> ${w.phone || 'N/A'}</p>
+                        <p class="text-xs text-gray-500 mt-1">
+                            <i class="fas fa-phone"></i> ${w.phone || 'N/A'}
+                        </p>
                     </div>
                     <div class="flex flex-col gap-2">
                         <div class="flex gap-2 justify-end">
-                            <button onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance"><i class="fas fa-chart-bar"></i></button>
-                            <button onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details"><i class="fas fa-edit"></i></button>
-                            <button onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker"><i class="fas fa-trash"></i></button>
+                            <button onclick="window.posModule.viewWorkerAttendance('${w.id}')" class="text-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 p-2 rounded transition" title="View Salary & Attendance">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                            <button onclick="window.posModule.openEditWorker('${w.id}')" class="text-green-500 hover:bg-green-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Edit Worker Details">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="window.posModule.deleteWorker('${w.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-600 p-2 rounded transition" title="Delete Worker">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                         <div class="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-bold px-2 py-1 rounded text-xs text-center border border-green-200 dark:border-green-800">
                             ${formatCurrency(w.daily_salary)} / Day
@@ -799,16 +883,25 @@ export async function loadHR() {
         optionsHtml += `<option value="${w.id}">${w.name} (${w.worker_uid || w.id})</option>`;
     });
 
-    if (attSelect) attSelect.innerHTML = optionsHtml;
-    if (advSelect) advSelect.innerHTML = optionsHtml;
-    if (paySelect) paySelect.innerHTML = optionsHtml;
+    if (attSelect) {
+        attSelect.innerHTML = optionsHtml;
+    }
+    if (advSelect) {
+        advSelect.innerHTML = optionsHtml;
+    }
+    if (paySelect) {
+        paySelect.innerHTML = optionsHtml;
+    }
     
-    // Default dates to today
     const todayStr = new Date().toISOString().split('T')[0];
-    if (document.getElementById('hr-att-date')) document.getElementById('hr-att-date').value = todayStr;
-    if (document.getElementById('hr-adv-date')) document.getElementById('hr-adv-date').value = todayStr;
+    
+    if (document.getElementById('hr-att-date')) {
+        document.getElementById('hr-att-date').value = todayStr;
+    }
+    if (document.getElementById('hr-adv-date')) {
+        document.getElementById('hr-adv-date').value = todayStr;
+    }
 
-    // Load the Live Dashboard Math
     loadHRDashboardSummary();
 }
 
@@ -820,13 +913,13 @@ async function loadHRDashboardSummary() {
     const startOfMonth = `${year}-${month}-01`;
     const todayStr = today.toISOString().split('T')[0];
 
-    // 1. Check for Birthdays
     let birthdayMessages = "";
+    
     workersData.forEach(w => {
         if (w.dob) {
             const [, bMonth, bDay] = w.dob.split('-');
-            if (bMonth === month && parseInt(bDay) === today.getDate()) {
-                birthdayMessages += `🎉 It is ${w.name}'s Birthday today! `;
+            if (bMonth === month && parseInt(bDay) === today.getDate()) { 
+                birthdayMessages += `🎉 It is ${w.name}'s Birthday today! `; 
             }
         }
     });
@@ -841,7 +934,6 @@ async function loadHRDashboardSummary() {
         }
     }
 
-    // 2. Salary Date Reminder
     const salAlertEl = document.getElementById('salary-alert');
     if (salAlertEl) {
         if (today.getDate() >= 18 && today.getDate() <= 25) {
@@ -852,15 +944,16 @@ async function loadHRDashboardSummary() {
         }
     }
 
-    // 3. Calculate Live Accrued Payroll Math
     const { data: attData } = await sb.from('attendance').select('*').gte('date', startOfMonth).lte('date', todayStr);
     const { data: advData } = await sb.from('advances').select('*').gte('date', startOfMonth).lte('date', todayStr);
 
-    let totalAccruedGross = 0;
+    let totalAccruedGross = 0; 
     let totalAdvancesGiven = 0;
-
+    
     if (advData) {
-        advData.forEach(a => totalAdvancesGiven += Number(a.amount));
+        advData.forEach(a => {
+            totalAdvancesGiven += Number(a.amount);
+        });
     }
 
     workersData.forEach(w => {
@@ -870,18 +963,27 @@ async function loadHRDashboardSummary() {
         myAtt.forEach(a => {
             if (a.status === 'Full Day' || a.status === 'Short Leave') {
                 myGross += w.daily_salary;
-            } else if (a.status === 'Half Day') {
+            }
+            else if (a.status === 'Half Day') {
                 myGross += (w.daily_salary / 2);
             }
 
             if (a.status === 'Full Day' && a.in_time && a.out_time) {
-                const parseTime = t => { const [hr, mn] = t.split(':').map(Number); return hr * 60 + mn; };
+                const parseTime = t => { 
+                    const [hr, mn] = t.split(':').map(Number); 
+                    return hr * 60 + mn; 
+                };
                 const inMins = parseTime(a.in_time); 
                 const outMins = parseTime(a.out_time);
                 
                 let missedMins = 0;
-                if (inMins > 600) missedMins += (inMins - 600);
-                if (outMins < 1020) missedMins += (1020 - outMins);
+                
+                if (inMins > 600) {
+                    missedMins += (inMins - 600);
+                }
+                if (outMins < 1020) {
+                    missedMins += (1020 - outMins);
+                }
                 
                 if (missedMins > 0) {
                     const ratePerMin = w.daily_salary / 420; 
@@ -897,20 +999,30 @@ async function loadHRDashboardSummary() {
     const epfEmployerPortion = totalAccruedGross * 0.12;
     const etfEmployerPortion = totalAccruedGross * 0.03;
 
-    if(document.getElementById('accrued-gross')) document.getElementById('accrued-gross').innerText = formatCurrency(totalAccruedGross);
-    if(document.getElementById('accrued-advances')) document.getElementById('accrued-advances').innerText = "- " + formatCurrency(totalAdvancesGiven);
-    if(document.getElementById('accrued-net')) document.getElementById('accrued-net').innerText = formatCurrency(netPayableCurrent);
-    if(document.getElementById('accrued-epf')) document.getElementById('accrued-epf').innerText = formatCurrency(epfEmployerPortion + epfEmployeePortion);
-    if(document.getElementById('accrued-etf')) document.getElementById('accrued-etf').innerText = formatCurrency(etfEmployerPortion);
+    if (document.getElementById('accrued-gross')) {
+        document.getElementById('accrued-gross').innerText = formatCurrency(totalAccruedGross);
+    }
+    if (document.getElementById('accrued-advances')) {
+        document.getElementById('accrued-advances').innerText = "- " + formatCurrency(totalAdvancesGiven);
+    }
+    if (document.getElementById('accrued-net')) {
+        document.getElementById('accrued-net').innerText = formatCurrency(netPayableCurrent);
+    }
+    if (document.getElementById('accrued-epf')) {
+        document.getElementById('accrued-epf').innerText = formatCurrency(epfEmployerPortion + epfEmployeePortion);
+    }
+    if (document.getElementById('accrued-etf')) {
+        document.getElementById('accrued-etf').innerText = formatCurrency(etfEmployerPortion);
+    }
 }
 
 export async function addWorker(e) {
     e.preventDefault(); 
-    const sb = getSupabase();
-    const form = new FormData(e.target);
     
+    const form = new FormData(e.target);
     const year = new Date().getFullYear();
-    const { data: lastWorker } = await sb.from('workers')
+    
+    const { data: lastWorker } = await getSupabase().from('workers')
         .select('worker_uid')
         .ilike('worker_uid', `W${year}%`)
         .order('worker_uid', { ascending: false })
@@ -923,7 +1035,7 @@ export async function addWorker(e) {
     }
     const generatedUid = `W${year}${String(nextNumber).padStart(3, '0')}`;
 
-    const { error } = await sb.from('workers').insert({ 
+    const { error } = await getSupabase().from('workers').insert({ 
         worker_uid: generatedUid, 
         name: form.get('name'), 
         phone: form.get('phone'), 
@@ -938,14 +1050,17 @@ export async function addWorker(e) {
         alert(error.message);
     } else { 
         e.target.reset(); 
-        await showCustomConfirm("Success", `Worker Created!\nPortal ID: ${generatedUid}\nDefault PIN: 1234`, "success-green");
+        await showCustomConfirm("Success", `Worker Created!\nPortal ID: ${generatedUid}\nDefault PIN: 1234`, "success-green"); 
         loadHR(); 
     }
 }
 
 export function openEditWorker(id) {
     const w = workersData.find(x => String(x.id) === String(id)); 
-    if (!w) return;
+    
+    if (!w) {
+        return;
+    }
     
     document.getElementById('ew-id').value = w.id; 
     document.getElementById('ew-name').value = w.name;
@@ -961,10 +1076,10 @@ export function openEditWorker(id) {
 
 export async function saveEditWorker(e) {
     e.preventDefault(); 
-    const sb = getSupabase();
+    
     const form = new FormData(e.target);
     
-    const { error } = await sb.from('workers').update({ 
+    const { error } = await getSupabase().from('workers').update({ 
         name: form.get('name'), 
         phone: form.get('phone'), 
         nic: form.get('nic'), 
@@ -974,32 +1089,32 @@ export async function saveEditWorker(e) {
         pin: form.get('pin') 
     }).eq('id', form.get('id'));
     
-    if(error) alert(error.message);
-    else {
+    if (error) {
+        alert(error.message);
+    } else { 
         document.getElementById('edit-worker-modal').classList.add('hidden'); 
-        await showCustomConfirm("Success", "Worker Details Updated", "success-green");
-        loadHR();
+        await showCustomConfirm("Success", "Worker Details Updated", "success-green"); 
+        loadHR(); 
     }
 }
 
 export async function deleteWorker(id) { 
     if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
-        const sb = getSupabase();
-        await sb.from('workers').delete().eq('id', id); 
+        await getSupabase().from('workers').delete().eq('id', id); 
         loadHR(); 
     } 
 }
 
 export async function markAttendance(e) {
     e.preventDefault(); 
-    const sb = getSupabase();
+    
     const form = new FormData(e.target); 
     const wId = form.get('worker_id'); 
     const d = form.get('date');
     
-    await sb.from('attendance').delete().match({ worker_id: wId, date: d });
+    await getSupabase().from('attendance').delete().match({ worker_id: wId, date: d });
     
-    const { error } = await sb.from('attendance').insert({ 
+    const { error } = await getSupabase().from('attendance').insert({ 
         worker_id: wId, 
         date: d, 
         status: form.get('status'), 
@@ -1013,16 +1128,16 @@ export async function markAttendance(e) {
         e.target.reset(); 
         document.getElementById('hr-att-date').value = new Date().toISOString().split('T')[0]; 
         loadHRDashboardSummary(); 
-        await showCustomConfirm("Saved", "Attendance Logged", "success-green");
+        await showCustomConfirm("Saved", "Attendance Logged", "success-green"); 
     }
 }
 
 export async function addAdvance(e) {
     e.preventDefault(); 
-    const sb = getSupabase();
+    
     const form = new FormData(e.target);
     
-    const { error } = await sb.from('advances').insert({ 
+    const { error } = await getSupabase().from('advances').insert({ 
         worker_id: form.get('worker_id'), 
         date: form.get('date'), 
         amount: Number(form.get('amount')) 
@@ -1034,67 +1149,99 @@ export async function addAdvance(e) {
         e.target.reset(); 
         document.getElementById('hr-adv-date').value = new Date().toISOString().split('T')[0]; 
         loadHRDashboardSummary(); 
-        await showCustomConfirm("Saved", "Advance registered successfully.", "success-green");
+        await showCustomConfirm("Saved", "Advance registered successfully.", "success-green"); 
     }
 }
 
 export async function calculateWorkerSalary(wId, monthStr) {
-    const sb = getSupabase();
     const worker = workersData.find(w => String(w.id) === String(wId));
-    if (!worker) return null;
+    
+    if (!worker) {
+        return null;
+    }
 
     const [year, month] = monthStr.split('-');
-    
     const startDate = `${monthStr}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
-    const { data: attData } = await sb.from('attendance')
+    const { data: attData } = await getSupabase().from('attendance')
         .select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate).order('date', {ascending:true});
         
-    const { data: advData } = await sb.from('advances')
+    const { data: advData } = await getSupabase().from('advances')
         .select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate);
 
-    let full = 0, half = 0, short = 0, timePenalty = 0;
+    let full = 0;
+    let half = 0;
+    let short = 0;
+    let timePenalty = 0;
 
-    (attData || []).forEach(a => {
-        if (a.status === 'Half Day') half++;
-        else if (a.status === 'Short Leave') short++;
-        else if (a.status === 'Full Day') {
-            full++;
-            if (a.in_time && a.out_time) {
-                const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
-                const inMins = parse(a.in_time);
-                const outMins = parse(a.out_time);
-                let missed = 0;
-                
-                if (inMins > 600) missed += (inMins - 600); // 10:00 AM
-                if (outMins < 1020) missed += (1020 - outMins); // 5:00 PM
-                
-                if (missed > 0) {
-                    const ratePerMin = worker.daily_salary / 420; // 7 Hours
-                    timePenalty += (missed * ratePerMin);
+    if (attData) {
+        attData.forEach(a => {
+            if (a.status === 'Half Day') {
+                half++;
+            } else if (a.status === 'Short Leave') {
+                short++;
+            } else if (a.status === 'Full Day') {
+                full++;
+                if (a.in_time && a.out_time) {
+                    const parse = t => { 
+                        const [h,m] = t.split(':').map(Number); 
+                        return h * 60 + m; 
+                    };
+                    const inMins = parse(a.in_time); 
+                    const outMins = parse(a.out_time);
+                    
+                    let missed = 0;
+                    
+                    if (inMins > 600) {
+                        missed += (inMins - 600);
+                    }
+                    if (outMins < 1020) {
+                        missed += (1020 - outMins);
+                    }
+                    
+                    if (missed > 0) {
+                        timePenalty += (missed * (worker.daily_salary / 420));
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     const baseGross = (full * worker.daily_salary) + (short * worker.daily_salary) + (half * (worker.daily_salary / 2));
     const grossEarnings = baseGross - timePenalty;
-    const totalAdvances = (advData || []).reduce((sum, a) => sum + Number(a.amount), 0);
+    
+    let totalAdvances = 0;
+    if (advData) {
+        totalAdvances = advData.reduce((sum, a) => sum + Number(a.amount), 0);
+    }
+    
     const epfDeduction = grossEarnings > 0 ? grossEarnings * 0.08 : 0;
     const netPay = grossEarnings - totalAdvances - epfDeduction;
 
     return { 
-        worker, attData, advData, full, half, short, timePenalty, 
-        grossEarnings, totalAdvances, epfDeduction, netPay, monthStr 
+        worker, 
+        attData, 
+        advData, 
+        full, 
+        half, 
+        short, 
+        timePenalty, 
+        grossEarnings, 
+        totalAdvances, 
+        epfDeduction, 
+        netPay, 
+        monthStr 
     };
 }
 
 export async function viewWorkerAttendance(id) {
     const now = new Date();
     const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
+    
     document.getElementById('view-att-month').value = monthStr;
     document.getElementById('view-att-wid').value = id;
+    
     await renderWorkerAttendanceUI(id, monthStr);
     document.getElementById('view-attendance-modal').classList.remove('hidden');
 }
@@ -1102,12 +1249,16 @@ export async function viewWorkerAttendance(id) {
 export async function updateAdminAttendanceView() {
     const id = document.getElementById('view-att-wid').value;
     const monthStr = document.getElementById('view-att-month').value;
+    
     await renderWorkerAttendanceUI(id, monthStr);
 }
 
 export async function renderWorkerAttendanceUI(id, monthStr) {
     const data = await calculateWorkerSalary(id, monthStr);
-    if (!data) return;
+    
+    if (!data) {
+        return;
+    }
 
     document.getElementById('view-att-name').innerText = data.worker.name + ` (${data.worker.worker_uid})`;
     document.getElementById('view-att-gross').innerText = formatCurrency(data.grossEarnings);
@@ -1116,42 +1267,58 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
     const tbody = document.getElementById('view-att-table');
     tbody.innerHTML = '';
     
-    data.attData.forEach(a => {
-        let penText = '-';
-        if (a.status === 'Full Day' && a.in_time && a.out_time) {
-            const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
-            const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
-            let missed = 0;
-            if (inMins > 600) missed += (inMins - 600);
-            if (outMins < 1020) missed += (1020 - outMins);
-            if (missed > 0) {
-                penText = formatCurrency(missed * (data.worker.daily_salary / 420));
+    if (data.attData) {
+        data.attData.forEach(a => {
+            let penText = '-';
+            
+            if (a.status === 'Full Day' && a.in_time && a.out_time) {
+                const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
+                const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
+                
+                let missed = 0;
+                if (inMins > 600) {
+                    missed += (inMins - 600);
+                }
+                if (outMins < 1020) {
+                    missed += (1020 - outMins);
+                }
+                
+                if (missed > 0) { 
+                    penText = formatCurrency(missed * (data.worker.daily_salary / 420)); 
+                }
             }
-        }
-        tbody.innerHTML += `
-            <tr class="border-b dark:border-gray-700 text-sm">
-                <td class="p-2 font-bold">${a.date}</td>
-                <td class="p-2">${a.status}</td>
-                <td class="p-2">${a.in_time || '-'} to ${a.out_time || '-'}</td>
-                <td class="p-2 text-red-500 font-bold">${penText}</td>
-            </tr>`;
-    });
+            
+            tbody.innerHTML += `
+                <tr class="border-b dark:border-gray-700 text-sm">
+                    <td class="p-2 font-bold">${a.date}</td>
+                    <td class="p-2">${a.status}</td>
+                    <td class="p-2">${a.in_time || '-'} to ${a.out_time || '-'}</td>
+                    <td class="p-2 text-red-500 font-bold">${penText}</td>
+                </tr>`;
+        });
+    }
     
-    if (data.attData.length === 0) {
+    if (!data.attData || data.attData.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No records found for this month.</td></tr>`;
     }
 }
 
 export async function generatePayroll(e) {
     e.preventDefault(); 
-    const form = new FormData(e.target); 
-    const wId = form.get('worker_id'); 
-    const mStr = form.get('month');
     
-    const data = await calculateWorkerSalary(wId, mStr);
-    if (!data) return alert("Error locating worker.");
+    const form = new FormData(e.target); 
+    const data = await calculateWorkerSalary(form.get('worker_id'), form.get('month'));
+    
+    if (!data) {
+        return alert("Error locating worker.");
+    }
 
     const win = window.open('', '', 'width=600,height=800');
+    
+    let advancesHtml = '';
+    if (data.advData) {
+        advancesHtml = data.advData.map(a => `<div class="adv-list">${a.date} : ${formatCurrency(a.amount)}</div>`).join('');
+    }
     
     const html = `
         <html>
@@ -1179,32 +1346,38 @@ export async function generatePayroll(e) {
                 <span>Employee Name:</span> 
                 <span class="bold">${data.worker.name} (ID: ${data.worker.worker_uid})</span>
             </div>
+            
             <div class="row">
                 <span>Daily Rate Base:</span> 
                 <span>${formatCurrency(data.worker.daily_salary)}</span>
             </div>
-
+            
             <div class="section-title">Earnings & Deductions</div>
             <div class="row"><span>Full Days (${data.full})</span> <span>${formatCurrency(data.full * data.worker.daily_salary)}</span></div>
             <div class="row"><span>Half Days (${data.half})</span> <span>${formatCurrency(data.half * (data.worker.daily_salary / 2))}</span></div>
             <div class="row"><span>Short Leaves (${data.short})</span> <span>${formatCurrency(data.short * data.worker.daily_salary)}</span></div>
             <div class="row text-red"><span>Time Penalties (Late/Early)</span> <span style="color:red">- ${formatCurrency(data.timePenalty)}</span></div>
-            <div class="row" style="background:#f4f4f4;"><span><b>Gross Earnings</b></span> <span class="bold">${formatCurrency(data.grossEarnings)}</span></div>
-
+            
+            <div class="row" style="background:#f4f4f4;">
+                <span><b>Gross Earnings</b></span> 
+                <span class="bold">${formatCurrency(data.grossEarnings)}</span>
+            </div>
+            
             <div class="section-title">Subtractions</div>
             <div class="row"><span>Advances Taken</span> <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span></div>
-            ${data.advData.map(a => `<div class="adv-list">${a.date} : ${formatCurrency(a.amount)}</div>`).join('')}
+            ${advancesHtml}
+            
             <div class="row"><span>EPF Deduction (8%)</span> <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span></div>
-
+            
             <div class="total-row">
                 <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
                 <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
             </div>
-
+            
             <div class="section-title">Employer Contributions (Info Only)</div>
             <div class="row"><span>EPF Contribution (12%)</span> <span>${formatCurrency(data.grossEarnings * 0.12)}</span></div>
             <div class="row"><span>ETF Contribution (3%)</span> <span>${formatCurrency(data.grossEarnings * 0.03)}</span></div>
-
+            
             <div style="margin-top: 50px; display: flex; justify-content: space-between;">
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
                 <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
@@ -1214,6 +1387,7 @@ export async function generatePayroll(e) {
         </body>
         </html>
     `;
+    
     win.document.write(html);
     win.document.close();
 }
@@ -1252,7 +1426,10 @@ async function renderCalendar(month, year) {
     document.getElementById('cal-month-year').innerText = `${monthNames[month]} ${year}`;
     
     const daysContainer = document.getElementById('cal-days');
-    if (!daysContainer) return;
+    
+    if (!daysContainer) {
+        return;
+    }
     
     daysContainer.innerHTML = '';
     
@@ -1262,24 +1439,22 @@ async function renderCalendar(month, year) {
     const sDate = `${year}-${String(month+1).padStart(2,'0')}-01`;
     const eDate = `${year}-${String(month+1).padStart(2,'0')}-${daysInMonth}`;
     
-    const sb = getSupabase();
-    const { data: events } = await sb.from('calendar_events')
-        .select('*').gte('event_date', sDate).lte('event_date', eDate);
+    const { data: events } = await getSupabase().from('calendar_events').select('*').gte('event_date', sDate).lte('event_date', eDate);
     
-    // Empty boxes for previous month days
     for (let i = 0; i < firstDay; i++) { 
         daysContainer.innerHTML += `<div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>`; 
     }
     
-    // Actual days
     for (let day = 1; day <= daysInMonth; day++) {
         const fullDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const dayEvents = (events || []).filter(e => e.event_date === fullDate);
         
         let eventHtml = '';
-        dayEvents.forEach(e => {
-            eventHtml += `<div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate" title="${e.title}">${e.title}</div>`;
-        });
+        if (events) {
+            const dayEvents = events.filter(e => e.event_date === fullDate);
+            dayEvents.forEach(e => { 
+                eventHtml += `<div class="bg-blue-100 text-blue-800 text-[10px] p-1 rounded mt-1 truncate" title="${e.title}">${e.title}</div>`; 
+            });
+        }
         
         daysContainer.innerHTML += `
             <div class="p-2 border border-gray-100 dark:border-gray-700 min-h-[80px] rounded cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition" onclick="window.posModule.openEventModal('${fullDate}')">
@@ -1297,16 +1472,16 @@ export function openEventModal(dateStr) {
 
 export async function saveCalendarEvent(e) {
     e.preventDefault();
-    const sb = getSupabase();
-    const dateStr = document.getElementById('event-date').value;
-    const title = document.getElementById('event-title').value;
     
-    const { error } = await sb.from('calendar_events').insert({ event_date: dateStr, title: title });
+    const { error } = await getSupabase().from('calendar_events').insert({ 
+        event_date: document.getElementById('event-date').value, 
+        title: document.getElementById('event-title').value 
+    });
     
     if (error) {
         alert("Error saving event: " + error.message);
-    } else {
-        document.getElementById('calendar-event-modal').classList.add('hidden');
-        renderCalendar(currentMonth, currentYear);
+    } else { 
+        document.getElementById('calendar-event-modal').classList.add('hidden'); 
+        renderCalendar(currentMonth, currentYear); 
     }
 }
