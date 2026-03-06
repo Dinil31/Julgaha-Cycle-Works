@@ -134,7 +134,7 @@ export async function confirmQuickRestock(e) {
     } else {
         document.getElementById('quick-restock-modal').classList.add('hidden');
         await loadInventory();
-        await showCustomConfirm("Stock Updated", `Added ${addQty} units. Prices updated.`, "success-green");
+        showCustomConfirm("Stock Updated", `Added ${addQty} units. Prices updated.`, "success-green");
     }
 }
 
@@ -277,9 +277,9 @@ export async function addProduct(e) {
     if (error) {
         alert(error.message); 
     } else {
-        await showCustomConfirm("Success", "Product Added to Inventory", "success-green"); 
         e.target.reset(); 
         await loadInventory(); 
+        showCustomConfirm("Success", "Product Added to Inventory", "success-green"); 
     }
 }
 
@@ -396,6 +396,10 @@ export async function processSale(e) {
         return showCustomConfirm("Error", "Cannot process an empty cart.", "danger");
     }
 
+    // OPEN WINDOW INSTANTLY TO BYPASS BROWSER POPUP BLOCKER
+    const w = window.open('', '', 'width=400,height=600');
+    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill...</p>');
+
     const receiptNo = Date.now().toString().slice(-8) + Math.floor(Math.random() * 100);
 
     const { data: sale, error } = await sb.from('sales').insert({ 
@@ -408,10 +412,10 @@ export async function processSale(e) {
     }).select().single();
 
     if (error) {
+        w.close();
         return alert("Error saving sale: " + error.message);
     }
 
-    // Save a hard copy of the cart BEFORE clearing it to pass into the bill generator
     const itemsForBill = [...cart];
 
     if (cart.length > 0) {
@@ -436,18 +440,17 @@ export async function processSale(e) {
     e.target.reset(); 
     renderCart(); 
     
-    // Launch printer instantly
-    generateBill(sale, itemsForBill);
+    // Launch printer in the already-opened window
+    populateBill(w, sale, itemsForBill);
     
     await initPOS(); 
     await loadInventory(); 
     
-    await showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
+    showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
 }
 
-function generateBill(sale, items) {
-    const w = window.open('', '', 'width=400,height=600');
-    
+// Rewritten to accept the window object
+function populateBill(w, sale, items) {
     let itemsHtml = '';
     
     if (items && items.length > 0) {
@@ -468,6 +471,7 @@ function generateBill(sale, items) {
         `;
     }
 
+    w.document.open();
     w.document.write(`
         <html>
         <head>
@@ -592,11 +596,15 @@ export function filterSales(period) {
 }
 
 export async function reprintSaleBill(saleId) {
+    const w = window.open('', '', 'width=400,height=600');
+    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Loading Bill...</p>');
+
     const sb = getSupabase();
     
     const { data: sale } = await sb.from('sales').select('*').eq('id', saleId).single();
     
     if (!sale) {
+        w.close();
         return alert("Sale record not found.");
     }
 
@@ -608,7 +616,7 @@ export async function reprintSaleBill(saleId) {
         price: i.price
     }));
 
-    generateBill(sale, formattedItems);
+    populateBill(w, sale, formattedItems);
 }
 
 export async function deleteSale(id) { 
@@ -630,7 +638,7 @@ export async function deleteSale(id) {
         await sb.from('sales').delete().eq('id', id); 
         
         await openReportModal(); 
-        await loadInventory(); // Sync background inventory visually
+        await loadInventory(); 
     } 
 }
 
@@ -708,7 +716,7 @@ export function filterRepairs() {
                 <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button type="button" onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick='window.posModule.reprintRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
                 <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
@@ -727,7 +735,7 @@ export function filterRepairs() {
                 <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button type="button" onclick='window.posModule.printRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick='window.posModule.reprintRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
                 <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
@@ -790,9 +798,62 @@ export async function markAsCollected(id) {
     }
 }
 
+export function reprintRepairTicket(repair) {
+    const w = window.open('', '', 'width=400,height=600');
+    populateRepairTicket(w, repair);
+}
+
+function populateRepairTicket(w, repair) {
+    const websiteUrl = window.location.origin + "/track.html";
+    
+    w.document.open();
+    w.document.write(`
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Courier New', monospace; padding: 20px; text-align: center; } 
+                .box { border: 2px dashed black; padding: 15px; margin: 15px 0; background: #f9f9f9; } 
+                .id { font-size: 22px; font-weight: bold; color: #333; } 
+                p { margin: 5px 0; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <h2>CycleSense Repair</h2>
+            <p>Date: ${new Date().toLocaleDateString()}</p>
+            
+            <div class="box">
+                <p style="margin-bottom:5px; font-size:12px;">TICKET ID:</p>
+                <div class="id">${repair.repair_id}</div>
+            </div>
+            
+            <p style="text-align:left;"><b>Customer:</b> ${repair.customer_name}</p>
+            <p style="text-align:left;"><b>Phone:</b> ${repair.phone}</p>
+            <p style="text-align:left;"><b>Est Finish:</b> ${new Date(repair.predicted_date).toLocaleDateString()}</p>
+            <p style="text-align:left;"><b>Advance Paid:</b> ${formatCurrency(repair.advance)}</p>
+            
+            <hr style="margin: 20px 0;">
+            
+            <h3 style="margin-bottom:5px;">Track Live Status</h3>
+            <p>Visit link:</p>
+            <p style="font-weight:bold;">${websiteUrl}</p>
+            <p>Enter your Ticket ID: <b>${repair.repair_id}</b></p>
+            
+            <hr style="margin: 20px 0;">
+            <p style="font-size:10px;">Please bring this ticket to collect your bicycle.</p>
+            
+            <script>window.print();</script>
+        </body>
+        </html>
+    `);
+    w.document.close();
+}
+
 export function reprintFinalBill(r) {
     const w = window.open('', '', 'width=400,height=600');
-    
+    populateFinalBill(w, r);
+}
+
+function populateFinalBill(w, r) {
     let partsHtml = '';
     
     if (r.parts_used) {
@@ -818,6 +879,7 @@ export function reprintFinalBill(r) {
         `;
     }
 
+    w.document.open();
     w.document.write(`
         <html>
         <head>
@@ -868,6 +930,7 @@ export function reprintFinalBill(r) {
     w.document.close();
 }
 
+
 export async function startRepair(id) {
     const sb = getSupabase(); 
     
@@ -907,14 +970,18 @@ export async function saveEditRepair(e) {
         alert("Update Error: " + error.message);
     } else {
         document.getElementById('repair-edit-modal').classList.add('hidden'); 
-        await showCustomConfirm("Updated", "Repair details updated.", "success-green");
         await loadRepairs(); 
+        showCustomConfirm("Updated", "Repair details updated.", "success-green");
     }
 }
 
 export async function addRepair(e) { 
     e.preventDefault(); 
     
+    // Open immediately to bypass popup blocker
+    const w = window.open('', '', 'width=400,height=600');
+    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
+
     const form = new FormData(e.target); 
     const sb = getSupabase();
     const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
@@ -929,15 +996,15 @@ export async function addRepair(e) {
     }).select().single(); 
     
     if (error) {
+        w.close();
         alert(error.message);
     } else {
         e.target.reset(); 
         
-        // Print immediately to prevent pop-up block
-        printRepairTicket(data);
+        populateRepairTicket(w, data);
         
-        await showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
         await loadRepairs(); 
+        showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
     }
 }
 
@@ -1027,6 +1094,10 @@ export function recalcRepairTotal() {
 }
 
 export async function finalizeRepair() { 
+    // Open immediately to bypass popup blocker
+    const w = window.open('', '', 'width=400,height=600');
+    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill...</p>');
+
     const sb = getSupabase();
     const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
     
@@ -1038,7 +1109,7 @@ export async function finalizeRepair() {
     
     const receiptNo = "REP-" + Date.now().toString().slice(-8);
 
-    const { data: sale } = await sb.from('sales').insert({ 
+    const { data: sale, error: saleError } = await sb.from('sales').insert({ 
         receipt_no: receiptNo, 
         customer_name: repair.customer_name + " (Repair Checkout)", 
         phone: repair.phone, 
@@ -1046,6 +1117,11 @@ export async function finalizeRepair() {
         total_amount: finalTotalAmount, 
         date: new Date().toISOString() 
     }).select().single();
+    
+    if (saleError) {
+        w.close();
+        return alert("Error saving bill: " + saleError.message);
+    }
     
     const partsForBill = [...repairCart];
 
@@ -1078,11 +1154,10 @@ export async function finalizeRepair() {
     
     const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
     
-    // Print before async success prompt
-    reprintFinalBill(freshRepair);
+    populateFinalBill(w, freshRepair);
     
-    await showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
     await loadRepairs(); 
+    showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
 }
 
 export async function deleteRepair(id) { 
@@ -1346,8 +1421,8 @@ export async function addWorker(e) {
         alert(error.message);
     } else { 
         e.target.reset(); 
-        await showCustomConfirm("Success", `Worker Created!\nPortal ID: ${generatedUid}\nDefault PIN: 1234`, "success-green"); 
         await loadHR(); 
+        showCustomConfirm("Success", `Worker Created!\nPortal ID: ${generatedUid}\nDefault PIN: 1234`, "success-green"); 
     }
 }
 
@@ -1390,8 +1465,8 @@ export async function saveEditWorker(e) {
         alert(error.message);
     } else { 
         document.getElementById('edit-worker-modal').classList.add('hidden'); 
-        await showCustomConfirm("Success", "Worker Details Updated", "success-green"); 
         await loadHR(); 
+        showCustomConfirm("Success", "Worker Details Updated", "success-green"); 
     }
 }
 
@@ -1399,6 +1474,7 @@ export async function deleteWorker(id) {
     if (await showCustomConfirm("Delete Worker?", "This deletes the worker profile and all history permanently.", "danger")) { 
         const sb = getSupabase();
         
+        // Ensure Foreign Key safety by deleting child records first
         await sb.from('attendance').delete().eq('worker_id', id);
         await sb.from('advances').delete().eq('worker_id', id);
         
@@ -1436,7 +1512,7 @@ export async function markAttendance(e) {
         e.target.reset(); 
         document.getElementById('hr-att-date').value = new Date().toISOString().split('T')[0]; 
         await loadHRDashboardSummary(); 
-        await showCustomConfirm("Saved", "Attendance Logged", "success-green"); 
+        showCustomConfirm("Saved", "Attendance Logged", "success-green"); 
     }
 }
 
@@ -1458,7 +1534,7 @@ export async function addAdvance(e) {
         e.target.reset(); 
         document.getElementById('hr-adv-date').value = new Date().toISOString().split('T')[0]; 
         await loadHRDashboardSummary(); 
-        await showCustomConfirm("Saved", "Advance registered successfully.", "success-green"); 
+        showCustomConfirm("Saved", "Advance registered successfully.", "success-green"); 
     }
 }
 
@@ -1625,6 +1701,10 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
 export async function generatePayroll(e) {
     e.preventDefault(); 
     
+    // OPEN WINDOW INSTANTLY
+    const w = window.open('', '', 'width=600,height=800');
+    w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll...</p>');
+
     const form = new FormData(e.target); 
     const wId = form.get('worker_id'); 
     const mStr = form.get('month');
@@ -1632,11 +1712,10 @@ export async function generatePayroll(e) {
     const data = await calculateWorkerSalary(wId, mStr);
     
     if (!data) {
+        w.close();
         return alert("Error locating worker.");
     }
 
-    const win = window.open('', '', 'width=600,height=800');
-    
     let advancesHtml = '';
     if (data.advData) {
         advancesHtml = data.advData.map(a => `
@@ -1646,7 +1725,8 @@ export async function generatePayroll(e) {
         `).join('');
     }
     
-    const html = `
+    w.document.open();
+    w.document.write(`
         <html>
         <head>
             <style>
@@ -1772,10 +1852,9 @@ export async function generatePayroll(e) {
             <script>window.print();</script>
         </body>
         </html>
-    `;
+    `);
     
-    win.document.write(html);
-    win.document.close();
+    w.document.close();
 }
 
 
