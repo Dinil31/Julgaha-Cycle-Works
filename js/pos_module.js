@@ -29,9 +29,10 @@ async function fetchAll(table) {
 // ==========================================
 // 1. INVENTORY & RESTOCK SYSTEM
 // ==========================================
+let inventoryData = []; // Store globally for safe lookup
 
 export async function loadInventory() {
-    const products = await fetchAll('products');
+    inventoryData = await fetchAll('products');
     const tbody = document.getElementById('inventory-table-body');
     
     if (!tbody) {
@@ -40,7 +41,7 @@ export async function loadInventory() {
     
     tbody.innerHTML = '';
     
-    products.forEach(p => {
+    inventoryData.forEach(p => {
         const isLow = p.stock <= p.reorder_level;
         
         let stockClass = 'text-green-500 font-bold';
@@ -66,7 +67,7 @@ export async function loadInventory() {
                         <span class="${stockClass}">
                             ${p.stock}
                         </span>
-                        <button onclick="window.posModule.promptAddStock('${p.id}', '${p.name}', ${p.stock}, ${p.buying_price || 0}, ${p.unit_price})" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
+                        <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
                             <i class="fas fa-plus"></i> Add
                         </button>
                     </div>
@@ -92,13 +93,16 @@ export async function loadInventory() {
     });
 }
 
-export function promptAddStock(id, name, currentStock, buyPrice, sellPrice) {
-    document.getElementById('qr-id').value = id;
-    document.getElementById('qr-name').innerText = name;
-    document.getElementById('qr-current').innerText = currentStock;
+export function promptAddStock(id) {
+    const p = inventoryData.find(x => String(x.id) === String(id));
+    if (!p) return;
+    
+    document.getElementById('qr-id').value = p.id;
+    document.getElementById('qr-name').innerText = p.name;
+    document.getElementById('qr-current').innerText = p.stock;
     document.getElementById('qr-add-qty').value = '';
-    document.getElementById('qr-buy-price').value = buyPrice;
-    document.getElementById('qr-sell-price').value = sellPrice;
+    document.getElementById('qr-buy-price').value = p.buying_price || 0;
+    document.getElementById('qr-sell-price').value = p.unit_price || 0;
     
     document.getElementById('quick-restock-modal').classList.remove('hidden');
 }
@@ -118,7 +122,6 @@ export async function confirmQuickRestock(e) {
 
     const sb = getSupabase();
     
-    // Fetch latest stock directly to prevent overwriting issues
     const { data: p, error: fetchError } = await sb.from('products').select('stock').eq('id', id).single();
     
     if (fetchError) {
@@ -161,18 +164,10 @@ export async function generateRestockPDF() {
         
         tbody.innerHTML += `
             <tr id="restock-row-${index}" class="border-b dark:border-gray-700">
-                <td class="p-3 font-mono text-xs text-gray-500">
-                    ${p.code}
-                </td>
-                <td class="p-3 font-bold dark:text-white">
-                    ${p.name}
-                </td>
-                <td class="p-3 text-center text-red-500 font-bold">
-                    ${p.stock}
-                </td>
-                <td class="p-3 text-center text-gray-500">
-                    ${p.reorder_level}
-                </td>
+                <td class="p-3 font-mono text-xs text-gray-500">${p.code}</td>
+                <td class="p-3 font-bold dark:text-white">${p.name}</td>
+                <td class="p-3 text-center text-red-500 font-bold">${p.stock}</td>
+                <td class="p-3 text-center text-gray-500">${p.reorder_level}</td>
                 <td class="p-3 text-center">
                     <input type="number" min="1" oninput="this.value = Math.abs(this.value)" class="w-20 border-2 border-blue-200 rounded-lg p-1 text-center dark:bg-slate-700 dark:text-white font-black text-blue-600 focus:outline-none focus:border-blue-500" value="${defaultQty}">
                 </td>
@@ -716,10 +711,10 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button type="button" onclick='window.posModule.reprintRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick="window.posModule.printRepairTicket('${r.id}')" class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
                 <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
@@ -735,10 +730,10 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick='window.posModule.editRepair(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button type="button" onclick='window.posModule.reprintRepairTicket(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
+                <button type="button" onclick="window.posModule.printRepairTicket('${r.id}')" class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
                 <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
@@ -754,7 +749,7 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
@@ -767,7 +762,7 @@ export function filterRepairs() {
                 </span>
             `;
             actionsHtml = `
-                <button type="button" onclick='window.posModule.reprintFinalBill(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
@@ -801,7 +796,10 @@ export async function markAsCollected(id) {
     }
 }
 
-export function reprintRepairTicket(repair) {
+export function printRepairTicket(id) {
+    const repair = repairsData.find(x => String(x.id) === String(id));
+    if (!repair) return;
+    
     const w = window.open('', '', 'width=400,height=600');
     if (w) populateRepairTicket(w, repair);
 }
@@ -851,7 +849,10 @@ function populateRepairTicket(w, repair) {
     w.document.close();
 }
 
-export function reprintFinalBill(r) {
+export function reprintFinalBill(id) {
+    const r = repairsData.find(x => String(x.id) === String(id));
+    if (!r) return;
+    
     const w = window.open('', '', 'width=400,height=600');
     if (w) populateFinalBill(w, r);
 }
@@ -933,6 +934,7 @@ function populateFinalBill(w, r) {
     w.document.close();
 }
 
+
 export async function startRepair(id) {
     const sb = getSupabase(); 
     
@@ -945,7 +947,10 @@ export async function startRepair(id) {
     }
 }
 
-export function editRepair(r) { 
+export function editRepair(id) { 
+    const r = repairsData.find(x => String(x.id) === String(id));
+    if (!r) return;
+    
     document.getElementById('edit-repair-id').value = r.id; 
     document.getElementById('edit-repair-customer').value = r.customer_name; 
     document.getElementById('edit-repair-phone').value = r.phone; 
