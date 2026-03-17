@@ -31,9 +31,22 @@ async function fetchAll(table) {
 
 
 // ==========================================
-// 1. INVENTORY & RESTOCK SYSTEM
+// 1. INVENTORY & AI PREDICTIVE SYSTEM
 // ==========================================
 let inventoryData = [];
+
+// 1. THIS IS YOUR ACTUAL ML DATA FROM PYTHON!
+const aiBurnRates = {
+    "Spoke": 9.197,
+    "Central Axlecup": 2.0,
+    "Brake Shoe": 1.27,
+    "Bottom Set": 1.0,
+    "Cable": 0.586,
+    "Tyre": 0.85, 
+    "Free Wheel": 0.42,
+    "Chain": 0.35,
+    "Rim": 0.20
+};
 
 export async function loadInventory() {
     try {
@@ -47,6 +60,23 @@ export async function loadInventory() {
         inventoryData.forEach(p => {
             const isLow = p.stock <= p.reorder_level;
             
+            // --- AI STOCK-OUT PREDICTOR LOGIC ---
+            // We pull the burn rate from the ML dictionary. If it's a new item, default to 0.1
+            const burnRate = aiBurnRates[p.name] || 0.1; 
+            const daysLeft = Math.ceil(p.stock / burnRate);
+            
+            let aiBadge = '';
+            if (p.stock === 0) {
+                aiBadge = `<div class="mt-2 text-[10px] font-black text-red-600 bg-red-100 px-2 py-1 rounded-md border border-red-200 shadow-sm"><i class="fas fa-skull-crossbones"></i> OUT OF STOCK</div>`;
+            } else if (daysLeft <= 7) {
+                aiBadge = `<div class="mt-2 text-[10px] font-black text-red-600 bg-red-100 px-2 py-1 rounded-md animate-pulse border border-red-200 shadow-sm"><i class="fas fa-exclamation-triangle"></i> AI: Empty in ${daysLeft} days</div>`;
+            } else if (daysLeft <= 30) {
+                aiBadge = `<div class="mt-2 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200 shadow-sm"><i class="fas fa-clock"></i> AI: Empty in ${daysLeft} days</div>`;
+            } else {
+                aiBadge = `<div class="mt-2 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md border border-green-200 shadow-sm"><i class="fas fa-shield-alt"></i> AI: Safe for ${daysLeft} days</div>`;
+            }
+            // ------------------------------------
+
             let stockClass = 'text-green-500 font-bold';
             let badgeClass = 'bg-green-100 text-green-800';
             let badgeText = 'In Stock';
@@ -58,21 +88,25 @@ export async function loadInventory() {
             }
             
             htmlContent += `
-                <tr class="border-b dark:border-gray-700">
+                <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                     <td class="p-4 font-mono text-sm text-gray-500">
                         ${p.code}
                     </td>
                     <td class="p-4 font-bold dark:text-white">
                         ${p.name}
+                        ${p.ai_class ? `<br><span class="mt-1 inline-block text-[9px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 uppercase tracking-widest">${p.ai_class}</span>` : ''}
                     </td>
                     <td class="p-4">
-                        <div class="flex items-center gap-3">
-                            <span class="${stockClass}">
-                                ${p.stock}
-                            </span>
-                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
-                                <i class="fas fa-plus"></i> Add
-                            </button>
+                        <div class="flex flex-col items-start">
+                            <div class="flex items-center gap-3">
+                                <span class="${stockClass}">
+                                    ${p.stock}
+                                </span>
+                                <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                            ${aiBadge}
                         </div>
                     </td>
                     <td class="p-4 text-gray-500 font-bold">
@@ -224,7 +258,6 @@ export function printRestockFinal() {
     const printWindow = window.open('', '', 'width=800,height=600');
     
     if (printWindow) {
-        // Delay slighty to bypass popup blocker limitations
         setTimeout(() => {
             printWindow.document.open();
             printWindow.document.write(`
@@ -349,7 +382,9 @@ export function renderCart() {
     const tbody = document.getElementById('cart-table-body'); 
     const totalEl = document.getElementById('pos-total');
     
-    if (!tbody) return; 
+    if (!tbody) {
+        return; 
+    }
     
     let htmlContent = ''; 
     let total = 0;
@@ -400,7 +435,6 @@ export async function processSale(e) {
         return showCustomConfirm("Error", "Cannot process an empty cart.", "danger");
     }
 
-    // Instantly open window before async operations block the pop-up
     const w = window.open('', '', 'width=400,height=600');
     if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill...</p>');
 
@@ -519,7 +553,6 @@ function populateBill(w, sale, items) {
     }, 100);
 }
 
-// --- Sales Report Logic ---
 let allSales = [];
 
 export async function openReportModal() { 
@@ -539,7 +572,9 @@ export function closeReportModal() {
 export function filterSales(period) {
     const t = document.getElementById('report-table-body'); 
     
-    if (!t) return; 
+    if (!t) {
+        return; 
+    }
     
     let htmlContent = ''; 
     let totalRevenue = 0; 
@@ -782,7 +817,6 @@ export function filterRepairs() {
         `;
     });
     
-    // Assign at once for speed and stability
     tbody.innerHTML = htmlContent;
 }
 
@@ -991,7 +1025,6 @@ export async function saveEditRepair(e) {
 export async function addRepair(e) { 
     e.preventDefault(); 
     
-    // INSTANT WINDOW TO BEAT POPUP BLOCKER
     const w = window.open('', '', 'width=400,height=600');
     if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
 
@@ -1107,7 +1140,6 @@ export function recalcRepairTotal() {
 }
 
 export async function finalizeRepair() { 
-    // INSTANT WINDOW TO BEAT POPUP BLOCKER
     const w = window.open('', '', 'width=400,height=600');
     if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill...</p>');
 
@@ -1200,12 +1232,6 @@ export async function loadHR() {
             return; 
         }
         
-        list.innerHTML = '';
-        
-        const attSelect = document.getElementById('hr-att-worker');
-        const advSelect = document.getElementById('hr-adv-worker');
-        const paySelect = document.getElementById('hr-pay-worker');
-        
         let optionsHtml = '<option value="">Select Worker...</option>';
         let htmlContent = '';
 
@@ -1247,24 +1273,18 @@ export async function loadHR() {
         
         list.innerHTML = htmlContent;
 
-        if (attSelect) {
-            attSelect.innerHTML = optionsHtml;
-        }
-        if (advSelect) {
-            advSelect.innerHTML = optionsHtml;
-        }
-        if (paySelect) {
-            paySelect.innerHTML = optionsHtml;
-        }
+        const attSelect = document.getElementById('hr-att-worker');
+        const advSelect = document.getElementById('hr-adv-worker');
+        const paySelect = document.getElementById('hr-pay-worker');
+
+        if (attSelect) attSelect.innerHTML = optionsHtml;
+        if (advSelect) advSelect.innerHTML = optionsHtml;
+        if (paySelect) paySelect.innerHTML = optionsHtml;
         
         const todayStr = new Date().toISOString().split('T')[0];
         
-        if (document.getElementById('hr-att-date')) {
-            document.getElementById('hr-att-date').value = todayStr;
-        }
-        if (document.getElementById('hr-adv-date')) {
-            document.getElementById('hr-adv-date').value = todayStr;
-        }
+        if (document.getElementById('hr-att-date')) document.getElementById('hr-att-date').value = todayStr;
+        if (document.getElementById('hr-adv-date')) document.getElementById('hr-adv-date').value = todayStr;
 
         loadHRDashboardSummary();
         
@@ -1679,7 +1699,7 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
     document.getElementById('view-att-net').innerText = formatCurrency(data.netPay);
     
     const tbody = document.getElementById('view-att-table');
-    tbody.innerHTML = '';
+    let htmlContent = '';
     
     if (data.attData) {
         data.attData.forEach(a => {
@@ -1702,7 +1722,7 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
                 }
             }
             
-            tbody.innerHTML += `
+            htmlContent += `
                 <tr class="border-b dark:border-gray-700 text-sm">
                     <td class="p-2 font-bold">${a.date}</td>
                     <td class="p-2">${a.status}</td>
@@ -1714,14 +1734,15 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
     }
     
     if (!data.attData || data.attData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No records found for this month.</td></tr>`;
+        htmlContent = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No records found for this month.</td></tr>`;
     }
+    
+    tbody.innerHTML = htmlContent;
 }
 
 export async function generatePayroll(e) {
     e.preventDefault(); 
     
-    // INSTANT WINDOW OPEN FOR POPUP BLOCKER BYPASS
     const w = window.open('', '', 'width=600,height=800');
     if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll...</p>');
 
@@ -1950,7 +1971,7 @@ async function renderCalendar(month, year) {
         "12-25": "Christmas Day"
     };
 
-    // 2026 POYA DAYS (Approximated based on typical lunar cycles for 2026)
+    // 2026 POYA DAYS
     const poyaDays = {
         "01-03": "Duruthu Full Moon Poya",
         "02-01": "Navam Full Moon Poya",
@@ -1969,7 +1990,6 @@ async function renderCalendar(month, year) {
     
     let htmlContent = '';
     
-    // Empty boxes for previous month days
     for (let i = 0; i < firstDay; i++) { 
         htmlContent += `
             <div class="p-4 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800 opacity-50 rounded"></div>
@@ -1982,7 +2002,6 @@ async function renderCalendar(month, year) {
         
         let eventHtml = '';
         
-        // Check Static Holidays
         if (slHolidays[monthDayStr]) {
             eventHtml += `
                 <div class="bg-red-100 text-red-800 text-[10px] p-1 rounded mt-1 truncate font-bold shadow-sm" title="${slHolidays[monthDayStr]}">
@@ -1991,7 +2010,6 @@ async function renderCalendar(month, year) {
             `;
         }
 
-        // Check Poya Days
         if (poyaDays[monthDayStr]) {
             eventHtml += `
                 <div class="bg-yellow-100 text-yellow-800 text-[10px] p-1 rounded mt-1 truncate font-bold shadow-sm" title="${poyaDays[monthDayStr]}">
@@ -2000,7 +2018,6 @@ async function renderCalendar(month, year) {
             `;
         }
         
-        // Check Custom Database Events
         if (events) {
             const dayEvents = events.filter(e => e.event_date === fullDate);
             dayEvents.forEach(e => { 
