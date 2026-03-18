@@ -163,3 +163,89 @@ window.onload = function () {
         alert("Startup Error: " + err.message); 
     }
 };
+// Add this to the very bottom of js/app.js
+window.uploadAIClassification = async () => {
+    const fileInput = document.getElementById('file-ai-class');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return alert("Please select the Industry_ABC_Classification.xlsx file first!");
+    }
+
+    // Show loading screen
+    const loader = document.getElementById('loader');
+    if(loader) loader.classList.remove('hidden');
+
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert Excel to JSON array
+            const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+            const sb = window.posModule ? window.posModule.getSupabase() : null; 
+            // Fallback if getSupabase is handled differently in your app.js
+            const supabaseClient = sb || window.supabaseClient; 
+
+            if (!supabaseClient) {
+                throw new Error("Could not connect to Supabase client.");
+            }
+
+            let successCount = 0;
+
+            // Loop through the Excel rows and update Supabase
+            for (let row of jsonRows) {
+                const partName = row['Spare Part Name'];
+                const aiClass = row['AI_Classification'];
+
+                if (partName && aiClass) {
+                    // Update the product in Supabase where the name matches exactly
+                    const { error } = await supabaseClient.from('products')
+                        .update({ ai_class: aiClass })
+                        .eq('name', partName.trim());
+                    
+                    if (!error) {
+                        successCount++;
+                    } else {
+                        console.error(`Failed to update ${partName}:`, error.message);
+                    }
+                }
+            }
+
+            // Hide loader and show success!
+            if(loader) loader.classList.add('hidden');
+            fileInput.value = ''; // Reset file input
+            
+            // Show success message
+            const modal = document.getElementById('custom-modal');
+            if (modal) {
+                document.getElementById('modal-title').innerText = "AI Sync Complete";
+                document.getElementById('modal-msg').innerText = `Successfully synced ${successCount} AI inventory labels to the cloud.`;
+                document.getElementById('modal-icon').className = "fas fa-check-circle text-2xl text-green-500";
+                document.getElementById('modal-icon-bg').className = "mx-auto w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4 pulse-green";
+                document.getElementById('modal-btn-cancel').classList.add('hidden');
+                const confirmBtn = document.getElementById('modal-btn-confirm');
+                confirmBtn.innerText = "Awesome!";
+                confirmBtn.onclick = () => { modal.classList.add('hidden'); };
+                modal.classList.remove('hidden');
+            } else {
+                alert(`Successfully synced ${successCount} AI inventory labels!`);
+            }
+            
+            // Reload the inventory to show the badges instantly
+            if (window.posModule && window.posModule.loadInventory) {
+                await window.posModule.loadInventory();
+            }
+
+        } catch (err) {
+            if(loader) loader.classList.add('hidden');
+            alert("Error processing Excel file: " + err.message);
+        }
+    };
+    
+    reader.readAsArrayBuffer(file);
+};
