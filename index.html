@@ -1094,7 +1094,8 @@
                     </h2>
                     <p class="text-gray-500 mb-8 font-medium">Upload financial history and AI predictions to power your analytics dashboard.</p>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        
                         <div class="bg-gray-50 dark:bg-slate-800 p-6 rounded-2xl border border-gray-200 dark:border-gray-600 shadow-inner">
                             <h3 class="font-black text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                                 <i class="fas fa-file-excel text-green-600"></i> Upload Past Data
@@ -1102,7 +1103,7 @@
                             <p class="text-xs text-gray-500 mb-4">Updates the 'Past Records' charts.</p>
                             <input type="file" id="file-past" accept=".xlsx, .xls" class="w-full p-3 mb-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 dark:text-white outline-none cursor-pointer">
                             <button onclick="window.uploadToSupabase('past')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition shadow-md">
-                                <i class="fas fa-cloud-upload-alt"></i> Upload Past Data
+                                <i class="fas fa-cloud-upload-alt"></i> Upload
                             </button>
                         </div>
                         
@@ -1113,9 +1114,21 @@
                             <p class="text-xs text-gray-500 mb-4">Updates the 'AI Predictions' charts.</p>
                             <input type="file" id="file-predicted" accept=".xlsx, .xls" class="w-full p-3 mb-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 dark:text-white outline-none cursor-pointer">
                             <button onclick="window.uploadToSupabase('predicted')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md">
-                                <i class="fas fa-cloud-upload-alt"></i> Upload Predicted Data
+                                <i class="fas fa-cloud-upload-alt"></i> Upload
                             </button>
                         </div>
+
+                        <div class="bg-purple-50 dark:bg-purple-900/10 p-6 rounded-2xl border border-purple-200 dark:border-purple-800/50 shadow-inner">
+                            <h3 class="font-black text-purple-700 dark:text-purple-400 mb-2 uppercase tracking-wide">
+                                <i class="fas fa-brain text-purple-600"></i> Upload AI ABC Sync
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Tags inventory with A/B/C classes.</p>
+                            <input type="file" id="file-ai-class" accept=".xlsx, .xls" class="w-full p-3 mb-4 bg-white dark:bg-slate-700 rounded-xl border border-purple-200 dark:border-gray-600 dark:text-white outline-none cursor-pointer">
+                            <button onclick="window.uploadAIClassification()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition shadow-md flex justify-center items-center gap-2">
+                                <i class="fas fa-magic"></i> Sync AI Labels
+                            </button>
+                        </div>
+
                     </div>
 
                     <div class="border-t-2 border-dashed border-gray-200 dark:border-gray-700 pt-8 mt-4">
