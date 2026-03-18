@@ -187,13 +187,16 @@ window.uploadAIClassification = async () => {
             
             // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-            const sb = window.posModule ? window.posModule.getSupabase() : null; 
-            // Fallback if getSupabase is handled differently in your app.js
-            const supabaseClient = sb || window.supabaseClient; 
-
+            
+            // --- THE BULLETPROOF FIX ---
+            // Dynamically load the config file to guarantee we get the database connection
+            const configModule = await import('./config.js');
+            const supabaseClient = configModule.getSupabase();
+            
             if (!supabaseClient) {
-                throw new Error("Could not connect to Supabase client.");
+                throw new Error("Could not connect to Supabase database.");
             }
+            // ---------------------------
 
             let successCount = 0;
 
