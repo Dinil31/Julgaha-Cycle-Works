@@ -716,6 +716,9 @@ export async function deleteProduct(id) {
 /**
  * Loads inventory items (excluding Bicycles) into the data table
  */
+/**
+ * Loads inventory items (excluding Bicycles) into the data table
+ */
 export async function loadInventory() {
     try {
         inventoryData = await fetchAll('products');
@@ -740,6 +743,26 @@ export async function loadInventory() {
             return;
         }
 
+        // --- ACTUAL ML BURN RATE DATA (Daily Consumption) ---
+        const mlBurnRates = {
+            "Arm": 0.143, "At Packet": 0.143, "Axle": 0.071, "Ball": 0.425, "Basket": 0.143,
+            "Battery": 0.286, "Bottom Set": 1.0, "Brake Cable": 0.106, "Brake Lever": 0.273,
+            "Brake Set": 0.192, "Brake Shoe": 1.27, "Cable": 0.586, "Central Axel": 0.143,
+            "Central Axle": 0.237, "Central Axle Cup": 0.148, "Central Axle Resar": 0.286,
+            "Central Axlecup": 2.0, "Chain": 0.264, "Changer": 0.084, "Changer Pin": 0.286,
+            "Cogwheel": 0.12, "Cogwheel Set": 0.054, "Cone": 0.423, "Cup": 0.143, "Cupset": 0.143,
+            "Cutter Pin": 0.143, "Fork": 0.5, "Free Changer": 0.2, "Free Wheel": 0.186,
+            "Gear": 0.286, "Gear Cable": 0.222, "Gear Lever": 0.05, "Guard Wheel": 0.077,
+            "Handle": 0.5, "Handle Clip": 0.31, "Handle Cupset": 0.085, "Horn": 0.143,
+            "Hub": 0.164, "Hub Brake": 0.143, "Hub Cup": 0.083, "Hub Flowers": 0.286,
+            "Lever": 0.059, "Mud Guard": 0.19, "Outter": 0.125, "Pedal": 0.335, "Pedal Arm": 0.095,
+            "Pins": 0.143, "Piston Lever": 0.143, "Pre Changer": 0.143, "Resar": 0.308, "Rim": 0.347,
+            "Rim Complete": 0.143, "Rim Lumala": 0.143, "Rim Tape": 0.143, "Seat": 0.065,
+            "Seat Bar": 0.05, "Seat Haro": 0.143, "Seat Pin": 0.067, "Spoke": 9.197, "Spring": 0.143,
+            "Stand": 0.077, "Tube": 0.39, "Tyre": 0.397, "Tyre sm": 0.143, "Unspecified": 0.265, "Wheel": 0.143
+        };
+        // ----------------------------------------------------
+
         partsOnly.forEach(p => {
             const isLow = p.stock <= p.reorder_level;
             
@@ -753,29 +776,64 @@ export async function loadInventory() {
                 badgeText = 'LOW STOCK ALERT';
             }
 
-            // --- RESTORED AI BURN RATE / ABC CLASSIFICATION LOGIC ---
-            let aiBadge = '';
+            let aiClassBadge = '';
+            let aiSafeBadge = '';
+            
             if (p.ai_class) {
                 let classText = p.ai_class;
-                
-                // Automatically expand the single letter into the detailed AI explanation
+                let burnRateText = "UNKNOWN";
+
+                // Map ABC Classes for UI
                 if (p.ai_class.toUpperCase() === 'A' || p.ai_class.toUpperCase().includes('CLASS A')) {
                     classText = 'CLASS A (VIP / TOP 70% REVENUE)';
+                    burnRateText = 'HIGH BURN RATE (Fast Moving)';
                 } else if (p.ai_class.toUpperCase() === 'B' || p.ai_class.toUpperCase().includes('CLASS B')) {
                     classText = 'CLASS B (STEADY / NEXT 20% REVENUE)';
+                    burnRateText = 'MODERATE BURN RATE (Steady)';
                 } else if (p.ai_class.toUpperCase() === 'C' || p.ai_class.toUpperCase().includes('CLASS C')) {
                     classText = 'CLASS C (SLOW / BOTTOM 10% REVENUE)';
+                    burnRateText = 'LOW BURN RATE (Slow Moving)';
                 }
 
-                aiBadge = `
-                    <div class="mt-1.5">
-                        <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border border-purple-200/50">
-                            <i class="fas fa-chart-pie opacity-70"></i> CLASS: ${classText}
+                // AI Burn Rate Matching Logic
+                let dailyBurnRate = 0.1; // Default fallback
+                const dbName = p.name.toLowerCase();
+                
+                // Find the matching ML burn rate for this specific product
+                for (const [mlKey, mlValue] of Object.entries(mlBurnRates)) {
+                    if (dbName.includes(mlKey.toLowerCase())) {
+                        dailyBurnRate = mlValue;
+                        break;
+                    }
+                }
+
+                // AI Math: Safe Limit = 30 Days Buffer based on actual ML daily consumption
+                let aiSafeStock = Math.ceil(dailyBurnRate * 30);
+                
+                // Safety net: Safe stock shouldn't be lower than the reorder level
+                if (aiSafeStock < p.reorder_level) {
+                    aiSafeStock = p.reorder_level + Math.ceil(dailyBurnRate * 7); 
+                }
+
+                aiClassBadge = `
+                    <div class="mt-1.5 flex flex-col gap-1">
+                        <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center w-max shadow-sm border border-purple-200/50">
+                            <i class="fas fa-chart-pie opacity-70 mr-1.5"></i> ${classText}
+                        </span>
+                        <span class="text-[9px] font-bold text-gray-500 ml-1 flex items-center gap-1 mt-0.5" title="Daily Consumption: ${dailyBurnRate} units/day">
+                            <i class="fas fa-fire text-orange-500"></i> ${burnRateText}
+                        </span>
+                    </div>
+                `;
+
+                aiSafeBadge = `
+                    <div class="mt-2 flex flex-col items-center">
+                        <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md border border-indigo-200 text-[9px] font-black uppercase tracking-widest shadow-sm w-max" title="Algorithm calculated optimal 30-day safety stock">
+                            <i class="fas fa-shield-alt text-indigo-500 mr-1"></i> AI SAFE LIMIT: ${aiSafeStock}
                         </span>
                     </div>
                 `;
             }
-            // --------------------------------------------------------
             
             htmlContent += `
                 <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition duration-200">
@@ -784,7 +842,7 @@ export async function loadInventory() {
                     </td>
                     <td class="p-4 font-bold text-gray-800 dark:text-white">
                         ${p.name}
-                        ${aiBadge}
+                        ${aiClassBadge}
                     </td>
                     <td class="p-4">
                         <div class="flex items-center gap-3">
@@ -796,10 +854,11 @@ export async function loadInventory() {
                             </button>
                         </div>
                     </td>
-                    <td class="p-4 text-center">
-                        <span class="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400 px-4 py-1.5 rounded-lg text-xs font-black shadow-inner">
+                    <td class="p-4 text-center align-middle">
+                        <span class="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400 px-4 py-1.5 rounded-lg text-xs font-black shadow-inner block w-fit mx-auto" title="Manual Reorder Threshold">
                             ${p.reorder_level}
                         </span>
+                        ${aiSafeBadge}
                     </td>
                     <td class="p-4 dark:text-gray-300">
                         <div class="text-[10px] text-gray-400 font-bold mb-0.5">
