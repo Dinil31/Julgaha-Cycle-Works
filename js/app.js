@@ -10,6 +10,7 @@ function setActiveNav(activeId) {
     const navs = [
         'nav-revenue', 
         'nav-pos', 
+        'nav-showroom', // Added Showroom
         'nav-inventory', 
         'nav-repairs', 
         'nav-hr', 
@@ -33,6 +34,7 @@ function hideAllSections() {
     const sections = [
         'dashboard-view', 
         'pos-view', 
+        'showroom-view', // Added Showroom
         'inventory-view', 
         'repairs-view', 
         'hr-view', 
@@ -60,6 +62,11 @@ window.handleNavClick = function(tabName) {
         setActiveNav('nav-pos'); 
         document.getElementById('pos-view').classList.remove('hidden'); 
         posModule.initPOS(); 
+    }
+    else if (tabName === 'showroom') { // Added Showroom Logic
+        setActiveNav('nav-showroom'); 
+        document.getElementById('showroom-view').classList.remove('hidden'); 
+        posModule.loadShowroom(); 
     }
     else if (tabName === 'inventory') { 
         setActiveNav('nav-inventory'); 
@@ -163,6 +170,7 @@ window.onload = function () {
         alert("Startup Error: " + err.message); 
     }
 };
+
 // Add this to the very bottom of js/app.js
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
