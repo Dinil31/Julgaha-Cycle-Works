@@ -1,4 +1,3 @@
-// js/pos_module.js
 import { getSupabase } from './config.js';
 import { showCustomConfirm } from './ui.js';
 
@@ -31,79 +30,479 @@ async function fetchAll(table) {
 
 
 // ==========================================
-// 1. INVENTORY & AI PREDICTIVE SYSTEM
+// 1. CYCLE SHOWROOM SYSTEM (NEW)
 // ==========================================
+
+export async function loadShowroom() {
+    try {
+        const sb = getSupabase();
+        const { data, error } = await sb.from('products')
+            .select('*')
+            .eq('item_type', 'Bicycle')
+            .order('id', { ascending: false });
+        
+        const grid = document.getElementById('admin-showroom-grid');
+        
+        if (!grid) return;
+
+        if (error) {
+            grid.innerHTML = `<p class="text-red-500 font-bold p-4">Error loading showroom: ${error.message}</p>`;
+            return;
+        }
+
+        let html = '';
+        
+        data.forEach(bike => {
+            let badgeColor = '';
+            
+            if (bike.cycle_category === 'New') {
+                badgeColor = 'bg-green-100 text-green-700 border-green-200';
+            } else if (bike.cycle_category === 'Japanese Reconditioned') {
+                badgeColor = 'bg-blue-100 text-blue-700 border-blue-200';
+            } else {
+                badgeColor = 'bg-gray-200 text-gray-700 border-gray-300';
+            }
+
+            let stockBadge = bike.stock > 0 
+                ? `<span class="text-green-500 text-xs font-black"><i class="fas fa-check-circle"></i> In Stock (${bike.stock})</span>` 
+                : `<span class="text-red-500 text-xs font-black"><i class="fas fa-times-circle"></i> Out of Stock</span>`;
+
+            html += `
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col transition hover:shadow-lg">
+                    <div class="h-48 bg-gray-200 relative group">
+                        <img src="${bike.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" alt="${bike.name}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105">
+                        <div class="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/50 shadow-sm ${badgeColor}">
+                            ${bike.cycle_category}
+                        </div>
+                    </div>
+                    <div class="p-5 flex flex-col flex-grow">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-black text-xl text-gray-800 dark:text-white leading-tight">${bike.name}</h3>
+                            <span class="text-xs text-gray-400 font-mono mt-1 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">${bike.code}</span>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 flex-grow border-b dark:border-gray-700 pb-4 italic">
+                            "${bike.specs || 'No specific details provided.'}"
+                        </p>
+                        <div class="flex justify-between items-center mb-5">
+                            <div>${stockBadge}</div>
+                            <div class="text-2xl font-black text-blue-600 dark:text-blue-400">
+                                ${formatCurrency(bike.unit_price)}
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-auto">
+                            <button onclick="window.posModule.deleteProduct('${bike.id}')" class="p-3 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition shadow-sm" title="Delete Bicycle">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button onclick="window.posModule.sellBicycle('${bike.id}')" class="flex-grow bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                                <i class="fas fa-cart-arrow-down"></i> Sell Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        grid.innerHTML = html || `
+            <div class="col-span-full text-center py-16 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-600">
+                <i class="fas fa-bicycle text-4xl text-gray-400 mb-3 block"></i>
+                <p class="text-gray-500 font-bold uppercase tracking-widest text-sm">No bicycles currently in the showroom.</p>
+            </div>
+        `;
+    } catch (err) {
+        console.error("Error loading showroom:", err);
+    }
+}
+
+export async function addBicycle(e) {
+    e.preventDefault();
+    const sb = getSupabase();
+    const form = new FormData(e.target);
+    
+    const { error } = await sb.from('products').insert({
+        item_type: 'Bicycle',
+        code: form.get('code').toUpperCase(),
+        name: form.get('name'),
+        cycle_category: form.get('category'),
+        specs: form.get('specs'),
+        image_url: form.get('image_url'),
+        stock: Number(form.get('stock')),
+        reorder_level: 1, // Bicycles automatically trigger reorder alerts at 1 unit
+        buying_price: Number(form.get('buying_price')),
+        unit_price: Number(form.get('unit_price'))
+    });
+
+    if (error) {
+        alert(error.message);
+    } else {
+        e.target.reset();
+        document.getElementById('add-bicycle-modal').classList.add('hidden');
+        await loadShowroom();
+        showCustomConfirm("Success", "Bicycle has been added to the showroom inventory!", "success-green");
+    }
+}
+
+export async function deleteProduct(id) {
+    if(await showCustomConfirm("Delete Item?", "Are you sure you want to permanently remove this item from the database? This cannot be undone.", "danger")) {
+        const sb = getSupabase();
+        await sb.from('products').delete().eq('id', id);
+        
+        // Refresh both views in case it was a part or a bicycle
+        await loadShowroom();
+        await loadInventory();
+    }
+}
+
+export function sellBicycle(id) {
+    const sb = getSupabase();
+    
+    // Fetch directly from database to ensure accuracy and prevent out-of-stock sales
+    sb.from('products').select('*').eq('id', id).single().then(({data: bike}) => {
+        
+        if (!bike) return;
+        
+        if (bike.stock <= 0) {
+            return alert("This bicycle is currently out of stock!");
+        }
+
+        // Add to the POS Cart
+        const existingItem = cart.find(i => i.id === id);
+        
+        if (existingItem) {
+            existingItem.qty += 1;
+        } else {
+            cart.push({ 
+                id: id, 
+                name: bike.name, 
+                price: bike.unit_price, 
+                qty: 1 
+            });
+        }
+
+        // --- AUTOMATED 1-DAY ASSEMBLY CHARGE LOGIC ---
+        if (bike.cycle_category === 'New' || bike.cycle_category === 'Japanese Reconditioned') {
+            const svcInput = document.getElementById('pos-service-cost');
+            let currentSvc = parseFloat(svcInput.value || 0);
+            
+            // Automatically add 1,500 LKR for assembly/tuning
+            svcInput.value = currentSvc + 1500; 
+            
+            showCustomConfirm(
+                "Added to POS Cart", 
+                `${bike.name} has been added.\n\nA standard 1-day Assembly & Tuning charge of 1,500 LKR has been automatically added to the service cost.`, 
+                "confirm"
+            );
+        } else {
+            // Old/Used bikes don't get the automatic assembly charge
+            alert(`${bike.name} added to cart.`);
+        }
+
+        renderCart();
+        
+        // Jump the user automatically to the POS screen to finalize the sale
+        window.handleNavClick('pos'); 
+    });
+}
+
+
+// ==========================================
+// 2. POS & BILLING SYSTEM (With Warranty)
+// ==========================================
+let cart = []; 
 let inventoryData = [];
 
-
-const aiBurnRates = {
-    "Arm": 0.143,
-    "At Packet": 0.143,
-    "Axle": 0.071,
-    "Ball": 0.425,
-    "Basket": 0.143,
-    "Battery": 0.286,
-    "Bottom Set": 1.0,
-    "Brake Cable": 0.106,
-    "Brake Lever": 0.273,
-    "Brake Set": 0.192,
-    "Brake Shoe": 1.27,
-    "Cable": 0.586,
-    "Central Axel": 0.143,
-    "Central Axle": 0.237,
-    "Central Axle Cup": 0.148,
-    "Central Axle Resar": 0.286,
-    "Central Axlecup": 2.0,
-    "Chain": 0.264,
-    "Changer": 0.084,
-    "Changer Pin": 0.286,
-    "Cogwheel": 0.12,
-    "Cogwheel Set": 0.054,
-    "Cone": 0.423,
-    "Cup": 0.143,
-    "Cupset": 0.143,
-    "Cutter Pin": 0.143,
-    "Fork": 0.5,
-    "Free Changer": 0.2,
-    "Free Wheel": 0.186,
-    "Gear": 0.286,
-    "Gear Cable": 0.222,
-    "Gear Lever": 0.05,
-    "Guard Wheel": 0.077,
-    "Handle": 0.5,
-    "Handle Clip": 0.31,
-    "Handle Cupset": 0.085,
-    "Horn": 0.143,
-    "Hub": 0.164,
-    "Hub Brake": 0.143,
-    "Hub Cup": 0.083,
-    "Hub Flowers": 0.286,
-    "Lever": 0.059,
-    "Mud Guard": 0.19,
-    "Outter": 0.125,
-    "Pedal": 0.335,
-    "Pedal Arm": 0.095,
-    "Pins": 0.143,
-    "Piston Lever": 0.143,
-    "Pre Changer": 0.143,
-    "Resar": 0.308,
-    "Rim": 0.347,
-    "Rim Complete": 0.143,
-    "Rim Lumala": 0.143,
-    "Rim Tape": 0.143,
-    "Seat": 0.065,
-    "Seat Bar": 0.05,
-    "Seat Haro": 0.143,
-    "Seat Pin": 0.067,
-    "Spoke": 9.197,
-    "Spring": 0.143,
-    "Stand": 0.077,
-    "Tube": 0.39,
-    "Tyre": 0.397,
-    "Tyre sm": 0.143,
-    "Unspecified": 0.265,
-    "Wheel": 0.143
+export async function initPOS() {
+    try {
+        inventoryData = await fetchAll('products'); 
+        const select = document.getElementById('pos-product-select');
+        
+        if (select) { 
+            select.innerHTML = '<option value="">Select Spare Part or Accessory...</option>'; 
+            
+            // Filter out Bicycles from the dropdown, only show Parts
+            inventoryData.filter(p => p.item_type !== 'Bicycle').forEach(p => {
+                select.innerHTML += `
+                    <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
+                        ${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}
+                    </option>
+                `;
+            }); 
+        }
+    } catch (err) {
+        console.error("POS Init Error:", err);
+    }
 }
+
+export function addToCart() {
+    const select = document.getElementById('pos-product-select'); 
+    const qtyInput = document.getElementById('pos-qty');
+    
+    const id = select.value; 
+    
+    if (!id) {
+        return alert("Please select a product first.");
+    }
+    
+    const option = select.options[select.selectedIndex];
+    const name = option.getAttribute('data-name');
+    const price = parseFloat(option.getAttribute('data-price'));
+    const p = inventoryData.find(x => String(x.id) === String(id)); 
+    const qty = parseInt(qtyInput.value);
+    
+    if (qty <= 0 || isNaN(qty)) {
+        return alert("Quantity must be greater than 0.");
+    }
+
+    if (qty > p.stock) {
+        return alert(`Low Stock Warning! Only ${p.stock} units are currently available.`);
+    }
+    
+    const existingItem = cart.find(i => i.id === id); 
+    
+    if (existingItem) {
+        existingItem.qty += qty; 
+    } else {
+        cart.push({ 
+            id: id, 
+            name: name, 
+            price: price, 
+            qty: qty 
+        });
+    }
+    
+    renderCart(); 
+    qtyInput.value = 1;
+}
+
+export function renderCart() {
+    const tbody = document.getElementById('cart-table-body'); 
+    const totalEl = document.getElementById('pos-total');
+    
+    if (!tbody) {
+        return; 
+    }
+    
+    let htmlContent = ''; 
+    let total = 0;
+    
+    cart.forEach((item, idx) => { 
+        total += item.price * item.qty; 
+        
+        htmlContent += `
+            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                <td class="p-3 font-bold dark:text-white">
+                    ${item.name}
+                </td>
+                <td align="center" class="p-3 font-black text-blue-600 dark:text-blue-400">
+                    ${item.qty}
+                </td>
+                <td align="right" class="p-3 text-green-600 font-bold">
+                    ${formatCurrency(item.price * item.qty)}
+                </td>
+                <td align="center" class="p-3">
+                    <button type="button" onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-white hover:bg-red-500 dark:bg-red-900/20 p-2 rounded-lg transition" title="Remove Item">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `; 
+    });
+    
+    tbody.innerHTML = htmlContent;
+    
+    const serviceCost = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
+    totalEl.innerText = formatCurrency(total + serviceCost);
+}
+
+export function removeCartItem(idx) { 
+    cart.splice(idx, 1); 
+    renderCart(); 
+}
+
+export async function processSale(e) {
+    e.preventDefault(); 
+    
+    const sb = getSupabase();
+    const form = new FormData(e.target); 
+    const svc = parseFloat(form.get('service_cost') || 0); 
+    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) + svc;
+    
+    if (cart.length === 0 && svc <= 0) {
+        return showCustomConfirm("Error", "Cannot process an empty cart.", "danger");
+    }
+
+    // Open print window immediately to bypass pop-up blockers
+    const w = window.open('', '', 'width=400,height=600');
+    if (w) {
+        w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill to Cloud...</p>');
+    }
+
+    const receiptNo = "POS-" + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+
+    const { data: sale, error } = await sb.from('sales').insert({ 
+        receipt_no: receiptNo, 
+        customer_name: form.get('customer_name') || 'Walk-in Customer', 
+        phone: form.get('phone'), 
+        service_cost: svc, 
+        total_amount: total, 
+        date: new Date().toISOString()
+    }).select().single();
+
+    if (error) {
+        if(w) w.close();
+        return alert("Error saving sale to database: " + error.message);
+    }
+
+    const itemsForBill = [...cart];
+
+    if (cart.length > 0) {
+        const itemsToInsert = cart.map(i => ({ 
+            sale_id: sale.id, 
+            product_id: i.id, 
+            quantity: i.qty, 
+            price: i.price 
+        }));
+        
+        await sb.from('sale_items').insert(itemsToInsert);
+        
+        // Deduct inventory stock
+        for (let item of cart) { 
+            const p = inventoryData.find(x => String(x.id) === String(item.id)); 
+            if (p) {
+                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id); 
+            }
+        }
+    }
+    
+    // Capture the Serial Number for Warranty processing
+    const serialNumber = form.get('serial_number');
+    
+    // Reset the UI
+    cart = []; 
+    e.target.reset(); 
+    renderCart(); 
+    
+    // Generate the physical receipt
+    if (w) {
+        populateBill(w, sale, itemsForBill, serialNumber);
+    }
+    
+    // Reload all data views
+    await initPOS(); 
+    await loadInventory(); 
+    await loadShowroom();
+    
+    showCustomConfirm("Success", "Transaction Processed & Bill Generated!", "success-green");
+}
+
+function populateBill(w, sale, items, serialNumber = null) {
+    let itemsHtml = '';
+    
+    if (items && items.length > 0) {
+        itemsHtml = items.map(i => `
+            <tr>
+                <td style="padding: 5px 0;">${i.name}</td>
+                <td align="center" style="padding: 5px 0;">${i.qty}</td>
+                <td align="right" style="padding: 5px 0;">${(i.price * i.qty).toFixed(2)}</td>
+            </tr>
+        `).join('');
+    } else {
+        itemsHtml = `
+            <tr>
+                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0; color: #666;">
+                    Labor / Service Only
+                </td>
+            </tr>
+        `;
+    }
+
+    // --- AUTOMATED WARRANTY REGISTRATION LOGIC ---
+    let warrantyHtml = '';
+    
+    if (serialNumber && serialNumber.trim() !== '') {
+        const warrantyDate = new Date();
+        warrantyDate.setFullYear(warrantyDate.getFullYear() + 5); // Add 5 Years
+        
+        warrantyHtml = `
+            <div style="margin-top: 20px; padding: 15px; border: 2px dashed #333; text-align: center; background-color: #f9f9f9;">
+                <h3 style="margin: 0 0 5px 0; text-transform: uppercase; font-family: sans-serif;">Official Warranty</h3>
+                <p style="margin: 3px 0; font-size: 14px;">Frame S/N: <b>${serialNumber}</b></p>
+                <p style="margin: 5px 0; font-size: 14px; color: #059669; font-weight: bold;">Valid Until: ${warrantyDate.toLocaleDateString()}</p>
+                <p style="margin: 5px 0 0 0; font-size: 10px; color: #666;">Please retain this receipt for any warranty claims.</p>
+            </div>
+        `;
+    }
+    // ---------------------------------------------
+
+    setTimeout(() => {
+        w.document.open();
+        w.document.write(`
+            <html>
+            <head>
+                <title>Receipt - ${sale.receipt_no}</title>
+                <style>
+                    body { 
+                        font-family: 'Courier New', Courier, monospace; 
+                        padding: 20px; 
+                        font-size: 14px; 
+                        color: #000; 
+                        max-width: 300px;
+                        margin: 0 auto;
+                    }
+                    h2, p { margin: 0; padding: 2px 0; }
+                    hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
+                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                    th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; text-transform: uppercase; font-size: 12px;}
+                    td { font-size: 13px; }
+                </style>
+            </head>
+            <body>
+                <center>
+                    <h2 style="font-family: sans-serif; font-black;">CycleSense</h2>
+                    <p style="font-size: 12px;">Tel: 075 633 9536</p>
+                    <p style="font-size: 12px;">Galle, Sri Lanka</p>
+                    <p style="margin-top: 5px; font-weight: bold;">Receipt: ${sale.receipt_no}</p>
+                </center>
+                
+                <hr>
+                <p style="font-size: 12px;">Date: ${new Date(sale.date).toLocaleString()}</p>
+                <p style="font-size: 12px;">Cust: ${sale.customer_name}</p>
+                <hr>
+                
+                <table>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr>
+                    ${itemsHtml}
+                </table>
+                
+                <hr>
+                <div style="text-align: right;">
+                    ${sale.service_cost > 0 ? `<p style="font-size: 13px;">Labor/Service: ${sale.service_cost.toFixed(2)}</p>` : ''}
+                    <h2 style="margin-top: 10px; font-family: sans-serif;">TOTAL: ${sale.total_amount.toFixed(2)}</h2>
+                </div>
+                
+                ${warrantyHtml}
+                
+                <hr>
+                <center>
+                    <p style="font-size:11px; font-weight: bold;">Thank you for riding with us!</p>
+                    <p style="font-size:9px; color: #666; margin-top: 2px;">Powered by CycleSense Cloud ERP</p>
+                </center>
+                
+                <script>window.print();</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    }, 100);
+}
+
+
+// ==========================================
+// 3. INVENTORY SYSTEM
+// ==========================================
 
 export async function loadInventory() {
     try {
@@ -114,26 +513,10 @@ export async function loadInventory() {
         
         let htmlContent = '';
         
-        inventoryData.forEach(p => {
+        // Filter out Bicycles so they only appear in the Showroom tab
+        inventoryData.filter(p => p.item_type !== 'Bicycle').forEach(p => {
             const isLow = p.stock <= p.reorder_level;
             
-            // --- AI STOCK-OUT PREDICTOR LOGIC ---
-            // We pull the burn rate from the ML dictionary. If it's a new item, default to 0.1
-            const burnRate = aiBurnRates[p.name] || 0.1; 
-            const daysLeft = Math.ceil(p.stock / burnRate);
-            
-            let aiBadge = '';
-            if (p.stock === 0) {
-                aiBadge = `<div class="mt-2 text-[10px] font-black text-red-600 bg-red-100 px-2 py-1 rounded-md border border-red-200 shadow-sm"><i class="fas fa-skull-crossbones"></i> OUT OF STOCK</div>`;
-            } else if (daysLeft <= 7) {
-                aiBadge = `<div class="mt-2 text-[10px] font-black text-red-600 bg-red-100 px-2 py-1 rounded-md animate-pulse border border-red-200 shadow-sm"><i class="fas fa-exclamation-triangle"></i> AI: Empty in ${daysLeft} days</div>`;
-            } else if (daysLeft <= 30) {
-                aiBadge = `<div class="mt-2 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200 shadow-sm"><i class="fas fa-clock"></i> AI: Empty in ${daysLeft} days</div>`;
-            } else {
-                aiBadge = `<div class="mt-2 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-md border border-green-200 shadow-sm"><i class="fas fa-shield-alt"></i> AI: Safe for ${daysLeft} days</div>`;
-            }
-            // ------------------------------------
-
             let stockClass = 'text-green-500 font-bold';
             let badgeClass = 'bg-green-100 text-green-800';
             let badgeText = 'In Stock';
@@ -141,7 +524,7 @@ export async function loadInventory() {
             if (isLow) {
                 stockClass = 'text-red-500 animate-pulse font-black text-lg';
                 badgeClass = 'bg-red-100 text-red-800';
-                badgeText = 'Low Stock';
+                badgeText = 'Low Stock Alert';
             }
             
             htmlContent += `
@@ -154,16 +537,13 @@ export async function loadInventory() {
                         ${p.ai_class ? `<br><span class="mt-1 inline-block text-[9px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200 uppercase tracking-widest">${p.ai_class}</span>` : ''}
                     </td>
                     <td class="p-4">
-                        <div class="flex flex-col items-start">
-                            <div class="flex items-center gap-3">
-                                <span class="${stockClass}">
-                                    ${p.stock}
-                                </span>
-                                <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition flex items-center gap-1 shadow-sm">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
-                            ${aiBadge}
+                        <div class="flex items-center gap-3">
+                            <span class="${stockClass}">
+                                ${p.stock}
+                            </span>
+                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-100 hover:bg-blue-200 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition shadow-sm">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
                         </div>
                     </td>
                     <td class="p-4 text-gray-500 font-bold">
@@ -186,11 +566,35 @@ export async function loadInventory() {
             `;
         });
         
-        // Render all at once to prevent screen flickering/blanking
         tbody.innerHTML = htmlContent;
         
     } catch (error) {
         console.error("Error rendering inventory:", error);
+    }
+}
+
+export async function addProduct(e) {
+    e.preventDefault(); 
+    
+    const form = new FormData(e.target);
+    const sb = getSupabase();
+    
+    const { error } = await sb.from('products').insert({ 
+        item_type: 'Part', // Explicitly mark as spare part
+        code: form.get('code').toUpperCase(), 
+        name: form.get('name'), 
+        stock: Number(form.get('stock')), 
+        reorder_level: Number(form.get('reorder_level')), 
+        buying_price: Number(form.get('buying_price')), 
+        unit_price: Number(form.get('unit_price')) 
+    });
+    
+    if (error) {
+        alert(error.message); 
+    } else {
+        e.target.reset(); 
+        await loadInventory(); 
+        showCustomConfirm("Success", "New Spare Part Added to Inventory", "success-green"); 
     }
 }
 
@@ -250,10 +654,11 @@ export async function generateRestockPDF() {
     const sb = getSupabase();
     const { data } = await sb.from('products').select('*');
     
-    const lowStockItems = data.filter(p => p.stock <= p.reorder_level);
+    // Only generate restock list for Parts, not Bicycles
+    const lowStockItems = data.filter(p => p.stock <= p.reorder_level && p.item_type !== 'Bicycle');
     
     if (lowStockItems.length === 0) {
-        return showCustomConfirm("Inventory Check", "All items have sufficient stock. No restocking needed.", "confirm");
+        return showCustomConfirm("Inventory Check", "All spare parts have sufficient stock levels. No supplier ordering needed.", "confirm");
     }
     
     const tbody = document.getElementById('restock-table-body'); 
@@ -349,267 +754,10 @@ export function printRestockFinal() {
     }
 }
 
-export async function addProduct(e) {
-    e.preventDefault(); 
-    
-    const form = new FormData(e.target);
-    const sb = getSupabase();
-    
-    const { error } = await sb.from('products').insert({ 
-        code: form.get('code').toUpperCase(), 
-        name: form.get('name'), 
-        stock: Number(form.get('stock')), 
-        reorder_level: Number(form.get('reorder_level')), 
-        buying_price: Number(form.get('buying_price')), 
-        unit_price: Number(form.get('unit_price')) 
-    });
-    
-    if (error) {
-        alert(error.message); 
-    } else {
-        e.target.reset(); 
-        await loadInventory(); 
-        showCustomConfirm("Success", "Product Added to Inventory", "success-green"); 
-    }
-}
-
 
 // ==========================================
-// 2. POS & SALES SYSTEM
+// 4. REPORTS & SALES TRACKING
 // ==========================================
-let cart = []; 
-
-export async function initPOS() {
-    try {
-        inventoryData = await fetchAll('products'); 
-        const select = document.getElementById('pos-product-select');
-        
-        if (select) { 
-            select.innerHTML = '<option value="">Select Product...</option>'; 
-            inventoryData.forEach(p => {
-                select.innerHTML += `
-                    <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
-                        ${p.name} (Stock: ${p.stock}) - ${formatCurrency(p.unit_price)}
-                    </option>
-                `;
-            }); 
-        }
-    } catch (err) {
-        console.error("POS Init Error:", err);
-    }
-}
-
-export function addToCart() {
-    const select = document.getElementById('pos-product-select'); 
-    const qtyInput = document.getElementById('pos-qty');
-    
-    const id = select.value; 
-    
-    if (!id) {
-        return alert("Please select a product first.");
-    }
-    
-    const option = select.options[select.selectedIndex];
-    const name = option.getAttribute('data-name');
-    const price = parseFloat(option.getAttribute('data-price'));
-    const p = inventoryData.find(x => String(x.id) === String(id)); 
-    const qty = parseInt(qtyInput.value);
-    
-    if (qty <= 0 || isNaN(qty)) {
-        return alert("Quantity must be greater than 0.");
-    }
-
-    if (qty > p.stock) {
-        return alert(`Low Stock! Only ${p.stock} units available.`);
-    }
-    
-    const existingItem = cart.find(i => i.id === id); 
-    
-    if (existingItem) {
-        existingItem.qty += qty; 
-    } else {
-        cart.push({ id, name, price, qty });
-    }
-    
-    renderCart(); 
-    qtyInput.value = 1;
-}
-
-export function renderCart() {
-    const tbody = document.getElementById('cart-table-body'); 
-    const totalEl = document.getElementById('pos-total');
-    
-    if (!tbody) {
-        return; 
-    }
-    
-    let htmlContent = ''; 
-    let total = 0;
-    
-    cart.forEach((item, idx) => { 
-        total += item.price * item.qty; 
-        
-        htmlContent += `
-            <tr class="border-b dark:border-gray-700">
-                <td class="p-2 font-bold dark:text-white">
-                    ${item.name}
-                </td>
-                <td align="center" class="p-2 font-black">
-                    ${item.qty}
-                </td>
-                <td align="right" class="p-2 text-green-600 font-bold">
-                    ${formatCurrency(item.price * item.qty)}
-                </td>
-                <td align="center" class="p-2">
-                    <button type="button" onclick="window.posModule.removeCartItem(${idx})" class="text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `; 
-    });
-    
-    tbody.innerHTML = htmlContent;
-    
-    const serviceCost = parseFloat(document.getElementById('pos-service-cost')?.value || 0);
-    totalEl.innerText = formatCurrency(total + serviceCost);
-}
-
-export function removeCartItem(idx) { 
-    cart.splice(idx, 1); 
-    renderCart(); 
-}
-
-export async function processSale(e) {
-    e.preventDefault(); 
-    
-    const sb = getSupabase();
-    const form = new FormData(e.target); 
-    const svc = parseFloat(form.get('service_cost') || 0); 
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) + svc;
-    
-    if (cart.length === 0 && svc <= 0) {
-        return showCustomConfirm("Error", "Cannot process an empty cart.", "danger");
-    }
-
-    const w = window.open('', '', 'width=400,height=600');
-    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Bill...</p>');
-
-    const receiptNo = Date.now().toString().slice(-8) + Math.floor(Math.random() * 100);
-
-    const { data: sale, error } = await sb.from('sales').insert({ 
-        receipt_no: receiptNo, 
-        customer_name: form.get('customer_name') || 'Walk-in Customer', 
-        phone: form.get('phone'), 
-        service_cost: svc, 
-        total_amount: total, 
-        date: new Date().toISOString()
-    }).select().single();
-
-    if (error) {
-        if(w) w.close();
-        return alert("Error saving sale: " + error.message);
-    }
-
-    const itemsForBill = [...cart];
-
-    if (cart.length > 0) {
-        const itemsToInsert = cart.map(i => ({ 
-            sale_id: sale.id, 
-            product_id: i.id, 
-            quantity: i.qty, 
-            price: i.price 
-        }));
-        
-        await sb.from('sale_items').insert(itemsToInsert);
-        
-        for (let item of cart) { 
-            const p = inventoryData.find(x => String(x.id) === String(item.id)); 
-            if (p) {
-                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id); 
-            }
-        }
-    }
-    
-    cart = []; 
-    e.target.reset(); 
-    renderCart(); 
-    
-    if (w) populateBill(w, sale, itemsForBill);
-    
-    await initPOS(); 
-    await loadInventory(); 
-    
-    showCustomConfirm("Success", "Sale Processed & Bill Generated!", "success-green");
-}
-
-function populateBill(w, sale, items) {
-    let itemsHtml = '';
-    
-    if (items && items.length > 0) {
-        itemsHtml = items.map(i => `
-            <tr>
-                <td style="padding: 5px 0;">${i.name}</td>
-                <td align="center" style="padding: 5px 0;">${i.qty}</td>
-                <td align="right" style="padding: 5px 0;">${(i.price * i.qty).toFixed(2)}</td>
-            </tr>
-        `).join('');
-    } else {
-        itemsHtml = `
-            <tr>
-                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">
-                    Service Only
-                </td>
-            </tr>
-        `;
-    }
-
-    setTimeout(() => {
-        w.document.open();
-        w.document.write(`
-            <html>
-            <head>
-                <style>
-                    body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
-                    h2, p { margin: 0; padding: 2px 0; }
-                    hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
-                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                    th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 5px; }
-                </style>
-            </head>
-            <body>
-                <center>
-                    <h2>CycleSense</h2>
-                    <p>Tel: 075 633 9536</p>
-                    <p>Receipt: ${sale.receipt_no}</p>
-                </center>
-                <hr>
-                <p>Date: ${new Date(sale.date).toLocaleString()}</p>
-                <p>Cust: ${sale.customer_name}</p>
-                <hr>
-                <table>
-                    <tr>
-                        <th>Item</th>
-                        <th style="text-align:center;">Qty</th>
-                        <th style="text-align:right;">Price</th>
-                    </tr>
-                    ${itemsHtml}
-                </table>
-                <hr>
-                <div style="text-align: right;">
-                    ${sale.service_cost > 0 ? `<p>Labor / Service: ${sale.service_cost.toFixed(2)}</p>` : ''}
-                    <h3 style="margin-top: 10px;">TOTAL: ${sale.total_amount.toFixed(2)} LKR</h3>
-                </div>
-                <hr>
-                <center><p style="font-size:10px;">Thank you for riding with us!</p></center>
-                <script>window.print();</script>
-            </body>
-            </html>
-        `);
-        w.document.close();
-    }, 100);
-}
-
 let allSales = [];
 
 export async function openReportModal() { 
@@ -655,14 +803,14 @@ export function filterSales(period) {
         totalRevenue += Number(s.total_amount); 
         
         htmlContent += `
-            <tr class="border-b dark:border-gray-700">
+            <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
                 <td class="p-3">
                     ${new Date(s.date).toLocaleDateString()}
                 </td>
-                <td class="p-3 font-mono text-blue-500">
+                <td class="p-3 font-mono text-blue-500 dark:text-blue-400 font-bold">
                     ${s.receipt_no || s.id}
                 </td>
-                <td class="p-3 font-bold">
+                <td class="p-3 font-bold dark:text-white">
                     ${s.customer_name}
                 </td>
                 <td class="p-3 text-right font-black text-green-600">
@@ -686,7 +834,7 @@ export function filterSales(period) {
 
 export async function reprintSaleBill(saleId) {
     const w = window.open('', '', 'width=400,height=600');
-    if(w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Loading Bill...</p>');
+    if(w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Loading Bill Data from Cloud...</p>');
 
     const sb = getSupabase();
     
@@ -709,7 +857,7 @@ export async function reprintSaleBill(saleId) {
 }
 
 export async function deleteSale(id) { 
-    if (await showCustomConfirm("Delete Record?", "This will remove the sale and restore item stock.", "danger")) { 
+    if (await showCustomConfirm("Delete Sales Record?", "This will remove the sale permanently and restore the inventory stock.", "danger")) { 
         const sb = getSupabase();
         
         const { data: items } = await sb.from('sale_items').select('*').eq('sale_id', id);
@@ -728,15 +876,16 @@ export async function deleteSale(id) {
         
         await openReportModal(); 
         await loadInventory(); 
+        await loadShowroom();
     } 
 }
 
 
 // ==========================================
-// 3. REPAIRS WORKSHOP SYSTEM
+// 5. REPAIRS WORKSHOP SYSTEM
 // ==========================================
+let repairsData = []; 
 let repairCart = []; 
-let repairsData = [];
 let currentRepairId = null; 
 
 export async function loadRepairs() { 
@@ -781,8 +930,9 @@ export function filterRepairs() {
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-6 text-gray-500 font-bold uppercase tracking-widest">
-                    No tickets found.
+                <td colspan="7" class="text-center py-8 text-gray-500 font-bold uppercase tracking-widest bg-gray-50 dark:bg-slate-800/50">
+                    <i class="fas fa-tools text-2xl mb-2 block text-gray-400"></i>
+                    No repair tickets found in this category.
                 </td>
             </tr>
         `;
@@ -804,13 +954,13 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit Ticket">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button type="button" onclick="window.posModule.printRepairTicket('${r.id}')" class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
-                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete Ticket">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -823,13 +973,13 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit">
+                <button type="button" onclick="window.posModule.editRepair('${r.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-slate-800 p-2 rounded-lg transition" title="Edit Ticket">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button type="button" onclick="window.posModule.printRepairTicket('${r.id}')" class="text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2 rounded-lg transition" title="Print Ticket">
                     <i class="fas fa-print"></i>
                 </button>
-                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete">
+                <button type="button" onclick="window.posModule.deleteRepair('${r.id}')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg transition" title="Delete Ticket">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -842,20 +992,20 @@ export function filterRepairs() {
                 </button>
             `;
             actionsHtml = `
-                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full flex items-center justify-center gap-1">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
         }
         else if (r.status === 'Collected') {
-            rowClass = 'bg-white dark:bg-darkcard border-l-4 border-green-500';
+            rowClass = 'bg-white dark:bg-darkcard border-l-4 border-green-500 opacity-60 hover:opacity-100 transition duration-300';
             statusHtml = `
                 <span class="bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest border border-green-200 block text-center">
                     <i class="fas fa-check-circle"></i> Collected
                 </span>
             `;
             actionsHtml = `
-                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full">
+                <button type="button" onclick="window.posModule.reprintFinalBill('${r.id}')" class="text-white bg-gray-800 hover:bg-black p-2 rounded-lg transition text-xs font-bold w-full flex items-center justify-center gap-1">
                     <i class="fas fa-receipt"></i> Print Bill
                 </button>
             `;
@@ -877,18 +1027,257 @@ export function filterRepairs() {
     tbody.innerHTML = htmlContent;
 }
 
+export async function startRepair(id) {
+    const sb = getSupabase(); 
+    const { error } = await sb.from('repairs').update({ status: 'Under Repair' }).eq('id', id);
+    
+    if (error) {
+        alert("Error starting repair: " + error.message); 
+    } else {
+        await loadRepairs();
+    }
+}
+
 export async function markAsCollected(id) {
-    if (await showCustomConfirm("Collect & Pay", "Confirm the customer has paid the balance and collected the bicycle.", "confirm")) {
+    if (await showCustomConfirm("Collect & Pay", "Confirm the customer has paid the remaining balance and collected the bicycle.", "confirm")) {
         const sb = getSupabase();
-        
         const { error } = await sb.from('repairs').update({ status: 'Collected' }).eq('id', id);
         
         if (error) {
-            alert("Error: " + error.message);
+            alert("Database Error: " + error.message);
         } else {
             await loadRepairs();
         }
     }
+}
+
+export async function deleteRepair(id) { 
+    if (await showCustomConfirm("Delete Ticket?", "Are you sure you want to permanently delete this repair ticket?", "danger")) { 
+        const sb = getSupabase();
+        await sb.from('repairs').delete().eq('id', id); 
+        await loadRepairs(); 
+    } 
+}
+
+export async function addRepair(e) { 
+    e.preventDefault(); 
+    
+    const w = window.open('', '', 'width=400,height=600');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
+
+    const form = new FormData(e.target); 
+    const sb = getSupabase();
+    const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
+    
+    const { data, error } = await sb.from('repairs').insert({ 
+        repair_id: repairId, 
+        customer_name: form.get('customer_name'), 
+        phone: form.get('phone'), 
+        advance: Number(form.get('advance')), 
+        predicted_date: form.get('predicted_date'), 
+        status: 'Pending'
+    }).select().single(); 
+    
+    if (error) {
+        if (w) w.close();
+        alert(error.message);
+    } else {
+        e.target.reset(); 
+        
+        if (w) populateRepairTicket(w, data);
+        
+        await loadRepairs(); 
+        showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
+    }
+}
+
+export function editRepair(id) { 
+    const r = repairsData.find(x => String(x.id) === String(id));
+    if (!r) return;
+    
+    document.getElementById('edit-repair-id').value = r.id; 
+    document.getElementById('edit-repair-customer').value = r.customer_name; 
+    document.getElementById('edit-repair-phone').value = r.phone; 
+    document.getElementById('edit-repair-advance').value = r.advance; 
+    document.getElementById('edit-repair-date').value = r.predicted_date; 
+    
+    document.getElementById('repair-edit-modal').classList.remove('hidden'); 
+}
+
+export async function saveEditRepair(e) { 
+    e.preventDefault(); 
+    
+    const id = document.getElementById('edit-repair-id').value; 
+    const sb = getSupabase();
+    
+    const { error } = await sb.from('repairs').update({ 
+        customer_name: document.getElementById('edit-repair-customer').value, 
+        phone: document.getElementById('edit-repair-phone').value, 
+        advance: parseFloat(document.getElementById('edit-repair-advance').value), 
+        predicted_date: document.getElementById('edit-repair-date').value 
+    }).eq('id', id); 
+    
+    if (error) {
+        alert("Update Error: " + error.message);
+    } else {
+        document.getElementById('repair-edit-modal').classList.add('hidden'); 
+        await loadRepairs(); 
+        showCustomConfirm("Updated", "Repair details updated successfully.", "success-green");
+    }
+}
+
+export async function openCompleteRepairModal(id) {
+    try {
+        currentRepairId = id; 
+        repairCart = []; 
+        document.getElementById('rep-labor').value = ''; 
+        
+        const sb = getSupabase();
+        
+        const { data: r, error } = await sb.from('repairs').select('*').eq('id', id).single();
+        
+        if (error) {
+            throw error;
+        }
+        
+        document.getElementById('rep-modal-customer').innerText = r.customer_name; 
+        document.getElementById('rep-modal-adv').innerText = formatCurrency(r.advance);
+        document.getElementById('repair-finalize-modal').classList.remove('hidden'); 
+        
+        const select = document.getElementById('rep-part-select'); 
+        select.innerHTML = '<option value="">Select Replacement Part...</option>';
+        
+        const prods = await fetchAll('products'); 
+        
+        // Filter out Bicycles, only allow parts to be used in repairs
+        prods.filter(p => p.item_type !== 'Bicycle').forEach(p => { 
+            select.innerHTML += `
+                <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
+                    ${p.name} - ${formatCurrency(p.unit_price)}
+                </option>
+            `; 
+        });
+        
+        recalcRepairTotal();
+    } catch (err) { 
+        alert("Error loading ticket data: " + err.message); 
+    }
+}
+
+export function addRepairPart() { 
+    const select = document.getElementById('rep-part-select'); 
+    const id = select.value; 
+    const qtyInput = document.getElementById('rep-part-qty').value;
+    
+    if (!id || parseInt(qtyInput) <= 0 || isNaN(qtyInput)) {
+        return alert("Please enter a valid positive quantity."); 
+    }
+    
+    const option = select.options[select.selectedIndex];
+    
+    repairCart.push({ 
+        id: id, 
+        name: option.getAttribute('data-name'), 
+        price: parseFloat(option.getAttribute('data-price')), 
+        qty: parseInt(qtyInput) 
+    }); 
+    
+    recalcRepairTotal(); 
+}
+
+export function recalcRepairTotal() {
+    const tbody = document.getElementById('rep-parts-body'); 
+    
+    tbody.innerHTML = ''; 
+    let totalParts = 0; 
+    
+    repairCart.forEach(item => { 
+        totalParts += item.price * item.qty; 
+        
+        tbody.innerHTML += `
+            <tr class="border-b dark:border-gray-600">
+                <td class="p-2 font-bold">${item.name}</td>
+                <td class="p-2 text-center">${item.qty}</td>
+                <td class="p-2 text-right text-green-500 font-bold">${formatCurrency(item.price * item.qty)}</td>
+            </tr>
+        `; 
+    }); 
+    
+    const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
+    const advanceAmount = parseFloat(advStr) || 0;
+    const laborCost = parseFloat(document.getElementById('rep-labor').value || 0);
+    
+    const balanceDue = (totalParts + laborCost) - advanceAmount;
+    
+    document.getElementById('rep-total-due').innerText = formatCurrency(balanceDue); 
+}
+
+export async function finalizeRepair() { 
+    const w = window.open('', '', 'width=400,height=600');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill to Cloud...</p>');
+
+    const sb = getSupabase();
+    const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
+    
+    const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single(); 
+    
+    const partsTotal = repairCart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
+    const finalTotalAmount = partsTotal + labor; 
+    const balanceDue = finalTotalAmount - repair.advance;
+    
+    const receiptNo = "REP-" + Date.now().toString().slice(-8);
+
+    const { data: sale, error: saleError } = await sb.from('sales').insert({ 
+        receipt_no: receiptNo, 
+        customer_name: repair.customer_name + " (Repair Checkout)", 
+        phone: repair.phone, 
+        service_cost: labor, 
+        total_amount: finalTotalAmount, 
+        date: new Date().toISOString() 
+    }).select().single();
+    
+    if (saleError) {
+        if (w) w.close();
+        return alert("Error saving bill to database: " + saleError.message);
+    }
+    
+    const partsForBill = [...repairCart];
+
+    if (repairCart.length > 0) {
+        const itemsToInsert = repairCart.map(i => ({ 
+            sale_id: sale.id, 
+            product_id: i.id, 
+            quantity: i.qty, 
+            price: i.price 
+        }));
+        
+        await sb.from('sale_items').insert(itemsToInsert);
+        
+        for (let item of repairCart) { 
+            const { data: p } = await sb.from('products').select('stock').eq('id', item.id).single();
+            if (p) {
+                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
+            }
+        }
+    }
+
+    await sb.from('repairs').update({ 
+        status: 'Completed', 
+        final_amount: finalTotalAmount, 
+        balance_due: balanceDue,
+        parts_used: JSON.stringify(partsForBill)
+    }).eq('id', currentRepairId); 
+    
+    document.getElementById('repair-finalize-modal').classList.add('hidden'); 
+    
+    const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
+    
+    if (w) populateFinalBill(w, freshRepair);
+    
+    await loadRepairs(); 
+    await loadInventory(); // Reload inventory since parts were deducted
+    
+    showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
 }
 
 export function printRepairTicket(id) {
@@ -973,7 +1362,7 @@ function populateFinalBill(w, r) {
     if (partsHtml === '') {
         partsHtml = `
             <tr>
-                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0;">
+                <td colspan="3" align="center" style="font-style:italic; padding: 10px 0; color: #666;">
                     Service / Labor Only
                 </td>
             </tr>
@@ -986,12 +1375,7 @@ function populateFinalBill(w, r) {
             <html>
             <head>
                 <style>
-                    body { 
-                        font-family: 'Courier New', Courier, monospace; 
-                        padding: 20px; 
-                        font-size: 14px; 
-                        color: #000; 
-                    }
+                    body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
                     h2, p { margin: 0; padding: 2px 0; }
                     hr { border-top: 1px dashed #000; border-bottom: none; margin: 15px 0; }
                     table { width: 100%; border-collapse: collapse; margin: 10px 0; }
@@ -1032,247 +1416,9 @@ function populateFinalBill(w, r) {
     }, 100);
 }
 
-export async function startRepair(id) {
-    const sb = getSupabase(); 
-    
-    const { error } = await sb.from('repairs').update({ status: 'Under Repair' }).eq('id', id);
-    
-    if (error) {
-        alert("Error starting repair: " + error.message); 
-    } else {
-        await loadRepairs();
-    }
-}
-
-export function editRepair(id) { 
-    const r = repairsData.find(x => String(x.id) === String(id));
-    if (!r) return;
-    
-    document.getElementById('edit-repair-id').value = r.id; 
-    document.getElementById('edit-repair-customer').value = r.customer_name; 
-    document.getElementById('edit-repair-phone').value = r.phone; 
-    document.getElementById('edit-repair-advance').value = r.advance; 
-    document.getElementById('edit-repair-date').value = r.predicted_date; 
-    
-    document.getElementById('repair-edit-modal').classList.remove('hidden'); 
-}
-
-export async function saveEditRepair(e) { 
-    e.preventDefault(); 
-    
-    const id = document.getElementById('edit-repair-id').value; 
-    const sb = getSupabase();
-    
-    const { error } = await sb.from('repairs').update({ 
-        customer_name: document.getElementById('edit-repair-customer').value, 
-        phone: document.getElementById('edit-repair-phone').value, 
-        advance: parseFloat(document.getElementById('edit-repair-advance').value), 
-        predicted_date: document.getElementById('edit-repair-date').value 
-    }).eq('id', id); 
-    
-    if (error) {
-        alert("Update Error: " + error.message);
-    } else {
-        document.getElementById('repair-edit-modal').classList.add('hidden'); 
-        await loadRepairs(); 
-        showCustomConfirm("Updated", "Repair details updated.", "success-green");
-    }
-}
-
-export async function addRepair(e) { 
-    e.preventDefault(); 
-    
-    const w = window.open('', '', 'width=400,height=600');
-    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Generating Ticket...</p>');
-
-    const form = new FormData(e.target); 
-    const sb = getSupabase();
-    const repairId = 'REP-' + Math.floor(100000 + Math.random() * 900000);
-    
-    const { data, error } = await sb.from('repairs').insert({ 
-        repair_id: repairId, 
-        customer_name: form.get('customer_name'), 
-        phone: form.get('phone'), 
-        advance: Number(form.get('advance')), 
-        predicted_date: form.get('predicted_date'), 
-        status: 'Pending'
-    }).select().single(); 
-    
-    if (error) {
-        if (w) w.close();
-        alert(error.message);
-    } else {
-        e.target.reset(); 
-        
-        if (w) populateRepairTicket(w, data);
-        
-        await loadRepairs(); 
-        showCustomConfirm("Success", "Repair Ticket Generated", "success-green");
-    }
-}
-
-export async function openCompleteRepairModal(id) {
-    try {
-        currentRepairId = id; 
-        repairCart = []; 
-        document.getElementById('rep-labor').value = ''; 
-        
-        const sb = getSupabase();
-        
-        const { data: r, error } = await sb.from('repairs').select('*').eq('id', id).single();
-        
-        if (error) {
-            throw error;
-        }
-        
-        document.getElementById('rep-modal-customer').innerText = r.customer_name; 
-        document.getElementById('rep-modal-adv').innerText = formatCurrency(r.advance);
-        document.getElementById('repair-finalize-modal').classList.remove('hidden'); 
-        
-        const select = document.getElementById('rep-part-select'); 
-        select.innerHTML = '<option value="">Select Replacement Part...</option>';
-        
-        const prods = await fetchAll('products'); 
-        
-        prods.forEach(p => { 
-            select.innerHTML += `
-                <option value="${p.id}" data-price="${p.unit_price}" data-name="${p.name}">
-                    ${p.name} - ${formatCurrency(p.unit_price)}
-                </option>
-            `; 
-        });
-        
-        recalcRepairTotal();
-    } catch (err) { 
-        alert("Error loading ticket data: " + err.message); 
-    }
-}
-
-export function addRepairPart() { 
-    const select = document.getElementById('rep-part-select'); 
-    const id = select.value; 
-    const qtyInput = document.getElementById('rep-part-qty').value;
-    
-    if (!id || parseInt(qtyInput) <= 0 || isNaN(qtyInput)) {
-        return alert("Please enter a valid positive quantity."); 
-    }
-    
-    const option = select.options[select.selectedIndex];
-    
-    repairCart.push({ 
-        id: id, 
-        name: option.getAttribute('data-name'), 
-        price: parseFloat(option.getAttribute('data-price')), 
-        qty: parseInt(qtyInput) 
-    }); 
-    
-    recalcRepairTotal(); 
-}
-
-export function recalcRepairTotal() {
-    const tbody = document.getElementById('rep-parts-body'); 
-    
-    tbody.innerHTML = ''; 
-    let totalParts = 0; 
-    
-    repairCart.forEach(item => { 
-        totalParts += item.price * item.qty; 
-        
-        tbody.innerHTML += `
-            <tr class="border-b dark:border-gray-600">
-                <td class="p-2 font-bold">${item.name}</td>
-                <td class="p-2 text-center">${item.qty}</td>
-                <td class="p-2 text-right text-green-500 font-bold">${formatCurrency(item.price * item.qty)}</td>
-            </tr>
-        `; 
-    }); 
-    
-    const advStr = document.getElementById('rep-modal-adv').innerText.replace(/[^\d.]/g, '');
-    const advanceAmount = parseFloat(advStr) || 0;
-    const laborCost = parseFloat(document.getElementById('rep-labor').value || 0);
-    
-    const balanceDue = (totalParts + laborCost) - advanceAmount;
-    
-    document.getElementById('rep-total-due').innerText = formatCurrency(balanceDue); 
-}
-
-export async function finalizeRepair() { 
-    const w = window.open('', '', 'width=400,height=600');
-    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Processing Final Bill...</p>');
-
-    const sb = getSupabase();
-    const labor = parseFloat(document.getElementById('rep-labor').value || 0); 
-    
-    const { data: repair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single(); 
-    
-    const partsTotal = repairCart.reduce((sum, item) => sum + (item.price * item.qty), 0); 
-    const finalTotalAmount = partsTotal + labor; 
-    const balanceDue = finalTotalAmount - repair.advance;
-    
-    const receiptNo = "REP-" + Date.now().toString().slice(-8);
-
-    const { data: sale, error: saleError } = await sb.from('sales').insert({ 
-        receipt_no: receiptNo, 
-        customer_name: repair.customer_name + " (Repair Checkout)", 
-        phone: repair.phone, 
-        service_cost: labor, 
-        total_amount: finalTotalAmount, 
-        date: new Date().toISOString() 
-    }).select().single();
-    
-    if (saleError) {
-        if (w) w.close();
-        return alert("Error saving bill: " + saleError.message);
-    }
-    
-    const partsForBill = [...repairCart];
-
-    if (repairCart.length > 0) {
-        const itemsToInsert = repairCart.map(i => ({ 
-            sale_id: sale.id, 
-            product_id: i.id, 
-            quantity: i.qty, 
-            price: i.price 
-        }));
-        
-        await sb.from('sale_items').insert(itemsToInsert);
-        
-        for (let item of repairCart) { 
-            const { data: p } = await sb.from('products').select('stock').eq('id', item.id).single();
-            if (p) {
-                await sb.from('products').update({ stock: p.stock - item.qty }).eq('id', item.id);
-            }
-        }
-    }
-
-    await sb.from('repairs').update({ 
-        status: 'Completed', 
-        final_amount: finalTotalAmount, 
-        balance_due: balanceDue,
-        parts_used: JSON.stringify(partsForBill)
-    }).eq('id', currentRepairId); 
-    
-    document.getElementById('repair-finalize-modal').classList.add('hidden'); 
-    
-    const { data: freshRepair } = await sb.from('repairs').select('*').eq('id', currentRepairId).single();
-    
-    if (w) populateFinalBill(w, freshRepair);
-    
-    await loadRepairs(); 
-    showCustomConfirm("Completed", "Repair finished and billed successfully.", "success-green"); 
-}
-
-export async function deleteRepair(id) { 
-    if (await showCustomConfirm("Delete Ticket?", "Are you sure you want to permanently delete this repair ticket?", "danger")) { 
-        const sb = getSupabase();
-        await sb.from('repairs').delete().eq('id', id); 
-        await loadRepairs(); 
-    } 
-}
-
 
 // ==========================================
-// 4. HR, PAYROLL & ATTENDANCE SYSTEM
+// 6. HR, PAYROLL & ATTENDANCE SYSTEM
 // ==========================================
 let workersData = [];
 
@@ -1363,7 +1509,6 @@ export function viewWorkerProfile(id) {
     document.getElementById('vp-phone').innerText = w.phone || 'N/A';
     document.getElementById('vp-nic').innerText = w.nic || 'N/A';
     document.getElementById('vp-dob').innerText = w.dob || 'N/A';
-    document.getElementById('vp-address').innerText = w.address || 'N/A';
     document.getElementById('vp-salary').innerText = formatCurrency(w.daily_salary);
     
     document.getElementById('view-worker-profile-modal').classList.remove('hidden');
@@ -1445,10 +1590,10 @@ async function loadHRDashboardSummary() {
                 
                 let missedMins = 0;
                 
-                if (inMins > 600) {
+                if (inMins > 600) { // 10:00 AM
                     missedMins += (inMins - 600);
                 }
-                if (outMins < 1020) {
+                if (outMins < 1020) { // 5:00 PM
                     missedMins += (1020 - outMins);
                 }
                 
@@ -1536,7 +1681,6 @@ export function openEditWorker(id) {
     document.getElementById('ew-phone').value = w.phone || ''; 
     document.getElementById('ew-nic').value = w.nic || '';
     document.getElementById('ew-dob').value = w.dob || ''; 
-    document.getElementById('ew-address').value = w.address || '';
     document.getElementById('ew-salary').value = w.daily_salary; 
     document.getElementById('ew-pin').value = w.pin || '1234';
     
@@ -1554,7 +1698,6 @@ export async function saveEditWorker(e) {
         phone: form.get('phone'), 
         nic: form.get('nic'), 
         dob: form.get('dob') || null, 
-        address: form.get('address'), 
         daily_salary: Number(form.get('salary')), 
         pin: form.get('pin') 
     }).eq('id', form.get('id'));
@@ -1609,7 +1752,7 @@ export async function markAttendance(e) {
         e.target.reset(); 
         document.getElementById('hr-att-date').value = new Date().toISOString().split('T')[0]; 
         await loadHRDashboardSummary(); 
-        showCustomConfirm("Saved", "Attendance Logged", "success-green"); 
+        showCustomConfirm("Saved", "Attendance Logged Successfully", "success-green"); 
     }
 }
 
@@ -1784,14 +1927,13 @@ export async function renderWorkerAttendanceUI(id, monthStr) {
                     <td class="p-2 font-bold">${a.date}</td>
                     <td class="p-2">${a.status}</td>
                     <td class="p-2">${a.in_time || '-'} to ${a.out_time || '-'}</td>
-                    <td class="p-2 text-red-500 font-bold">${penText}</td>
                 </tr>
             `;
         });
     }
     
     if (!data.attData || data.attData.length === 0) {
-        htmlContent = `<tr><td colspan="4" class="p-4 text-center text-gray-500">No records found for this month.</td></tr>`;
+        htmlContent = `<tr><td colspan="3" class="p-4 text-center text-gray-500">No records found for this month.</td></tr>`;
     }
     
     tbody.innerHTML = htmlContent;
@@ -1801,7 +1943,7 @@ export async function generatePayroll(e) {
     e.preventDefault(); 
     
     const w = window.open('', '', 'width=600,height=800');
-    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll...</p>');
+    if (w) w.document.write('<p style="font-family:sans-serif; text-align:center; margin-top:50px;">Calculating Payroll Data...</p>');
 
     const form = new FormData(e.target); 
     const wId = form.get('worker_id'); 
@@ -1811,13 +1953,13 @@ export async function generatePayroll(e) {
     
     if (!data) {
         if (w) w.close();
-        return alert("Error locating worker.");
+        return alert("Error locating worker details.");
     }
     
     let advancesHtml = '';
     if (data.advData) {
         advancesHtml = data.advData.map(a => `
-            <div class="adv-list">
+            <div style="font-size: 12px; color: #888; padding-left: 20px; margin: 2px 0;">
                 ${a.date} : ${formatCurrency(a.amount)}
             </div>
         `).join('');
@@ -1830,55 +1972,15 @@ export async function generatePayroll(e) {
                 <html>
                 <head>
                     <style>
-                        body { 
-                            font-family: Arial, sans-serif; 
-                            padding: 40px; 
-                            color: #333; 
-                        }
-                        .header { 
-                            text-align: center; 
-                            border-bottom: 2px solid #333; 
-                            padding-bottom: 20px; 
-                            margin-bottom: 20px; 
-                        }
+                        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
                         h1 { margin: 0; color: #1e3a8a; } 
                         h3 { margin: 5px 0; color: #666; }
-                        .row { 
-                            display: flex; 
-                            justify-content: space-between; 
-                            border-bottom: 1px dashed #eee; 
-                            padding: 10px 0; 
-                            font-size:14px; 
-                        }
+                        .row { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 10px 0; font-size:14px; }
                         .bold { font-weight: bold; }
-                        .total-row { 
-                            display: flex; 
-                            justify-content: space-between; 
-                            border-top: 2px solid #333; 
-                            border-bottom: 2px solid #333; 
-                            padding: 15px 0; 
-                            font-size: 18px; 
-                            margin-top: 20px; 
-                            background: #f8fafc; 
-                        }
-                        .section-title { 
-                            margin-top: 30px; 
-                            font-size: 14px; 
-                            text-transform: uppercase; 
-                            color: #888; 
-                            border-bottom: 1px solid #ccc; 
-                            padding-bottom: 5px; 
-                        }
-                        .adv-list { 
-                            font-size: 12px; 
-                            color: #888; 
-                            padding-left: 20px; 
-                            margin: 2px 0; 
-                        }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
+                    <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px;">
                         <h1>CycleSense</h1>
                         <h3>Official Salary Slip</h3>
                         <p>Month: <b>${data.monthStr}</b></p>
@@ -1894,7 +1996,7 @@ export async function generatePayroll(e) {
                         <span>${formatCurrency(data.worker.daily_salary)}</span>
                     </div>
                     
-                    <div class="section-title">Earnings & Deductions</div>
+                    <div style="margin-top: 30px; font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Earnings & Deductions</div>
                     <div class="row">
                         <span>Full Days (${data.full})</span> 
                         <span>${formatCurrency(data.full * data.worker.daily_salary)}</span>
@@ -1907,17 +2009,17 @@ export async function generatePayroll(e) {
                         <span>Short Leaves (${data.short})</span> 
                         <span>${formatCurrency(data.short * data.worker.daily_salary)}</span>
                     </div>
-                    <div class="row text-red">
+                    <div class="row">
                         <span>Time Penalties (Late/Early)</span> 
                         <span style="color:red">- ${formatCurrency(data.timePenalty)}</span>
                     </div>
                     
-                    <div class="row" style="background:#f4f4f4;">
+                    <div class="row" style="background:#f4f4f4; padding: 15px 5px;">
                         <span><b>Gross Earnings</b></span> 
                         <span class="bold">${formatCurrency(data.grossEarnings)}</span>
                     </div>
                     
-                    <div class="section-title">Subtractions</div>
+                    <div style="margin-top: 30px; font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Subtractions</div>
                     <div class="row">
                         <span>Advances Taken</span> 
                         <span style="color:red">- ${formatCurrency(data.totalAdvances)}</span>
@@ -1929,12 +2031,12 @@ export async function generatePayroll(e) {
                         <span style="color:red">- ${formatCurrency(data.epfDeduction)}</span>
                     </div>
                     
-                    <div class="total-row">
+                    <div style="display: flex; justify-content: space-between; border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 15px 0; font-size: 18px; margin-top: 20px; background: #f8fafc;">
                         <span class="bold" style="color: #16a34a;">NET PAYABLE</span> 
                         <span class="bold" style="color: #16a34a;">${formatCurrency(data.netPay)}</span>
                     </div>
                     
-                    <div class="section-title">Employer Contributions (Info Only)</div>
+                    <div style="margin-top: 30px; font-size: 14px; text-transform: uppercase; color: #888; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Employer Contributions (Info Only)</div>
                     <div class="row">
                         <span>EPF Contribution (12%)</span> 
                         <span>${formatCurrency(data.grossEarnings * 0.12)}</span>
@@ -1944,7 +2046,7 @@ export async function generatePayroll(e) {
                         <span>${formatCurrency(data.grossEarnings * 0.03)}</span>
                     </div>
                     
-                    <div style="margin-top: 50px; display: flex; justify-content: space-between;">
+                    <div style="margin-top: 60px; display: flex; justify-content: space-between;">
                         <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Manager Signature</div>
                         <div style="border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 5px;">Employee Signature</div>
                     </div>
@@ -1960,7 +2062,7 @@ export async function generatePayroll(e) {
 
 
 // ==========================================
-// 5. CALENDAR SYSTEM
+// 7. CALENDAR SYSTEM
 // ==========================================
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
@@ -2016,33 +2118,17 @@ async function renderCalendar(month, year) {
         .gte('event_date', sDate)
         .lte('event_date', eDate);
         
-    // STATIC SRI LANKAN HOLIDAYS
     const slHolidays = {
-        "01-01": "New Year's Day",
-        "01-14": "Tamil Thai Pongal",
-        "02-04": "Independence Day",
-        "04-03": "Good Friday",
-        "04-13": "Sinhala/Tamil New Year Eve",
-        "04-14": "Sinhala/Tamil New Year",
-        "05-01": "May Day",
-        "12-25": "Christmas Day"
+        "01-01": "New Year's Day", "01-14": "Tamil Thai Pongal", "02-04": "Independence Day",
+        "04-03": "Good Friday", "04-13": "Sinhala/Tamil New Year Eve", "04-14": "Sinhala/Tamil New Year",
+        "05-01": "May Day", "12-25": "Christmas Day"
     };
 
-    // 2026 POYA DAYS
     const poyaDays = {
-        "01-03": "Duruthu Full Moon Poya",
-        "02-01": "Navam Full Moon Poya",
-        "03-03": "Medin Full Moon Poya",
-        "04-01": "Bak Full Moon Poya",
-        "05-01": "Vesak Full Moon Poya",
-        "05-30": "Poson Full Moon Poya",
-        "06-29": "Esala Full Moon Poya",
-        "07-28": "Esala Full Moon Poya (Adhi)",
-        "08-27": "Nikini Full Moon Poya",
-        "09-25": "Binara Full Moon Poya",
-        "10-25": "Vap Full Moon Poya",
-        "11-23": "Ill Full Moon Poya",
-        "12-23": "Unduvap Full Moon Poya"
+        "01-03": "Duruthu Full Moon", "02-01": "Navam Full Moon", "03-03": "Medin Full Moon",
+        "04-01": "Bak Full Moon", "05-01": "Vesak Full Moon", "05-30": "Poson Full Moon",
+        "06-29": "Esala Full Moon", "07-28": "Esala Full Moon (Adhi)", "08-27": "Nikini Full Moon",
+        "09-25": "Binara Full Moon", "10-25": "Vap Full Moon", "11-23": "Ill Full Moon", "12-23": "Unduvap Full Moon"
     };
     
     let htmlContent = '';
