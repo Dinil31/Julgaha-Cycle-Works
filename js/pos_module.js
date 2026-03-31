@@ -826,8 +826,9 @@ export async function loadInventory() {
                     </div>
                 `;
 
+                // MOVED to be left-aligned for the Current Stock column
                 aiSafeBadge = `
-                    <div class="mt-2 flex flex-col items-center">
+                    <div class="mt-1 flex items-start">
                         <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md border border-indigo-200 text-[9px] font-black uppercase tracking-widest shadow-sm w-max" title="Algorithm calculated optimal 30-day safety stock">
                             <i class="fas fa-shield-alt text-indigo-500 mr-1"></i> AI SAFE LIMIT: ${aiSafeStock}
                         </span>
@@ -845,20 +846,22 @@ export async function loadInventory() {
                         ${aiClassBadge}
                     </td>
                     <td class="p-4">
-                        <div class="flex items-center gap-3">
-                            <span class="${stockClass}">
-                                ${p.stock}
-                            </span>
-                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-500 bg-blue-50 border border-blue-100 hover:bg-blue-500 hover:text-white dark:bg-slate-800 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-blue-600 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-sm flex items-center gap-1">
-                                <i class="fas fa-plus"></i> ADD
-                            </button>
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center gap-3">
+                                <span class="${stockClass}">
+                                    ${p.stock}
+                                </span>
+                                <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-500 bg-blue-50 border border-blue-100 hover:bg-blue-500 hover:text-white dark:bg-slate-800 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-blue-600 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-sm flex items-center gap-1">
+                                    <i class="fas fa-plus"></i> ADD
+                                </button>
+                            </div>
+                            ${aiSafeBadge} <!-- Moved here under Current Stock -->
                         </div>
                     </td>
                     <td class="p-4 text-center align-middle">
                         <span class="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400 px-4 py-1.5 rounded-lg text-xs font-black shadow-inner block w-fit mx-auto" title="Manual Reorder Threshold">
                             ${p.reorder_level}
                         </span>
-                        ${aiSafeBadge}
                     </td>
                     <td class="p-4 dark:text-gray-300">
                         <div class="text-[10px] text-gray-400 font-bold mb-0.5">
