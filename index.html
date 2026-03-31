@@ -35,7 +35,6 @@
         }
     </script>
     <style>
-        /* Animation Utilities */
         .fade-in { animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes wiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
@@ -44,7 +43,6 @@
         @keyframes bounceSlight { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes cloud { 0% { transform: translateX(110vw); } 100% { transform: translateX(-20vw); } }
         
-        /* Fix for Charts looking squished */
         .chart-container { 
             position: relative; 
             height: 100%; 
@@ -59,12 +57,10 @@
             height: 100% !important; 
         }
         
-        /* UI Elements */
         .glass-overlay { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
         .grid-pattern { background-color: #f3f4f6; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; }
         .dark .grid-pattern { background-color: #0f172a; background-image: radial-gradient(#334155 1px, transparent 1px); }
         
-        /* Success Effects */
         .pulse-green { animation: pulseGreen 2s infinite; }
         @keyframes pulseGreen { 
             0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 
@@ -75,6 +71,7 @@
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
+    <!-- Global Modals -->
     <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[110]">
         <div id="modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
             <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -109,6 +106,7 @@
         </div>
     </div>
 
+    <!-- Application Modals -->
     <div id="sales-report-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
         <div class="bg-white dark:bg-darkcard w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop-in border border-gray-200 dark:border-gray-700">
             <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
@@ -139,7 +137,8 @@
                         </tr>
                     </thead>
                     <tbody id="report-table-body" class="text-sm">
-                        </tbody>
+                        <!-- Content loaded by JS -->
+                    </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-between items-center">
@@ -153,7 +152,9 @@
         <div class="bg-white dark:bg-darkcard w-full max-w-3xl h-[80vh] rounded-2xl shadow-2xl flex flex-col animate-pop-in">
             <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
                 <div>
-                    <h2 class="text-xl font-bold dark:text-white"><i class="fas fa-clipboard-list text-orange-500"></i> Restock List</h2>
+                    <h2 class="text-xl font-bold dark:text-white">
+                        <i class="fas fa-clipboard-list text-orange-500"></i> Restock List
+                    </h2>
                     <p class="text-xs text-gray-500">Edit quantities before printing.</p>
                 </div>
                 <button onclick="document.getElementById('restock-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-xl transition">
@@ -173,7 +174,8 @@
                         </tr>
                     </thead>
                     <tbody id="restock-table-body" class="text-sm dark:text-gray-200">
-                        </tbody>
+                        <!-- Content loaded by JS -->
+                    </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-end gap-3">
@@ -223,27 +225,94 @@
         </div>
     </div>
 
+    <!-- NEW MODAL: Add Bicycle -->
+    <div id="add-bicycle-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-pop-in">
+            <h3 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2">
+                <i class="fas fa-plus-circle text-red-500"></i> Add Bicycle to Showroom
+            </h3>
+            <form onsubmit="window.posModule.addBicycle(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Code/SKU</label>
+                        <input name="code" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white font-mono uppercase" required>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Name</label>
+                        <input name="name" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Category</label>
+                        <select name="category" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white cursor-pointer" required>
+                            <option value="New">Brand New</option>
+                            <option value="Japanese Reconditioned">Japanese Reconditioned</option>
+                            <option value="Old">Old / Used</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Stock Qty</label>
+                        <input name="stock" type="number" min="0" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-gray-500">Specifications</label>
+                    <textarea name="specs" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white text-sm" rows="2" placeholder="Frame size, gears, brakes..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-gray-500">Image URL</label>
+                    <input name="image_url" type="url" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white text-sm" placeholder="https://...">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Cost Price (LKR)</label>
+                        <input name="buying_price" type="number" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white" required>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-gray-500">Selling Price (LKR)</label>
+                        <input name="unit_price" type="number" class="w-full p-2.5 rounded-lg border dark:bg-slate-700 dark:text-white text-green-600 font-bold" required>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('add-bicycle-modal').classList.add('hidden')" class="w-1/3 bg-gray-200 py-3 rounded-xl font-bold text-gray-700 transition">Cancel</button>
+                    <button type="submit" class="w-2/3 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold shadow-md transition">Save Bicycle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="repair-edit-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-md p-6 rounded-2xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700">
             <h3 class="text-xl font-bold mb-4 dark:text-white">Edit Repair Details</h3>
             <form onsubmit="window.posModule.saveEditRepair(event)" class="space-y-4">
                 <input type="hidden" id="edit-repair-id">
+                
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Customer Name</label>
                     <input id="edit-repair-customer" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
+                
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Phone Number</label>
                     <input id="edit-repair-phone" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
+                
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Advance (LKR)</label>
                     <input id="edit-repair-advance" type="number" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
+                
                 <div>
                     <label class="text-xs text-gray-500 uppercase font-bold">Due Date</label>
                     <input id="edit-repair-date" type="date" class="w-full p-2 border rounded dark:bg-slate-700 dark:text-white dark:border-gray-600">
                 </div>
+                
                 <div class="flex gap-2 mt-4">
                     <button type="button" onclick="document.getElementById('repair-edit-modal').classList.add('hidden')" class="w-1/2 bg-gray-200 hover:bg-gray-300 py-2 rounded font-bold text-gray-700 transition">Cancel</button>
                     <button type="submit" class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition">Save Changes</button>
@@ -257,6 +326,7 @@
             <h2 class="text-xl font-bold mb-4 dark:text-white flex items-center gap-2">
                 <i class="fas fa-check-circle text-blue-500"></i> Complete Repair
             </h2>
+            
             <div class="flex justify-between mb-4 text-sm text-gray-500 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-700">
                 <span>Customer: <b id="rep-modal-customer" class="dark:text-gray-300"></b></span>
                 <span>Advance: <b id="rep-modal-adv" class="text-green-600"></b></span>
@@ -274,7 +344,8 @@
                 <div class="max-h-32 overflow-y-auto mt-2 border rounded-lg dark:border-gray-600 bg-gray-50 dark:bg-slate-800">
                     <table class="w-full text-sm">
                         <tbody id="rep-parts-body" class="dark:text-gray-300">
-                            </tbody>
+                            <!-- Items go here -->
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -306,29 +377,23 @@
                 
                 <div>
                     <label class="text-[10px] font-bold uppercase text-gray-500">Full Name</label>
-                    <input id="ew-name" name="name" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required placeholder="Name">
+                    <input id="ew-name" name="name" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">Phone</label>
-                        <input id="ew-phone" name="phone" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required placeholder="07x xxxxxxx">
+                        <input id="ew-phone" name="phone" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" required>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500">NIC Number</label>
-                        <input id="ew-nic" name="nic" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600" placeholder="NIC">
+                        <input id="ew-nic" name="nic" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600">
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-gray-500">Date of Birth</label>
-                        <input id="ew-dob" name="dob" type="date" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold uppercase text-gray-500">Address</label>
-                        <input id="ew-address" name="address" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm" placeholder="Address">
-                    </div>
+                <div>
+                    <label class="text-[10px] font-bold uppercase text-gray-500">Date of Birth</label>
+                    <input id="ew-dob" name="dob" type="date" class="w-full p-2 border rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm">
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-slate-800 p-3 rounded-lg border dark:border-gray-600 mt-2">
@@ -352,7 +417,9 @@
 
     <div id="view-worker-profile-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-sm p-6 rounded-3xl shadow-2xl animate-pop-in border border-gray-200 dark:border-gray-700 relative overflow-hidden">
-            <button onclick="document.getElementById('view-worker-profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl transition"><i class="fas fa-times"></i></button>
+            <button onclick="document.getElementById('view-worker-profile-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl transition">
+                <i class="fas fa-times"></i>
+            </button>
             
             <div class="text-center mb-6">
                 <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm border border-purple-200">
@@ -366,11 +433,22 @@
             </div>
 
             <div class="space-y-3 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-600 text-sm">
-                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Phone:</span> <span class="font-medium dark:text-gray-200" id="vp-phone"></span></div>
-                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">NIC:</span> <span class="font-medium dark:text-gray-200" id="vp-nic"></span></div>
-                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Date of Birth:</span> <span class="font-medium dark:text-gray-200" id="vp-dob"></span></div>
-                <div class="flex justify-between border-b dark:border-gray-700 pb-2"><span class="text-gray-500 font-bold">Address:</span> <span class="font-medium dark:text-gray-200 text-right w-1/2" id="vp-address"></span></div>
-                <div class="flex justify-between pt-1"><span class="text-gray-500 font-bold">Daily Salary:</span> <span class="font-black text-green-600" id="vp-salary"></span></div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2">
+                    <span class="text-gray-500 font-bold">Phone:</span> 
+                    <span class="font-medium dark:text-gray-200" id="vp-phone"></span>
+                </div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2">
+                    <span class="text-gray-500 font-bold">NIC:</span> 
+                    <span class="font-medium dark:text-gray-200" id="vp-nic"></span>
+                </div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2">
+                    <span class="text-gray-500 font-bold">Date of Birth:</span> 
+                    <span class="font-medium dark:text-gray-200" id="vp-dob"></span>
+                </div>
+                <div class="flex justify-between pt-1">
+                    <span class="text-gray-500 font-bold">Daily Salary:</span> 
+                    <span class="font-black text-green-600" id="vp-salary"></span>
+                </div>
             </div>
         </div>
     </div>
@@ -385,17 +463,19 @@
                 <div class="flex items-center gap-3">
                     <input type="hidden" id="view-att-wid">
                     <input type="month" id="view-att-month" class="p-2 rounded-lg border text-sm font-bold dark:bg-slate-700 dark:text-white dark:border-gray-600 cursor-pointer" onchange="window.posModule.updateAdminAttendanceView()">
-                    <button onclick="document.getElementById('view-attendance-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl transition ml-2"><i class="fas fa-times"></i></button>
+                    <button onclick="document.getElementById('view-attendance-modal').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl transition ml-2">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
             </div>
             
             <div class="flex gap-4 mb-4">
                 <div class="bg-gray-100 dark:bg-slate-800 p-4 rounded-xl flex-1 text-center border dark:border-gray-600 shadow-inner">
-                    <p class="text-xs text-gray-500 font-bold uppercase">Current Accrued Gross</p>
+                    <p class="text-xs text-gray-500 font-bold uppercase">Accrued Gross</p>
                     <p class="text-2xl font-black text-gray-800 dark:text-gray-200 mt-1" id="view-att-gross">0.00</p>
                 </div>
                 <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl flex-1 text-center border border-green-200 dark:border-green-800 shadow-inner">
-                    <p class="text-xs text-green-600 dark:text-green-400 font-bold uppercase">Net Payable To Date</p>
+                    <p class="text-xs text-green-600 dark:text-green-400 font-bold uppercase">Net Payable</p>
                     <p class="text-2xl font-black text-green-700 dark:text-green-300 mt-1" id="view-att-net">0.00</p>
                 </div>
             </div>
@@ -407,11 +487,11 @@
                             <th class="p-3">Date</th>
                             <th class="p-3">Status</th>
                             <th class="p-3">Times Logged</th>
-                            <th class="p-3 text-red-500">Late/Early Penalty</th>
                         </tr>
                     </thead>
                     <tbody id="view-att-table" class="dark:text-gray-300 text-sm">
-                        </tbody>
+                        <!-- Filled by JS -->
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -439,7 +519,7 @@
         </div>
     </div>
 
-
+    <!-- Login Section -->
     <div id="login-section" class="min-h-screen flex flex-col items-center justify-center grid-pattern relative overflow-hidden">
         
         <div class="absolute top-20 left-10 text-gray-300 dark:text-slate-800 text-9xl opacity-20 animate-cloud" style="animation-duration: 25s;">
@@ -494,6 +574,7 @@
     </div>
 
 
+    <!-- Main Dashboard -->
     <div id="dashboard-section" class="hidden min-h-screen flex flex-col fade-in">
         
         <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 z-50 gap-4 relative">
@@ -531,12 +612,18 @@
 
         <div class="bg-gray-50 dark:bg-darkbg p-4 overflow-x-auto border-b border-gray-200 dark:border-gray-800 shadow-inner">
             <div class="container mx-auto flex gap-3 min-w-max justify-start md:justify-center">
-                <div id="nav-revenue" onclick="window.handleNavClick('dashboard')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-slate-800 text-white shadow-md transition font-bold text-sm">
+                <div id="nav-dashboard" onclick="window.handleNavClick('dashboard')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-slate-800 text-white shadow-md transition font-bold text-sm">
                     <i class="fas fa-chart-line"></i> <span>Dashboard</span>
                 </div>
                 <div id="nav-pos" onclick="window.handleNavClick('pos')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
                     <i class="fas fa-cash-register text-green-500"></i> <span>POS Billing</span>
                 </div>
+                
+                <!-- NEW SHOWROOM NAVIGATION BUTTON -->
+                <div id="nav-showroom" onclick="window.handleNavClick('showroom')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
+                    <i class="fas fa-motorcycle text-red-500"></i> <span>Cycle Showroom</span>
+                </div>
+                
                 <div id="nav-inventory" onclick="window.handleNavClick('inventory')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
                     <i class="fas fa-boxes text-orange-500"></i> <span>Inventory</span>
                 </div>
@@ -547,7 +634,7 @@
                     <i class="fas fa-users text-purple-500"></i> <span>HR & Payroll</span>
                 </div>
                 <div id="nav-calendar" onclick="window.handleNavClick('calendar')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
-                    <i class="fas fa-calendar-alt text-red-500"></i> <span>Calendar</span>
+                    <i class="fas fa-calendar-alt text-pink-500"></i> <span>Calendar</span>
                 </div>
                 <div id="nav-data" onclick="window.handleNavClick('data')" class="flex-shrink-0 flex items-center space-x-2 px-5 py-2.5 rounded-xl cursor-pointer bg-white dark:bg-darkcard text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-slate-700 transition font-bold text-sm">
                     <i class="fas fa-database text-teal-500"></i> <span>Data Sync</span>
@@ -557,6 +644,7 @@
 
         <main class="flex-grow p-4 md:p-6 container mx-auto relative max-w-7xl">
             
+            <!-- Dashboard View -->
             <div id="dashboard-view" class="fade-in">
                 
                 <div class="flex gap-3 mb-6 justify-end flex-wrap bg-white dark:bg-darkcard p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -609,6 +697,27 @@
                 </div>
             </div>
 
+            <!-- Showroom View (NEW) -->
+            <div id="showroom-view" class="hidden fade-in space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white dark:bg-darkcard p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div>
+                        <h2 class="text-2xl font-black dark:text-white flex items-center gap-3">
+                            <i class="fas fa-motorcycle text-red-500"></i> Bicycle Showroom
+                        </h2>
+                        <p class="text-sm text-gray-500 font-bold mt-1">Manage cycles and initiate sales to POS.</p>
+                    </div>
+                    <button onclick="document.getElementById('add-bicycle-modal').classList.remove('hidden')" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Add New Bicycle
+                    </button>
+                </div>
+                
+                <!-- The grid where the JS will inject the bicycles -->
+                <div id="admin-showroom-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Bicycles injected here by pos_module.js -->
+                </div>
+            </div>
+
+            <!-- POS View -->
             <div id="pos-view" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <div class="lg:col-span-2 space-y-6">
@@ -655,7 +764,8 @@
                                     </tr>
                                 </thead>
                                 <tbody id="cart-table-body" class="dark:text-white">
-                                    </tbody>
+                                    <!-- Items load here -->
+                                </tbody>
                             </table>
                         </div>
 
@@ -670,19 +780,25 @@
                     <form onsubmit="window.posModule.processSale(event)" class="space-y-5">
                         
                         <div>
-                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Customer Name (Optional)</label>
-                            <input name="customer_name" placeholder="Walk-in Customer" class="w-full mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-green-500 focus:bg-white dark:focus:bg-slate-800 transition shadow-inner">
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Customer Name</label>
+                            <input name="customer_name" placeholder="Walk-in Customer" class="w-full mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-green-500 transition shadow-inner">
                         </div>
                         
                         <div>
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Contact Number</label>
-                            <input name="phone" placeholder="07x xxxxxxx" class="w-full mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-green-500 focus:bg-white dark:focus:bg-slate-800 transition shadow-inner">
+                            <input name="phone" placeholder="07x xxxxxxx" class="w-full mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-green-500 transition shadow-inner">
+                        </div>
+
+                        <!-- NEW WARRANTY INPUT -->
+                        <div>
+                            <label class="text-[10px] font-bold text-blue-500 uppercase tracking-widest ml-1"><i class="fas fa-shield-alt"></i> Frame Serial No. (For Warranty)</label>
+                            <input name="serial_number" placeholder="Enter if selling a bicycle..." class="w-full mt-1 p-3 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-slate-700 dark:border-blue-900/50 dark:text-white outline-none focus:border-blue-500 transition shadow-inner font-mono">
                         </div>
                         
                         <div class="relative">
                             <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Labor / Service Cost (LKR)</label>
                             <div class="absolute top-[28px] left-4 text-gray-400 font-bold">Rs.</div>
-                            <input name="service_cost" id="pos-service-cost" type="number" min="0" placeholder="0.00" oninput="this.value = Math.abs(this.value); window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full mt-1 pl-12 pr-4 py-4 rounded-xl border border-gray-200 bg-white dark:bg-slate-700 dark:border-gray-600 dark:text-white font-black text-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition shadow-sm text-right">
+                            <input name="service_cost" id="pos-service-cost" type="number" min="0" placeholder="0.00" oninput="this.value = Math.abs(this.value); window.posModule.renderCart ? window.posModule.renderCart() : null" class="w-full mt-1 pl-12 pr-4 py-4 rounded-xl border border-gray-200 bg-white dark:bg-slate-700 dark:border-gray-600 dark:text-white font-black text-xl outline-none focus:border-blue-500 transition shadow-sm text-right">
                         </div>
                         
                         <div class="bg-gray-800 dark:bg-black p-5 rounded-2xl mt-6 border-4 border-gray-700 dark:border-gray-800 shadow-2xl relative overflow-hidden">
@@ -695,13 +811,14 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="w-full mt-6 bg-gradient-to-r from-green-500 to-green-600 text-white font-black py-4 md:py-5 rounded-xl hover:from-green-600 hover:to-green-700 transition transform hover:scale-[1.02] active:scale-95 shadow-xl shadow-green-500/30 text-lg flex items-center justify-center gap-3">
+                        <button type="submit" class="w-full mt-6 bg-gradient-to-r from-green-500 to-green-600 text-white font-black py-4 md:py-5 rounded-xl hover:from-green-600 hover:to-green-700 transition transform hover:scale-[1.02] shadow-xl text-lg flex items-center justify-center gap-3">
                             <i class="fas fa-print"></i> Process & Print Bill
                         </button>
                     </form>
                 </div>
             </div>
 
+            <!-- Inventory View -->
             <div id="inventory-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b dark:border-gray-700 pb-4">
@@ -718,7 +835,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 items-end">
                             <div class="lg:col-span-1">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase">Item Code</label>
-                                <input name="code" placeholder="e.g. TR-01" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 font-mono uppercase focus:border-orange-500 outline-none" required>
+                                <input name="code" placeholder="TR-01" class="w-full p-3 rounded-lg border dark:bg-slate-700 dark:text-white dark:border-gray-600 font-mono uppercase focus:border-orange-500 outline-none" required>
                             </div>
                             <div class="lg:col-span-2">
                                 <label class="text-[10px] text-gray-400 font-bold ml-1 uppercase">Product Name</label>
@@ -762,11 +879,13 @@
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body" class="divide-y divide-gray-100 dark:divide-gray-700">
-                            </tbody>
+                            <!-- Loaded by pos_module.js -->
+                        </tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- Repairs View -->
             <div id="repairs-view" class="hidden fade-in space-y-6">
                 
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
@@ -836,12 +955,14 @@
                                 </tr>
                             </thead>
                             <tbody id="repairs-table-body" class="divide-y divide-gray-100 dark:divide-gray-700">
-                                </tbody>
+                                <!-- Loaded by pos_module.js -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
+            <!-- HR View -->
             <div id="hr-view" class="hidden fade-in space-y-6">
                 
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
@@ -946,7 +1067,8 @@
                         </h3>
                         
                         <div id="workers-list" class="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                            </div>
+                            <!-- JS loaded -->
+                        </div>
                     </div>
 
                     <div class="flex flex-col gap-6">
@@ -1047,6 +1169,7 @@
                 </div>
             </div>
 
+            <!-- Calendar View -->
             <div id="calendar-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
                     
@@ -1079,7 +1202,8 @@
                     </div>
                     
                     <div id="cal-days" class="grid grid-cols-7 gap-2">
-                        </div>
+                        <!-- JS -->
+                    </div>
                     
                     <div class="mt-6 text-center text-xs font-bold text-gray-400 flex items-center justify-center gap-2">
                         <i class="fas fa-info-circle"></i> Click on any day to add or view an event.
@@ -1087,6 +1211,7 @@
                 </div>
             </div>
 
+            <!-- Data View -->
             <div id="data-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
                     <h2 class="text-3xl font-black dark:text-white text-teal-600 flex items-center gap-3 mb-6">
@@ -1176,6 +1301,7 @@
             </div>
         </footer>
 
+        <!-- AI Chatbot Modal -->
         <div id="ai-modal" class="fixed bottom-6 right-6 w-80 md:w-[400px] h-[550px] bg-white dark:bg-darkcard rounded-3xl shadow-2xl z-[100] flex flex-col hidden border border-gray-200 dark:border-gray-700 overflow-hidden fade-in transform transition-all">
             
             <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 flex justify-between items-center text-white shadow-md z-10 relative overflow-hidden">
@@ -1227,6 +1353,7 @@
             </div>
         </div>
 
+        <!-- Global Loader -->
         <div id="loader" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[100] backdrop-blur-md">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-gray-200 dark:border-gray-700">
                 <div class="relative">
@@ -1239,6 +1366,7 @@
 
     </div>
 
+    <!-- MAIN SCRIPT -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
