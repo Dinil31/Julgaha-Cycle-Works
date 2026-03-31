@@ -713,6 +713,9 @@ export async function deleteProduct(id) {
 /**
  * Loads inventory items (excluding Bicycles) into the data table
  */
+/**
+ * Loads inventory items (excluding Bicycles) into the data table
+ */
 export async function loadInventory() {
     try {
         inventoryData = await fetchAll('products');
@@ -740,50 +743,74 @@ export async function loadInventory() {
         partsOnly.forEach(p => {
             const isLow = p.stock <= p.reorder_level;
             
-            let stockClass = 'text-green-500 font-black text-lg';
-            let badgeClass = 'bg-green-100 text-green-800 border-green-200';
-            let badgeText = 'In Stock';
+            let stockClass = 'text-emerald-500 font-black text-xl';
+            let badgeClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+            let badgeText = 'IN STOCK';
             
             if (isLow) {
-                stockClass = 'text-red-500 animate-pulse font-black text-xl';
-                badgeClass = 'bg-red-100 text-red-800 border-red-200';
-                badgeText = 'Low Stock Alert';
+                stockClass = 'text-red-500 font-black text-xl';
+                badgeClass = 'bg-red-50 text-red-600 border-red-200';
+                badgeText = 'LOW STOCK ALERT';
             }
+
+            // --- RESTORED AI BURN RATE / ABC CLASSIFICATION LOGIC ---
+            let aiBadge = '';
+            if (p.ai_class) {
+                let classText = p.ai_class;
+                
+                // Automatically expand the single letter into the detailed AI explanation
+                if (p.ai_class.toUpperCase() === 'A' || p.ai_class.toUpperCase().includes('CLASS A')) {
+                    classText = 'CLASS A (VIP / TOP 70% REVENUE)';
+                } else if (p.ai_class.toUpperCase() === 'B' || p.ai_class.toUpperCase().includes('CLASS B')) {
+                    classText = 'CLASS B (STEADY / NEXT 20% REVENUE)';
+                } else if (p.ai_class.toUpperCase() === 'C' || p.ai_class.toUpperCase().includes('CLASS C')) {
+                    classText = 'CLASS C (SLOW / BOTTOM 10% REVENUE)';
+                }
+
+                aiBadge = `
+                    <div class="mt-1.5">
+                        <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 shadow-sm border border-purple-200/50">
+                            <i class="fas fa-chart-pie opacity-70"></i> CLASS: ${classText}
+                        </span>
+                    </div>
+                `;
+            }
+            // --------------------------------------------------------
             
             htmlContent += `
-                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-white dark:hover:bg-slate-800 transition duration-200">
-                    <td class="p-4 font-mono text-sm text-gray-500 dark:text-gray-400">
+                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition duration-200">
+                    <td class="p-4 font-mono text-xs text-gray-500 dark:text-gray-400 font-medium">
                         ${p.code}
                     </td>
                     <td class="p-4 font-bold text-gray-800 dark:text-white">
                         ${p.name}
-                        ${p.ai_class ? `<br><span class="mt-1 inline-block text-[9px] bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200 uppercase tracking-widest shadow-sm"><i class="fas fa-brain text-purple-500 mr-1"></i> Class: ${p.ai_class}</span>` : ''}
+                        ${aiBadge}
                     </td>
                     <td class="p-4">
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3">
                             <span class="${stockClass}">
                                 ${p.stock}
                             </span>
-                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-600 hover:text-white dark:bg-slate-800 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-blue-600 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-sm" title="Quick Receive Stock">
-                                <i class="fas fa-plus"></i> Add
+                            <button onclick="window.posModule.promptAddStock('${p.id}')" class="text-blue-500 bg-blue-50 border border-blue-100 hover:bg-blue-500 hover:text-white dark:bg-slate-800 dark:text-blue-400 dark:border-gray-600 dark:hover:bg-blue-600 dark:hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition shadow-sm flex items-center gap-1">
+                                <i class="fas fa-plus"></i> ADD
                             </button>
                         </div>
                     </td>
-                    <td class="p-4 text-gray-500 font-bold text-center">
-                        <span class="bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded-lg">
+                    <td class="p-4 text-center">
+                        <span class="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400 px-4 py-1.5 rounded-lg text-xs font-black shadow-inner">
                             ${p.reorder_level}
                         </span>
                     </td>
                     <td class="p-4 dark:text-gray-300">
-                        <div class="text-xs text-gray-400 font-bold mb-1">
+                        <div class="text-[10px] text-gray-400 font-bold mb-0.5">
                             Buy: ${formatCurrency(p.buying_price)}
                         </div>
-                        <div class="font-black text-green-600 dark:text-green-400">
+                        <div class="text-xs font-black text-emerald-600 dark:text-emerald-400">
                             Sell: ${formatCurrency(p.unit_price)}
                         </div>
                     </td>
                     <td class="p-4 text-center">
-                        <span class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border shadow-sm ${badgeClass}">
+                        <span class="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border shadow-sm ${badgeClass}">
                             ${badgeText}
                         </span>
                     </td>
