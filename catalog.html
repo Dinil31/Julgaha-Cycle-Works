@@ -8,76 +8,256 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
 
-    <header class="bg-blue-600 text-white p-6 shadow-md text-center">
-        <h1 class="text-3xl font-black tracking-tight"><i class="fas fa-bicycle"></i> CycleSense Showroom</h1>
-        <p class="text-blue-100 mt-2 font-medium">Premium Bicycles | Visit our shop to purchase!</p>
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 shadow-lg text-center">
+        <h1 class="text-4xl font-black tracking-tight"><i class="fas fa-bicycle"></i> Julgaha Cycle Works</h1>
+        <p class="text-blue-100 mt-2 font-medium text-lg">Premium Bicycles | Visit our showroom to purchase!</p>
+        <div class="mt-4 flex justify-center gap-4 text-sm font-bold">
+            <a href="tel:+94756339536" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition backdrop-blur-sm"><i class="fas fa-phone-alt"></i> 075 633 9536</a>
+            <a href="#location" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition backdrop-blur-sm"><i class="fas fa-map-marker-alt"></i> View on Map</a>
+        </div>
     </header>
 
-    <main class="container mx-auto p-6 max-w-6xl">
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <h2 class="text-2xl font-bold text-gray-700">Available Bicycles</h2>
-            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200">
-                <i class="fas fa-store"></i> In-Store Purchases Only
+    <!-- Main Catalog -->
+    <main class="container mx-auto p-6 max-w-6xl mt-4 flex-grow">
+        
+        <!-- Search and Filter Bar -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-4 z-10">
+            <div class="relative w-full md:w-1/2">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" id="search-input" placeholder="Search bicycles by name or code..." class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition font-medium">
+            </div>
+            <div class="w-full md:w-auto flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                <button onclick="filterCatalog('All')" class="filter-btn active bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition whitespace-nowrap" data-filter="All">All Models</button>
+                <button onclick="filterCatalog('New')" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap" data-filter="New">Brand New</button>
+                <button onclick="filterCatalog('Japanese Reconditioned')" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap" data-filter="Japanese Reconditioned">Japanese Reconditioned</button>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+            <h2 class="text-2xl font-black text-gray-800">Available Models</h2>
+            <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-xs font-black border border-yellow-300 shadow-sm flex items-center gap-2 uppercase tracking-widest">
+                <i class="fas fa-store"></i> In-Store Only
             </span>
         </div>
 
-        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="col-span-full text-center py-10 text-gray-400 font-bold animate-pulse">
-                Loading showroom...
+        <!-- Bicycle Grid -->
+        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-20 text-gray-400 font-bold animate-pulse">
+                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i><br>
+                Loading showroom inventory...
             </div>
         </div>
     </main>
 
+    <!-- Location & Contact Footer Section -->
+    <section id="location" class="bg-white border-t border-gray-200 mt-12">
+        <div class="container mx-auto p-6 max-w-6xl py-12">
+            <div class="flex flex-col lg:flex-row gap-8 items-center bg-gray-50 rounded-3xl p-6 lg:p-8 border border-gray-100 shadow-sm">
+                
+                <!-- Contact Info -->
+                <div class="w-full lg:w-1/3 space-y-6">
+                    <div>
+                        <h2 class="text-3xl font-black text-gray-800 mb-2">Visit Our Shop</h2>
+                        <p class="text-gray-500">Come take a test ride and find your perfect bicycle today.</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl flex-shrink-0">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-gray-800">Location</h4>
+                                <p class="text-gray-600 text-sm mt-1">Galle Road,<br>Wadduwa, Sri Lanka</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xl flex-shrink-0">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-gray-800">Call Us</h4>
+                                <p class="text-gray-600 text-sm mt-1">075 633 9536</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xl flex-shrink-0">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-gray-800">Business Hours</h4>
+                                <p class="text-gray-600 text-sm mt-1">Mon - Sun: 9:00 AM - 6:00 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Google Map Embed -->
+                <div class="w-full lg:w-2/3 h-80 rounded-2xl overflow-hidden shadow-md border-4 border-white">
+                    <!-- Replace this src with the actual Google Maps embed link for Julgaha Cycle Works if available -->
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126815.17631341078!2d79.8823758390625!3d6.645398999999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae236fa78b7b2eb%3A0xc47657d42ea95df6!2sWadduwa!5e0!3m2!1sen!2slk!4v1700000000000!5m2!1sen!2slk" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-6 text-center">
+        <p class="font-bold text-white mb-1"><i class="fas fa-bicycle"></i> Julgaha Cycle Works</p>
+        <p class="text-xs">Powered by CycleSense Cloud ERP</p>
+    </footer>
+
+    <!-- Script Logic -->
     <script type="module">
         import { getSupabase } from './js/config.js';
         
-        async function loadCatalog() {
-            const sb = getSupabase();
-            const { data, error } = await sb.from('products').select('*').eq('item_type', 'Bicycle');
-            
-            if (error) {
-                document.getElementById('catalog-grid').innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
-                return;
-            }
+        let allBicycles = []; // Store globally for search/filtering
 
+        const formatCurrency = (val) => {
+            return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
+        };
+
+        async function loadCatalog() {
+            try {
+                const sb = getSupabase();
+                const { data, error } = await sb.from('products')
+                    .select('*')
+                    .eq('item_type', 'Bicycle')
+                    .order('id', { ascending: false });
+                
+                if (error) {
+                    document.getElementById('catalog-grid').innerHTML = `<p class="col-span-full text-center text-red-500 font-bold py-10">Error loading catalog: ${error.message}</p>`;
+                    return;
+                }
+
+                allBicycles = data || [];
+                renderGrid(allBicycles);
+            } catch (err) {
+                console.error("Catalog Error:", err);
+            }
+        }
+
+        function renderGrid(bicycles) {
             const grid = document.getElementById('catalog-grid');
             let html = '';
 
-            data.forEach(bike => {
-                let badgeColor = bike.cycle_category === 'New' ? 'bg-green-100 text-green-700 border-green-200' : 
-                                 bike.cycle_category === 'Japanese Reconditioned' ? 'bg-blue-100 text-blue-700 border-blue-200' : 
-                                 'bg-gray-200 text-gray-700 border-gray-300';
+            bicycles.forEach(bike => {
+                // Category Badge Logic
+                let badgeColor = bike.cycle_category === 'New' ? 'bg-green-100 text-green-800 border-green-300' : 
+                                 bike.cycle_category === 'Japanese Reconditioned' ? 'bg-blue-100 text-blue-800 border-blue-300' : 
+                                 'bg-gray-200 text-gray-800 border-gray-300';
+
+                // Dynamic Warranty Logic
+                let warrantyHtml = '';
+                if (bike.cycle_category === 'New') {
+                    warrantyHtml = '<span class="text-green-600"><i class="fas fa-shield-check"></i> 5 Years Frame Warranty</span>';
+                } else if (bike.cycle_category === 'Japanese Reconditioned') {
+                    warrantyHtml = '<span class="text-blue-600"><i class="fas fa-shield-alt"></i> 6 Months Shop Warranty</span>';
+                } else {
+                    warrantyHtml = '<span class="text-gray-400"><i class="fas fa-info-circle"></i> Sold As-Is (No Warranty)</span>';
+                }
 
                 let stockBadge = bike.stock > 0 
                     ? `<span class="text-green-600 text-xs font-black"><i class="fas fa-check-circle"></i> In Stock (${bike.stock})</span>` 
-                    : `<span class="text-red-500 text-xs font-black"><i class="fas fa-times-circle"></i> Out of Stock</span>`;
+                    : `<span class="text-red-500 text-xs font-black"><i class="fas fa-times-circle"></i> Sold Out</span>`;
+
+                let grayscaleClass = bike.stock <= 0 ? 'grayscale opacity-80' : '';
+                
+                // WhatsApp Message Generation
+                const waMessage = encodeURIComponent(`Hi! I am interested in the ${bike.name} (Code: ${bike.code}) currently listed for ${formatCurrency(bike.unit_price)}. Is it available to view at the shop?`);
+                const waLink = `https://wa.me/94756339536?text=${waMessage}`;
 
                 html += `
-                    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition flex flex-col">
-                        <div class="h-48 bg-gray-200 relative">
+                    <div class="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition duration-300 flex flex-col ${grayscaleClass}">
+                        <div class="h-64 bg-gray-100 relative">
                             <img src="${bike.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" alt="${bike.name}" class="w-full h-full object-cover">
-                            <div class="absolute top-3 left-3 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${badgeColor}">
+                            <div class="absolute top-4 left-4 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border shadow-sm ${badgeColor}">
                                 ${bike.cycle_category}
                             </div>
+                            ${bike.stock <= 0 ? '<div class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center"><span class="bg-red-600 text-white font-black px-6 py-2 rounded-full transform -rotate-12 border-4 border-white shadow-xl text-lg uppercase tracking-widest">Out of Stock</span></div>' : ''}
                         </div>
-                        <div class="p-5 flex flex-col flex-grow">
-                            <h3 class="text-xl font-black text-gray-800 mb-1">${bike.name}</h3>
-                            <p class="text-xs text-gray-500 font-bold mb-3 border-b pb-3">Code: ${bike.code}</p>
-                            <p class="text-sm text-gray-600 mb-4 flex-grow italic">"${bike.specs || 'No details provided.'}"</p>
-                            
-                            <div class="flex justify-between items-end mt-auto pt-4 border-t border-gray-100">
-                                <div>${stockBadge}</div>
-                                <div class="text-2xl font-black text-blue-600">Rs. ${bike.unit_price.toLocaleString()}</div>
+                        
+                        <div class="p-6 flex flex-col flex-grow">
+                            <div class="flex justify-between items-start mb-1">
+                                <h3 class="text-xl font-black text-gray-800 leading-tight pr-2">${bike.name}</h3>
                             </div>
+                            <p class="text-[10px] text-gray-400 font-mono font-bold mb-4 uppercase tracking-widest border-b border-gray-100 pb-3">Code: ${bike.code}</p>
+                            
+                            <p class="text-sm text-gray-600 mb-4 flex-grow leading-relaxed">"${bike.specs || 'No specific details provided.'}"</p>
+                            
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs font-bold mb-5 flex items-center justify-center">
+                                ${warrantyHtml}
+                            </div>
+                            
+                            <div class="flex justify-between items-end mb-5">
+                                <div>${stockBadge}</div>
+                                <div class="text-2xl font-black text-indigo-600 tracking-tight">${formatCurrency(bike.unit_price)}</div>
+                            </div>
+
+                            <a href="${waLink}" target="_blank" class="w-full bg-[#25D366] hover:bg-[#1EBE53] text-white font-black py-3 rounded-xl text-center transition flex justify-center items-center gap-2 shadow-md">
+                                <i class="fab fa-whatsapp text-lg"></i> Inquire on WhatsApp
+                            </a>
                         </div>
                     </div>
                 `;
             });
 
-            grid.innerHTML = html || '<p class="col-span-full text-center py-10 text-gray-500">No bicycles available right now.</p>';
+            grid.innerHTML = html || `
+                <div class="col-span-full text-center py-16 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
+                    <i class="fas fa-search text-5xl text-gray-300 mb-4 block"></i>
+                    <p class="text-gray-500 font-bold uppercase tracking-widest">No bicycles found matching your criteria.</p>
+                </div>
+            `;
         }
+
+        // Make filtering available globally
+        window.filterCatalog = (category) => {
+            // Update button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-filter') === category) {
+                    btn.className = "filter-btn active bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition whitespace-nowrap";
+                } else {
+                    btn.className = "filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap";
+                }
+            });
+
+            // Filter data
+            let filtered = allBicycles;
+            if (category !== 'All') {
+                filtered = allBicycles.filter(b => b.cycle_category === category);
+            }
+            
+            // Re-apply search filter if there is text in the search box
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            if (searchTerm) {
+                filtered = filtered.filter(b => b.name.toLowerCase().includes(searchTerm) || b.code.toLowerCase().includes(searchTerm));
+            }
+
+            renderGrid(filtered);
+        };
+
+        // Live Search functionality
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const activeCategory = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+            
+            let filtered = allBicycles;
+            
+            if (activeCategory !== 'All') {
+                filtered = filtered.filter(b => b.cycle_category === activeCategory);
+            }
+
+            filtered = filtered.filter(b => b.name.toLowerCase().includes(searchTerm) || b.code.toLowerCase().includes(searchTerm));
+            
+            renderGrid(filtered);
+        });
 
         loadCatalog();
     </script>
