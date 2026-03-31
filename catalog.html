@@ -3,125 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cycle Catalog | CycleSense</title>
+    <title>Showroom | Julgaha Cycle Works</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Smooth scrolling and modern hide scrollbar */
+        html { scroll-behavior: smooth; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+<body class="bg-[#f8fafc] text-slate-800 font-sans flex flex-col min-h-screen selection:bg-zinc-900 selection:text-white">
 
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-8 shadow-lg text-center">
-        <h1 class="text-4xl font-black tracking-tight"><i class="fas fa-bicycle"></i> Julgaha Cycle Works</h1>
-        <p class="text-blue-100 mt-2 font-medium text-lg">Premium Bicycles | Visit our showroom to purchase!</p>
-        <div class="mt-4 flex justify-center gap-4 text-sm font-bold">
-            <a href="tel:+94756339536" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition backdrop-blur-sm"><i class="fas fa-phone-alt"></i> 075 633 9536</a>
-            <a href="#location" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition backdrop-blur-sm"><i class="fas fa-map-marker-alt"></i> View on Map</a>
+    <!-- Premium Dark Header -->
+    <header class="bg-zinc-950 text-white relative overflow-hidden">
+        <!-- Subtle background pattern/gradient -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-950 to-zinc-950 opacity-80"></div>
+        
+        <div class="container mx-auto px-6 py-16 relative z-10 text-center max-w-4xl">
+            <span class="text-zinc-400 font-bold tracking-[0.2em] text-xs uppercase mb-4 block">Premium Bicycle Dealership</span>
+            <h1 class="text-4xl md:text-6xl font-black tracking-tight mb-6">Julgaha Cycle Works</h1>
+            <p class="text-zinc-400 text-lg md:text-xl font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
+                Discover our curated collection of brand new and Japanese reconditioned bicycles, professionally tuned in Galle.
+            </p>
+            
+            <div class="flex flex-wrap justify-center gap-4 text-sm font-bold">
+                <a href="tel:+94756339536" class="bg-white text-zinc-900 hover:bg-zinc-200 px-6 py-3 rounded-full transition-all duration-300 shadow-lg shadow-white/10 flex items-center gap-2 transform hover:-translate-y-1">
+                    <i class="fas fa-phone-alt"></i> 075 633 9536
+                </a>
+                <a href="#location" class="bg-zinc-800 text-white hover:bg-zinc-700 px-6 py-3 rounded-full transition-all duration-300 ring-1 ring-zinc-700 flex items-center gap-2 transform hover:-translate-y-1">
+                    <i class="fas fa-map-marker-alt text-zinc-400"></i> View Showroom
+                </a>
+            </div>
         </div>
     </header>
 
-    <!-- Main Catalog -->
-    <main class="container mx-auto p-6 max-w-6xl mt-4 flex-grow">
-        
-        <!-- Search and Filter Bar -->
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-4 z-10">
-            <div class="relative w-full md:w-1/2">
+    <!-- Sticky Glassmorphism Filter Bar -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="container mx-auto px-6 py-4 max-w-7xl flex flex-col md:flex-row gap-4 items-center justify-between">
+            
+            <div class="relative w-full md:w-96">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <i class="fas fa-search text-gray-400"></i>
+                    <i class="fas fa-search text-slate-400"></i>
                 </div>
-                <input type="text" id="search-input" placeholder="Search bicycles by name or code..." class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition font-medium">
+                <input type="text" id="search-input" placeholder="Search models or SKU..." class="w-full pl-11 pr-4 py-2.5 bg-slate-100/50 hover:bg-slate-100 focus:bg-white rounded-full border border-slate-200 focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none transition-all text-sm font-medium">
             </div>
-            <div class="w-full md:w-auto flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                <button onclick="filterCatalog('All')" class="filter-btn active bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition whitespace-nowrap" data-filter="All">All Models</button>
-                <button onclick="filterCatalog('New')" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap" data-filter="New">Brand New</button>
-                <button onclick="filterCatalog('Japanese Reconditioned')" class="filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap" data-filter="Japanese Reconditioned">Japanese Reconditioned</button>
+            
+            <div class="w-full md:w-auto flex gap-2 overflow-x-auto hide-scrollbar pb-1 md:pb-0">
+                <button onclick="filterCatalog('All')" class="filter-btn active bg-zinc-900 text-white px-5 py-2 rounded-full font-bold text-sm transition-all whitespace-nowrap" data-filter="All">All Models</button>
+                <button onclick="filterCatalog('New')" class="filter-btn bg-white text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border border-slate-200 px-5 py-2 rounded-full font-bold text-sm transition-all whitespace-nowrap" data-filter="New">Brand New</button>
+                <button onclick="filterCatalog('Japanese Reconditioned')" class="filter-btn bg-white text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border border-slate-200 px-5 py-2 rounded-full font-bold text-sm transition-all whitespace-nowrap" data-filter="Japanese Reconditioned">Japanese Reconditioned</button>
             </div>
+            
         </div>
+    </nav>
 
-        <div class="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-            <h2 class="text-2xl font-black text-gray-800">Available Models</h2>
-            <span class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-xs font-black border border-yellow-300 shadow-sm flex items-center gap-2 uppercase tracking-widest">
-                <i class="fas fa-store"></i> In-Store Only
+    <!-- Main Catalog Grid -->
+    <main class="container mx-auto px-6 py-12 max-w-7xl flex-grow">
+        
+        <div class="flex justify-between items-end mb-8">
+            <h2 class="text-2xl font-black text-zinc-900 tracking-tight">Available Inventory</h2>
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync
             </span>
         </div>
 
-        <!-- Bicycle Grid -->
-        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div class="col-span-full text-center py-20 text-gray-400 font-bold animate-pulse">
-                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i><br>
-                Loading showroom inventory...
+        <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-32 text-slate-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i>
+                <p class="font-medium tracking-wide uppercase text-sm">Loading Showroom...</p>
             </div>
         </div>
+        
     </main>
 
-    <!-- Location & Contact Footer Section -->
-    <section id="location" class="bg-white border-t border-gray-200 mt-12">
-        <div class="container mx-auto p-6 max-w-6xl py-12">
-            <div class="flex flex-col lg:flex-row gap-8 items-center bg-gray-50 rounded-3xl p-6 lg:p-8 border border-gray-100 shadow-sm">
+    <!-- Modern Location & Contact Section -->
+    <section id="location" class="bg-white border-t border-slate-200">
+        <div class="container mx-auto px-6 py-20 max-w-7xl">
+            <div class="flex flex-col lg:flex-row gap-12 items-center">
                 
                 <!-- Contact Info -->
-                <div class="w-full lg:w-1/3 space-y-6">
+                <div class="w-full lg:w-1/3 space-y-10">
                     <div>
-                        <h2 class="text-3xl font-black text-gray-800 mb-2">Visit Our Shop</h2>
-                        <p class="text-gray-500">Come take a test ride and find your perfect bicycle today.</p>
+                        <span class="text-zinc-500 font-bold tracking-widest text-[10px] uppercase mb-2 block">Location & Contact</span>
+                        <h2 class="text-3xl font-black text-zinc-900 mb-4 tracking-tight">Visit the Workshop</h2>
+                        <p class="text-slate-500 leading-relaxed">Drop by to take a test ride, browse our collection, or speak with our mechanics.</p>
                     </div>
                     
-                    <div class="space-y-4">
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl flex-shrink-0">
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-5">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-zinc-900 flex items-center justify-center text-lg flex-shrink-0">
                                 <i class="fas fa-map-marker-alt"></i>
                             </div>
                             <div>
-                                <h4 class="font-black text-gray-800">Location</h4>
-                                <p class="text-gray-600 text-sm mt-1">Galle Road,<br>Wadduwa, Sri Lanka</p>
+                                <h4 class="font-bold text-zinc-900 text-sm uppercase tracking-wide">Address</h4>
+                                <p class="text-slate-600 mt-1 font-medium leading-relaxed">417/A, Wakwella Road,<br>Galle, Sri Lanka</p>
                             </div>
                         </div>
                         
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xl flex-shrink-0">
+                        <div class="flex items-start gap-5">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-zinc-900 flex items-center justify-center text-lg flex-shrink-0">
                                 <i class="fas fa-phone-alt"></i>
                             </div>
                             <div>
-                                <h4 class="font-black text-gray-800">Call Us</h4>
-                                <p class="text-gray-600 text-sm mt-1">075 633 9536</p>
+                                <h4 class="font-bold text-zinc-900 text-sm uppercase tracking-wide">Phone</h4>
+                                <p class="text-slate-600 mt-1 font-medium">075 633 9536</p>
                             </div>
                         </div>
 
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xl flex-shrink-0">
-                                <i class="fas fa-clock"></i>
+                        <div class="flex items-start gap-5">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 text-zinc-900 flex items-center justify-center text-lg flex-shrink-0">
+                                <i class="far fa-clock"></i>
                             </div>
                             <div>
-                                <h4 class="font-black text-gray-800">Business Hours</h4>
-                                <p class="text-gray-600 text-sm mt-1">Mon - Sun: 9:00 AM - 6:00 PM</p>
+                                <h4 class="font-bold text-zinc-900 text-sm uppercase tracking-wide">Business Hours</h4>
+                                <p class="text-slate-600 mt-1 font-medium">Mon - Sun: 9:00 AM - 6:00 PM</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Google Map Embed -->
-                <div class="w-full lg:w-2/3 h-80 rounded-2xl overflow-hidden shadow-md border-4 border-white">
-                    <!-- Replace this src with the actual Google Maps embed link for Julgaha Cycle Works if available -->
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d126815.17631341078!2d79.8823758390625!3d6.645398999999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae236fa78b7b2eb%3A0xc47657d42ea95df6!2sWadduwa!5e0!3m2!1sen!2slk!4v1700000000000!5m2!1sen!2slk" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                <!-- Google Map Embed (Wakwella Road, Galle) -->
+                <div class="w-full lg:w-2/3 h-[400px] rounded-[2rem] overflow-hidden shadow-xl shadow-slate-200/50 bg-slate-100">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15871.434863378912!2d80.20703815!3d6.0465225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae173a0e6988891%3A0xc3b8606ec0dd2b37!2sWakwella%20Rd%2C%20Galle!5e0!3m2!1sen!2slk!4v1700000000000!5m2!1sen!2slk" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-gray-400 py-6 text-center">
-        <p class="font-bold text-white mb-1"><i class="fas fa-bicycle"></i> Julgaha Cycle Works</p>
-        <p class="text-xs">Powered by CycleSense Cloud ERP</p>
+    <!-- Minimal Footer -->
+    <footer class="bg-zinc-950 text-zinc-500 py-10 text-center border-t border-zinc-900">
+        <p class="font-black text-white mb-2 tracking-tight text-lg"><i class="fas fa-bicycle text-zinc-400 mr-2"></i> Julgaha Cycle Works</p>
+        <p class="text-xs uppercase tracking-widest font-medium">Powered by CycleSense Cloud ERP</p>
     </footer>
 
     <!-- Script Logic -->
     <script type="module">
         import { getSupabase } from './js/config.js';
         
-        let allBicycles = []; // Store globally for search/filtering
+        let allBicycles = []; 
 
         const formatCurrency = (val) => {
-            return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
+            return new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 }).format(val || 0);
         };
 
         async function loadCatalog() {
@@ -149,60 +173,79 @@
             let html = '';
 
             bicycles.forEach(bike => {
-                // Category Badge Logic
-                let badgeColor = bike.cycle_category === 'New' ? 'bg-green-100 text-green-800 border-green-300' : 
-                                 bike.cycle_category === 'Japanese Reconditioned' ? 'bg-blue-100 text-blue-800 border-blue-300' : 
-                                 'bg-gray-200 text-gray-800 border-gray-300';
-
-                // Dynamic Warranty Logic
+                // Modern Badge Styling using Rings
+                let badgeStyle = '';
                 let warrantyHtml = '';
+
                 if (bike.cycle_category === 'New') {
-                    warrantyHtml = '<span class="text-green-600"><i class="fas fa-shield-check"></i> 5 Years Frame Warranty</span>';
+                    badgeStyle = 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20';
+                    warrantyHtml = '<span class="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full"><i class="fas fa-shield-check mr-1"></i> 5 Yr Frame Warranty</span>';
                 } else if (bike.cycle_category === 'Japanese Reconditioned') {
-                    warrantyHtml = '<span class="text-blue-600"><i class="fas fa-shield-alt"></i> 6 Months Shop Warranty</span>';
+                    badgeStyle = 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20';
+                    warrantyHtml = '<span class="text-blue-700 bg-blue-50 px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> 6 Mo Shop Warranty</span>';
                 } else {
-                    warrantyHtml = '<span class="text-gray-400"><i class="fas fa-info-circle"></i> Sold As-Is (No Warranty)</span>';
+                    badgeStyle = 'bg-slate-100 text-slate-700 ring-1 ring-slate-600/20';
+                    warrantyHtml = '<span class="text-slate-600 bg-slate-100 px-3 py-1 rounded-full"><i class="fas fa-info-circle mr-1"></i> Sold As-Is</span>';
                 }
 
-                let stockBadge = bike.stock > 0 
-                    ? `<span class="text-green-600 text-xs font-black"><i class="fas fa-check-circle"></i> In Stock (${bike.stock})</span>` 
-                    : `<span class="text-red-500 text-xs font-black"><i class="fas fa-times-circle"></i> Sold Out</span>`;
-
-                let grayscaleClass = bike.stock <= 0 ? 'grayscale opacity-80' : '';
+                let isOutOfStock = bike.stock <= 0;
+                let stockText = isOutOfStock ? 'Out of Stock' : 'In Stock';
+                let stockDot = isOutOfStock ? 'bg-red-500' : 'bg-emerald-500';
+                let opacityClass = isOutOfStock ? 'opacity-60 grayscale-[50%]' : '';
                 
-                // WhatsApp Message Generation
-                const waMessage = encodeURIComponent(`Hi! I am interested in the ${bike.name} (Code: ${bike.code}) currently listed for ${formatCurrency(bike.unit_price)}. Is it available to view at the shop?`);
+                // Pre-filled WhatsApp Message
+                const waMessage = encodeURIComponent(`Hi Julgaha Cycle Works! I'm interested in the ${bike.name} (SKU: ${bike.code}) listed for ${formatCurrency(bike.unit_price)}. Is it available to view?`);
                 const waLink = `https://wa.me/94756339536?text=${waMessage}`;
 
                 html += `
-                    <div class="bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden hover:shadow-xl transition duration-300 flex flex-col ${grayscaleClass}">
-                        <div class="h-64 bg-gray-100 relative">
-                            <img src="${bike.image_url || 'https://via.placeholder.com/400x300?text=No+Image'}" alt="${bike.name}" class="w-full h-full object-cover">
-                            <div class="absolute top-4 left-4 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border shadow-sm ${badgeColor}">
-                                ${bike.cycle_category}
+                    <div class="bg-white rounded-[2rem] p-3 border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group ${opacityClass}">
+                        
+                        <!-- Image Container -->
+                        <div class="aspect-[4/3] rounded-[1.5rem] overflow-hidden bg-slate-100 relative mb-4">
+                            <img src="${bike.image_url || 'https://via.placeholder.com/600x450?text=Image+Not+Available'}" alt="${bike.name}" class="w-full h-full object-cover transition duration-700 group-hover:scale-105">
+                            
+                            <!-- Badges Overlay -->
+                            <div class="absolute top-4 left-4 flex flex-col gap-2 items-start">
+                                <span class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full backdrop-blur-md bg-white/90 shadow-sm ${badgeStyle}">
+                                    ${bike.cycle_category}
+                                </span>
                             </div>
-                            ${bike.stock <= 0 ? '<div class="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center"><span class="bg-red-600 text-white font-black px-6 py-2 rounded-full transform -rotate-12 border-4 border-white shadow-xl text-lg uppercase tracking-widest">Out of Stock</span></div>' : ''}
+
+                            ${isOutOfStock ? `
+                            <div class="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center z-10">
+                                <span class="bg-zinc-900 text-white font-black px-6 py-2 rounded-full tracking-widest uppercase text-sm shadow-xl">Sold Out</span>
+                            </div>` : ''}
                         </div>
                         
-                        <div class="p-6 flex flex-col flex-grow">
-                            <div class="flex justify-between items-start mb-1">
-                                <h3 class="text-xl font-black text-gray-800 leading-tight pr-2">${bike.name}</h3>
+                        <!-- Content -->
+                        <div class="px-4 pb-4 flex flex-col flex-grow">
+                            
+                            <div class="flex justify-between items-start mb-2 gap-4">
+                                <h3 class="text-xl font-black text-zinc-900 leading-tight tracking-tight">${bike.name}</h3>
+                                <span class="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md shrink-0">
+                                    ${bike.code}
+                                </span>
                             </div>
-                            <p class="text-[10px] text-gray-400 font-mono font-bold mb-4 uppercase tracking-widest border-b border-gray-100 pb-3">Code: ${bike.code}</p>
                             
-                            <p class="text-sm text-gray-600 mb-4 flex-grow leading-relaxed">"${bike.specs || 'No specific details provided.'}"</p>
+                            <p class="text-sm text-slate-500 mb-6 flex-grow leading-relaxed line-clamp-3">
+                                ${bike.specs || 'No specific details provided for this model.'}
+                            </p>
                             
-                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs font-bold mb-5 flex items-center justify-center">
+                            <div class="text-[10px] font-black uppercase tracking-widest mb-6">
                                 ${warrantyHtml}
                             </div>
                             
-                            <div class="flex justify-between items-end mb-5">
-                                <div>${stockBadge}</div>
-                                <div class="text-2xl font-black text-indigo-600 tracking-tight">${formatCurrency(bike.unit_price)}</div>
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                    <span class="w-2 h-2 rounded-full ${stockDot}"></span> ${stockText}
+                                </div>
+                                <div class="text-2xl font-black text-zinc-900 tracking-tighter">
+                                    ${formatCurrency(bike.unit_price)}
+                                </div>
                             </div>
 
-                            <a href="${waLink}" target="_blank" class="w-full bg-[#25D366] hover:bg-[#1EBE53] text-white font-black py-3 rounded-xl text-center transition flex justify-center items-center gap-2 shadow-md">
-                                <i class="fab fa-whatsapp text-lg"></i> Inquire on WhatsApp
+                            <a href="${isOutOfStock ? '#' : waLink}" target="${isOutOfStock ? '_self' : '_blank'}" class="w-full ${isOutOfStock ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#25D366] hover:bg-[#1EBE53] text-white shadow-lg shadow-[#25D366]/20 transform hover:-translate-y-0.5'} font-black py-3.5 rounded-xl text-center transition-all duration-300 flex justify-center items-center gap-2 text-sm tracking-wide">
+                                <i class="fab fa-whatsapp text-lg"></i> ${isOutOfStock ? 'Currently Unavailable' : 'Inquire via WhatsApp'}
                             </a>
                         </div>
                     </div>
@@ -210,31 +253,31 @@
             });
 
             grid.innerHTML = html || `
-                <div class="col-span-full text-center py-16 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
-                    <i class="fas fa-search text-5xl text-gray-300 mb-4 block"></i>
-                    <p class="text-gray-500 font-bold uppercase tracking-widest">No bicycles found matching your criteria.</p>
+                <div class="col-span-full text-center py-20">
+                    <div class="w-20 h-20 bg-slate-100 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-search text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-zinc-900 mb-2 tracking-tight">No Models Found</h3>
+                    <p class="text-slate-500 font-medium">Try adjusting your search or filter criteria.</p>
                 </div>
             `;
         }
 
-        // Make filtering available globally
+        // Filter Logic
         window.filterCatalog = (category) => {
-            // Update button styles
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 if (btn.getAttribute('data-filter') === category) {
-                    btn.className = "filter-btn active bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition whitespace-nowrap";
+                    btn.className = "filter-btn active bg-zinc-900 text-white px-5 py-2 rounded-full font-bold text-sm shadow-md transition-all whitespace-nowrap";
                 } else {
-                    btn.className = "filter-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap";
+                    btn.className = "filter-btn bg-white text-slate-600 hover:text-zinc-900 hover:bg-slate-50 border border-slate-200 px-5 py-2 rounded-full font-bold text-sm transition-all whitespace-nowrap";
                 }
             });
 
-            // Filter data
             let filtered = allBicycles;
             if (category !== 'All') {
                 filtered = allBicycles.filter(b => b.cycle_category === category);
             }
             
-            // Re-apply search filter if there is text in the search box
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
             if (searchTerm) {
                 filtered = filtered.filter(b => b.name.toLowerCase().includes(searchTerm) || b.code.toLowerCase().includes(searchTerm));
@@ -243,17 +286,15 @@
             renderGrid(filtered);
         };
 
-        // Live Search functionality
+        // Live Search
         document.getElementById('search-input').addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const activeCategory = document.querySelector('.filter-btn.active').getAttribute('data-filter');
             
             let filtered = allBicycles;
-            
             if (activeCategory !== 'All') {
                 filtered = filtered.filter(b => b.cycle_category === activeCategory);
             }
-
             filtered = filtered.filter(b => b.name.toLowerCase().includes(searchTerm) || b.code.toLowerCase().includes(searchTerm));
             
             renderGrid(filtered);
