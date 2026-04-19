@@ -1,7 +1,7 @@
 import { initSupabase } from "./config.js";
 import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
-import { uploadToSupabase, clearDatabase, getRawData } from "./data.js"; 
+import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
 import * as posModule from "./pos_module.js";
 
@@ -104,34 +104,29 @@ window.handleNavClick = async function(tabName) {
     }
 }
 
-// Wrapper to handle the Past/Predicted buttons while triggering our new filters
+// Intercept the context switch so we can apply filters when switching between Past and Predicted
 window.switchContext = (mode) => {
     if (typeof uiSwitchContext === 'function') {
         uiSwitchContext(mode);
     }
     
-    // Give data.js a tiny fraction of a second to fetch the active array, then filter and render
+    // Give ui.js a moment to load the data into window.currentData, then apply our filters
     setTimeout(() => {
         window.handleFilterChange();
-    }, 150);
+    }, 200);
 };
 
 
 // ============================================================================
-// 2. DASHBOARD FILTERING & CHART RENDERING
+// 2. ADVANCED DASHBOARD FILTERING & CHART RENDERING
 // ============================================================================
 
-/**
- * Main function to filter data by Month and Exact Day.
- * It safely extracts the raw data, filters it, and redraws the UI.
- */
 window.handleFilterChange = function() {
-    let rawData = [];
-    if (typeof getRawData === 'function') {
-        rawData = getRawData() || [];
-    }
+    // 1. Grab the live data array managed by ui.js
+    const rawData = window.currentData || [];
 
     if (rawData.length === 0) {
+        console.warn("No data found in window.currentData");
         forceUpdateDashboardUI([]);
         return;
     }
@@ -142,8 +137,10 @@ window.handleFilterChange = function() {
     const monthVal = monthSelect ? monthSelect.value : 'all';
     const dayVal = daySelect ? daySelect.value : '';
 
+    // 2. Filter the Data
     let filteredData = rawData.filter(row => {
-        const rowDate = row._date || row.date;
+        // Handle various date column names from Excel
+        const rowDate = row.Date || row.date || row._date;
         if (!rowDate) return false;
         
         const d = new Date(rowDate);
@@ -151,12 +148,12 @@ window.handleFilterChange = function() {
 
         let match = true;
 
-        // 1. Filter by Month ONLY (0 = Jan, 11 = Dec) - Ignores the Year!
+        // Filter by Month
         if (monthVal !== 'all') {
             match = match && (d.getMonth() === parseInt(monthVal));
         }
 
-        // 2. Filter by Exact Day (YYYY-MM-DD)
+        // Filter by Exact Day
         if (dayVal) {
             const localDateStr = d.getFullYear() + '-' + 
                                  String(d.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -167,13 +164,10 @@ window.handleFilterChange = function() {
         return match;
     });
 
-    // Force the UI and Charts to update immediately with the perfectly filtered data
+    // 3. Render the UI
     forceUpdateDashboardUI(filteredData);
 };
 
-/**
- * Resets all filters back to default
- */
 window.clearFilters = function() {
     const monthSelect = document.getElementById('slicer-month');
     const daySelect = document.getElementById('slicer-day');
@@ -185,8 +179,7 @@ window.clearFilters = function() {
 };
 
 /**
- * Calculates Revenue/Expenses manually and forces the Chart.js canvases to re-render
- * bypassing any broken logic inside ui.js
+ * Safely calculates Revenue/Expenses and forces Chart.js to re-render
  */
 function forceUpdateDashboardUI(data) {
     let totalRev = 0;
@@ -197,23 +190,23 @@ function forceUpdateDashboardUI(data) {
     const trendData = {};
 
     data.forEach(row => {
-        const rev = Number(row.revenue || row.total_amount || 0);
-        const exp = Number(row.expense_amount || 0);
+        // Robust checking for Excel column names
+        const rev = Number(row.Revenue || row.revenue || row.Total || row.total_amount || 0);
+        const exp = Number(row.Expense || row.expense_amount || row.Expenses || 0);
         
         totalRev += rev;
         totalExp += exp;
 
-        // Group Categories for the Pie Chart
+        // Group Categories for Pie Chart
         if (exp > 0) {
-            const cat = row.expense_desc || 'General Expenses';
+            const cat = row.Category || row.expense_desc || row.Description || 'General Expenses';
             categoryExp[cat] = (categoryExp[cat] || 0) + exp;
-        } else if (rev > 0 && row.customer_name) {
-            const cat = 'Retail Sales';
-            categoryExp[cat] = (categoryExp[cat] || 0) + rev;
+        } else if (rev > 0) {
+            categoryExp['Retail Sales'] = (categoryExp['Retail Sales'] || 0) + rev;
         }
 
-        // Group Dates for the Line/Bar Chart
-        const rowDate = row._date || row.date;
+        // Group Dates for Line/Bar Chart
+        const rowDate = row.Date || row.date || row._date;
         if (rowDate) {
             const d = new Date(rowDate);
             const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -224,7 +217,7 @@ function forceUpdateDashboardUI(data) {
         }
     });
 
-    // Update Top Cards
+    // Update the Summary Cards
     const revEl = document.getElementById('val-rev');
     const expEl = document.getElementById('val-exp');
     const profEl = document.getElementById('val-prof');
@@ -233,13 +226,11 @@ function forceUpdateDashboardUI(data) {
     if (expEl) expEl.innerText = formatCurrency(totalExp);
     if (profEl) profEl.innerText = formatCurrency(totalRev - totalExp);
 
-    // Force Chart.js Updates safely
+    // Update Chart.js Canvases natively
     if (window.Chart) {
         const mainChart = Chart.getChart("mainChart");
         if (mainChart) {
             mainChart.data.labels = Object.keys(trendData);
-            
-            // Assume Dataset 0 is Revenue, Dataset 1 is Expenses
             if (mainChart.data.datasets.length > 0) {
                 mainChart.data.datasets[0].data = Object.values(trendData).map(t => t.rev);
             }
@@ -325,7 +316,7 @@ window.uploadAIClassification = async () => {
             const worksheet = workbook.Sheets[firstSheetName];
             
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-            const supabaseClient = getSupabase();
+            const supabaseClient = window.posModule.getSupabase ? window.posModule.getSupabase() : null;
             
             if (!supabaseClient) {
                 throw new Error("Could not connect to Supabase database.");
@@ -401,7 +392,7 @@ window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
 window.posModule = posModule;
 
-// Map the dropdown onChange events to our robust filtering function
+// Fallback just in case `onchange="window.handleMonthChange()"` was missed in HTML
 window.handleMonthChange = window.handleFilterChange;
 
 window.onload = async function () {
