@@ -71,7 +71,6 @@
 </head>
 <body class="bg-gray-100 dark:bg-darkbg font-sans text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
-    <!-- Global Modals -->
     <div id="custom-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[110]">
         <div id="modal-box" class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform scale-90 opacity-0 border border-gray-100 dark:border-gray-700">
             <div id="modal-icon-bg" class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -106,7 +105,6 @@
         </div>
     </div>
 
-    <!-- Application Modals -->
     <div id="sales-report-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[80]">
         <div class="bg-white dark:bg-darkcard w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-pop-in border border-gray-200 dark:border-gray-700">
             <div class="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800">
@@ -137,8 +135,7 @@
                         </tr>
                     </thead>
                     <tbody id="report-table-body" class="text-sm">
-                        <!-- Loaded via JS -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-between items-center">
@@ -174,8 +171,7 @@
                         </tr>
                     </thead>
                     <tbody id="restock-table-body" class="text-sm dark:text-gray-200">
-                        <!-- Loaded via JS -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div class="p-4 bg-gray-50 dark:bg-slate-800 border-t dark:border-gray-700 flex justify-end gap-3">
@@ -225,7 +221,6 @@
         </div>
     </div>
 
-    <!-- NEW MODAL: Add Bicycle -->
     <div id="add-bicycle-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-pop-in">
             <h3 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2">
@@ -287,7 +282,6 @@
         </div>
     </div>
 
-    <!-- NEW MODAL: Edit Bicycle -->
     <div id="edit-bicycle-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[90]">
         <div class="bg-white dark:bg-darkcard w-full max-w-lg p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-pop-in">
             <h3 class="text-xl font-black mb-4 dark:text-white flex items-center gap-2">
@@ -408,8 +402,7 @@
                 <div class="max-h-32 overflow-y-auto mt-2 border rounded-lg dark:border-gray-600 bg-gray-50 dark:bg-slate-800">
                     <table class="w-full text-sm">
                         <tbody id="rep-parts-body" class="dark:text-gray-300">
-                            <!-- Items go here -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -554,8 +547,7 @@
                         </tr>
                     </thead>
                     <tbody id="view-att-table" class="dark:text-gray-300 text-sm">
-                        <!-- Filled by JS -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -583,7 +575,31 @@
         </div>
     </div>
 
-    <!-- Login Section -->
+    <div id="internal-warranty-modal" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[100]">
+        <div class="bg-white dark:bg-darkcard w-full max-w-md p-6 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 animate-pop-in relative">
+            <button onclick="document.getElementById('internal-warranty-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl transition">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <h3 class="text-xl font-black mb-2 dark:text-white flex items-center gap-2 text-blue-600">
+                <i class="fas fa-shield-check"></i> System Warranty Check
+            </h3>
+            <p class="text-xs text-gray-500 font-bold uppercase tracking-widest mb-6">Verify Frame Serial Number</p>
+            
+            <form onsubmit="window.posModule.checkInternalWarranty(event)" class="space-y-4">
+                <div>
+                    <input id="internal-serial-input" type="text" class="w-full p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 dark:bg-slate-800 dark:text-white font-mono font-bold text-center text-lg uppercase outline-none focus:border-blue-500 transition shadow-inner" placeholder="ENTER SERIAL NO." required>
+                </div>
+                <button id="internal-warranty-btn" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl transition shadow-lg flex justify-center items-center gap-2">
+                    Verify Status
+                </button>
+            </form>
+
+            <div id="internal-warranty-result" class="mt-4">
+                </div>
+        </div>
+    </div>
+
     <div id="login-section" class="min-h-screen flex flex-col items-center justify-center grid-pattern relative overflow-hidden">
         
         <div class="absolute top-20 left-10 text-gray-300 dark:text-slate-800 text-9xl opacity-20 animate-cloud" style="animation-duration: 25s;">
@@ -638,7 +654,6 @@
     </div>
 
 
-    <!-- Main Dashboard -->
     <div id="dashboard-section" class="hidden min-h-screen flex flex-col fade-in">
         
         <header class="bg-white dark:bg-darkcard shadow p-4 flex flex-col md:flex-row justify-between items-center border-b border-gray-200 dark:border-gray-700 z-50 gap-4 relative">
@@ -662,6 +677,9 @@
             </div>
             
             <div class="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end flex-wrap">
+                <button onclick="document.getElementById('internal-warranty-modal').classList.remove('hidden')" class="border-2 border-blue-500 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-50 dark:hover:bg-blue-900/30 transition flex items-center gap-2">
+                    <i class="fas fa-shield-alt"></i> <span class="hidden sm:inline">Check Warranty</span>
+                </button>
                 <button onclick="window.handleNavClick('ai')" class="hidden md:flex bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition text-white px-4 py-2 rounded-xl text-xs animate-pulse font-bold shadow-lg items-center gap-2">
                     <i class="fas fa-robot"></i> CycleSense AI 2.0
                 </button>
@@ -759,7 +777,6 @@
                 </div>
             </div>
 
-            <!-- Showroom View -->
             <div id="showroom-view" class="hidden fade-in space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white dark:bg-darkcard p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <div>
@@ -780,8 +797,7 @@
                 </div>
                 
                 <div id="admin-showroom-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Bicycles injected here by pos_module.js -->
-                </div>
+                    </div>
             </div>
 
             <div id="pos-view" class="hidden fade-in grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -830,8 +846,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="cart-table-body" class="dark:text-white">
-                                    <!-- Items load here -->
-                                </tbody>
+                                    </tbody>
                             </table>
                         </div>
 
@@ -855,7 +870,6 @@
                             <input name="phone" placeholder="07x xxxxxxx" class="w-full mt-1 p-3 rounded-xl border border-gray-200 bg-gray-50 dark:bg-slate-700 dark:border-gray-600 dark:text-white outline-none focus:border-green-500 transition shadow-inner">
                         </div>
 
-                        <!-- WARRANTY INPUT -->
                         <div>
                             <label class="text-[10px] font-bold text-blue-500 uppercase tracking-widest ml-1"><i class="fas fa-shield-alt"></i> Frame Serial No. (For Warranty)</label>
                             <input name="serial_number" placeholder="Enter if selling a bicycle..." class="w-full mt-1 p-3 rounded-xl border border-blue-200 bg-blue-50/50 dark:bg-slate-700 dark:border-blue-900/50 dark:text-white outline-none focus:border-blue-500 transition shadow-inner font-mono">
@@ -884,7 +898,6 @@
                 </div>
             </div>
 
-            <!-- Inventory View -->
             <div id="inventory-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b dark:border-gray-700 pb-4">
@@ -945,13 +958,11 @@
                             </tr>
                         </thead>
                         <tbody id="inventory-table-body" class="divide-y divide-gray-100 dark:divide-gray-700">
-                            <!-- Loaded by pos_module.js -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Repairs View -->
             <div id="repairs-view" class="hidden fade-in space-y-6">
                 
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700">
@@ -1021,14 +1032,12 @@
                                 </tr>
                             </thead>
                             <tbody id="repairs-table-body" class="divide-y divide-gray-100 dark:divide-gray-700">
-                                <!-- Loaded by pos_module.js -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- HR View -->
             <div id="hr-view" class="hidden fade-in space-y-6">
                 
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-4">
@@ -1133,8 +1142,7 @@
                         </h3>
                         
                         <div id="workers-list" class="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                            <!-- JS loaded -->
-                        </div>
+                            </div>
                     </div>
 
                     <div class="flex flex-col gap-6">
@@ -1235,7 +1243,6 @@
                 </div>
             </div>
 
-            <!-- Calendar View -->
             <div id="calendar-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
                     
@@ -1268,8 +1275,7 @@
                     </div>
                     
                     <div id="cal-days" class="grid grid-cols-7 gap-2">
-                        <!-- JS -->
-                    </div>
+                        </div>
                     
                     <div class="mt-6 text-center text-xs font-bold text-gray-400 flex items-center justify-center gap-2">
                         <i class="fas fa-info-circle"></i> Click on any day to add or view an event.
@@ -1277,7 +1283,6 @@
                 </div>
             </div>
 
-            <!-- Data View -->
             <div id="data-view" class="hidden fade-in space-y-6">
                 <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700">
                     <h2 class="text-3xl font-black dark:text-white text-teal-600 flex items-center gap-3 mb-6">
@@ -1367,7 +1372,6 @@
             </div>
         </footer>
 
-        <!-- AI Chatbot Modal -->
         <div id="ai-modal" class="fixed bottom-6 right-6 w-80 md:w-[400px] h-[550px] bg-white dark:bg-darkcard rounded-3xl shadow-2xl z-[100] flex flex-col hidden border border-gray-200 dark:border-gray-700 overflow-hidden fade-in transform transition-all">
             
             <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 flex justify-between items-center text-white shadow-md z-10 relative overflow-hidden">
@@ -1419,7 +1423,6 @@
             </div>
         </div>
 
-        <!-- Global Loader -->
         <div id="loader" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[100] backdrop-blur-md">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-gray-200 dark:border-gray-700">
                 <div class="relative">
@@ -1432,7 +1435,6 @@
 
     </div>
 
-    <!-- MAIN SCRIPT -->
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
