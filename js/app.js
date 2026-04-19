@@ -1,6 +1,5 @@
 import { initSupabase } from "./config.js";
-// Alias switchContext so we can intercept it and apply filters after data loads
-import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, updateDashboard } from "./ui.js";
+import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
@@ -57,7 +56,7 @@ window.handleNavClick = function(tabName) {
     if (tabName === 'dashboard') { 
         setActiveNav('nav-revenue'); 
         document.getElementById('dashboard-view').classList.remove('hidden'); 
-        window.switchContext('past'); 
+        switchContext('past'); 
     }
     else if (tabName === 'pos') { 
         setActiveNav('nav-pos'); 
@@ -101,60 +100,6 @@ window.handleNavClick = function(tabName) {
         }
     }
 }
-
-// --- FILTERING LOGIC (NO YEAR FILTER) ---
-window.handleFilterChange = function() {
-    // Rely on ui.js global data array
-    const rawData = window.currentData || [];
-    
-    if (rawData.length === 0) {
-        if (typeof updateDashboard === 'function') updateDashboard([]);
-        return;
-    }
-
-    const monthSelect = document.getElementById('slicer-month');
-    const daySelect = document.getElementById('slicer-day');
-    
-    const monthVal = monthSelect ? monthSelect.value : 'all';
-    const dayVal = daySelect ? daySelect.value : '';
-
-    const filteredData = rawData.filter(row => {
-        // Account for different Excel column naming conventions
-        const dateStr = row.Date || row.date || row._date;
-        if (!dateStr) return false;
-        
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return false;
-
-        let match = true;
-
-        // Filter strictly by Month (0 = Jan, 11 = Dec)
-        if (monthVal !== 'all') {
-            match = match && (d.getMonth() === parseInt(monthVal));
-        }
-
-        // Filter by Exact Day (YYYY-MM-DD)
-        if (dayVal) {
-            const localDateStr = d.getFullYear() + '-' + 
-                                 String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-                                 String(d.getDate()).padStart(2, '0');
-            match = match && (localDateStr === dayVal);
-        }
-
-        return match;
-    });
-
-    // Pass the safely filtered data back to ui.js to update the dashboard natively
-    if (typeof updateDashboard === 'function') {
-        updateDashboard(filteredData);
-    }
-};
-
-window.clearFilters = function() {
-    if (document.getElementById('slicer-month')) document.getElementById('slicer-month').value = 'all';
-    if (document.getElementById('slicer-day')) document.getElementById('slicer-day').value = '';
-    window.handleFilterChange();
-};
 
 // --- LIVE CLOCK & QUOTE ---
 const quotes = [
@@ -209,23 +154,15 @@ window.onload = function () {
         window.clearDatabase = clearDatabase;
         window.toggleTheme = toggleTheme; 
         
-        // Intercept context switch to apply filters AFTER data loads
         window.switchContext = (mode) => { 
             hideAllSections(); 
             document.getElementById('dashboard-view').classList.remove('hidden'); 
             setActiveNav('nav-revenue'); 
-            
-            // Trigger ui.js to load data
-            uiSwitchContext(mode); 
-            
-            // Wait 300ms for data to fetch, then apply filters
-            setTimeout(() => {
-                window.handleFilterChange();
-            }, 300);
+            switchContext(mode); 
         };
         
-        // Ensure UI dropdowns trigger our new logic
-        window.handleMonthChange = window.handleFilterChange; 
+        // Expose ui.js filtering functions to the HTML elements
+        window.handleMonthChange = handleMonthChange; 
         window.updateDashboard = updateDashboard;
         
         checkSession();
@@ -235,7 +172,7 @@ window.onload = function () {
     }
 };
 
-// --- AI CLASSIFICATION SYNC ---
+// --- AI CLASSIFICATION UPLOAD FIX ---
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
     const file = fileInput.files[0];
