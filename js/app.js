@@ -104,31 +104,27 @@ window.handleNavClick = async function(tabName) {
     }
 }
 
-// Wrap the UI context switcher so we can trigger filters when switching between Past and Predicted
+// Wrapper to handle the Past/Predicted buttons while triggering our new filters
 window.switchContext = (mode) => {
-    // Call the original switchContext from ui.js
     if (typeof uiSwitchContext === 'function') {
         uiSwitchContext(mode);
     }
     
-    // Slight delay to ensure data.js has made the new array active
+    // Give data.js a tiny fraction of a second to fetch the active array, then filter and render
     setTimeout(() => {
         if (typeof getRawData === 'function') {
             const rawData = getRawData() || [];
             window.populateYearDropdown(rawData);
             window.handleFilterChange();
         }
-    }, 100);
+    }, 150);
 };
 
 
 // ============================================================================
-// 2. DASHBOARD ADVANCED FILTERING SYSTEM
+// 2. ADVANCED DASHBOARD FILTERING & CHART RENDERING
 // ============================================================================
 
-/**
- * Dynamically builds the Year dropdown based on the dates in the database
- */
 window.populateYearDropdown = function(data) {
     const yearSelect = document.getElementById('slicer-year');
     if (!yearSelect || !data) return;
@@ -138,15 +134,12 @@ window.populateYearDropdown = function(data) {
         const rowDate = row._date || row.date;
         if (rowDate) {
             const d = new Date(rowDate);
-            if (!isNaN(d.getFullYear())) {
-                uniqueYears.add(d.getFullYear());
-            }
+            if (!isNaN(d.getFullYear())) uniqueYears.add(d.getFullYear());
         }
     });
 
     let html = '<option value="all">All Years</option>';
     
-    // Sort years highest to lowest (e.g., 2026, 2025, 2024)
     [...uniqueYears].sort((a,b) => b - a).forEach(year => {
         html += `<option value="${year}">${year}</option>`;
     });
@@ -154,16 +147,11 @@ window.populateYearDropdown = function(data) {
     const currentSelection = yearSelect.value;
     yearSelect.innerHTML = html;
     
-    // Keep the selection if it still exists in the new dataset
     if ([...uniqueYears].includes(parseInt(currentSelection))) {
         yearSelect.value = currentSelection;
     }
 };
 
-/**
- * Main function to filter data by Year, Month, and Exact Day.
- * It perfectly isolates the filtered array and sends it back to ui.js to update the charts.
- */
 window.handleFilterChange = function() {
     let rawData = [];
     if (typeof getRawData === 'function') {
@@ -171,7 +159,7 @@ window.handleFilterChange = function() {
     }
 
     if (rawData.length === 0) {
-        if (typeof updateDashboard === 'function') updateDashboard([]);
+        forceUpdateDashboardUI([]);
         return;
     }
     
@@ -188,17 +176,14 @@ window.handleFilterChange = function() {
 
         let match = true;
 
-        // 1. Filter by Year
         if (yearVal !== 'all') {
             match = match && (d.getFullYear() === parseInt(yearVal));
         }
 
-        // 2. Filter by Month (0 = Jan, 11 = Dec)
         if (monthVal !== 'all') {
             match = match && (d.getMonth() === parseInt(monthVal));
         }
 
-        // 3. Filter by Exact Day (YYYY-MM-DD)
         if (dayVal) {
             const localDateStr = d.getFullYear() + '-' + 
                                  String(d.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -209,21 +194,92 @@ window.handleFilterChange = function() {
         return match;
     });
 
-    // Pass the perfectly filtered data back to ui.js to update cards & charts!
-    if (typeof updateDashboard === 'function') {
-        updateDashboard(filteredData);
-    }
+    // Force the UI and Charts to update immediately with the perfectly filtered data
+    forceUpdateDashboardUI(filteredData);
 };
 
-/**
- * Resets all filters back to default
- */
 window.clearFilters = function() {
     document.getElementById('slicer-year').value = 'all';
     document.getElementById('slicer-month').value = 'all';
     document.getElementById('slicer-day').value = '';
     window.handleFilterChange();
 };
+
+/**
+ * Calculates Revenue/Expenses manually and forces the Chart.js canvases to re-render
+ * bypassing any broken logic inside ui.js
+ */
+function forceUpdateDashboardUI(data) {
+    let totalRev = 0;
+    let totalExp = 0;
+    const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
+
+    const categoryExp = {};
+    const trendData = {};
+
+    data.forEach(row => {
+        const rev = Number(row.revenue || row.total_amount || 0);
+        const exp = Number(row.expense_amount || 0);
+        
+        totalRev += rev;
+        totalExp += exp;
+
+        // Group Categories for the Pie Chart
+        if (exp > 0) {
+            const cat = row.expense_desc || 'General Expenses';
+            categoryExp[cat] = (categoryExp[cat] || 0) + exp;
+        } else if (rev > 0 && row.customer_name) {
+            const cat = 'Retail Sales';
+            categoryExp[cat] = (categoryExp[cat] || 0) + rev;
+        }
+
+        // Group Dates for the Line/Bar Chart
+        const rowDate = row._date || row.date;
+        if (rowDate) {
+            const d = new Date(rowDate);
+            const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            
+            if (!trendData[key]) trendData[key] = { rev: 0, exp: 0 };
+            trendData[key].rev += rev;
+            trendData[key].exp += exp;
+        }
+    });
+
+    // Update Top Cards
+    const revEl = document.getElementById('val-rev');
+    const expEl = document.getElementById('val-exp');
+    const profEl = document.getElementById('val-prof');
+
+    if (revEl) revEl.innerText = formatCurrency(totalRev);
+    if (expEl) expEl.innerText = formatCurrency(totalExp);
+    if (profEl) profEl.innerText = formatCurrency(totalRev - totalExp);
+
+    // Force Chart.js Updates safely
+    if (window.Chart) {
+        const mainChart = Chart.getChart("mainChart");
+        if (mainChart) {
+            mainChart.data.labels = Object.keys(trendData);
+            
+            // Assume Dataset 0 is Revenue, Dataset 1 is Expenses
+            if (mainChart.data.datasets.length > 0) {
+                mainChart.data.datasets[0].data = Object.values(trendData).map(t => t.rev);
+            }
+            if (mainChart.data.datasets.length > 1) {
+                mainChart.data.datasets[1].data = Object.values(trendData).map(t => t.exp);
+            }
+            mainChart.update();
+        }
+
+        const subChart = Chart.getChart("subChart");
+        if (subChart) {
+            subChart.data.labels = Object.keys(categoryExp);
+            if (subChart.data.datasets.length > 0) {
+                subChart.data.datasets[0].data = Object.values(categoryExp);
+            }
+            subChart.update();
+        }
+    }
+}
 
 
 // ============================================================================
@@ -366,6 +422,9 @@ window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
 window.posModule = posModule;
 
+// Fallback just in case `onchange="window.handleMonthChange()"` was missed in HTML
+window.handleMonthChange = window.handleFilterChange;
+
 window.onload = async function () {
     try {
         initSupabase();
@@ -380,7 +439,7 @@ window.onload = async function () {
         
         checkSession();
         
-        // Let the system breathe before rendering the dashboard
+        // Give the UI time to build charts, then force fetch and filter the data
         setTimeout(() => {
             if (document.getElementById('dashboard-view') && !document.getElementById('dashboard-view').classList.contains('hidden')) {
                  window.switchContext('past');
