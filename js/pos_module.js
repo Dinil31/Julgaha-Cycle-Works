@@ -2910,6 +2910,83 @@ async function renderCalendar(month, year) {
     daysContainer.innerHTML = htmlContent;
 }
 
+/**
+ * Internal Warranty Checker Logic
+ */
+export async function checkInternalWarranty(e) {
+    e.preventDefault();
+    const sb = getSupabase();
+    const serialInput = document.getElementById('internal-serial-input').value.toUpperCase().trim();
+    const resultBox = document.getElementById('internal-warranty-result');
+    const btn = document.getElementById('internal-warranty-btn');
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking Database...';
+    btn.disabled = true;
+
+    try {
+        const { data, error } = await sb.from('sales')
+            .select('customer_name, date, warranty_exp, receipt_no')
+            .eq('warranty_serial', serialInput)
+            .single();
+
+        if (error || !data) {
+            resultBox.innerHTML = `
+                <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl border border-red-200 dark:border-red-800 font-bold text-sm text-center">
+                    <i class="fas fa-times-circle text-lg mb-1 block"></i> Serial Number not found in the database.
+                </div>`;
+            return;
+        }
+
+        const expDate = new Date(data.warranty_exp);
+        const today = new Date();
+        const daysRemaining = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+        
+        let statusHtml = '';
+        if (daysRemaining > 0) {
+            const years = (daysRemaining / 365).toFixed(1);
+            statusHtml = `
+                <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-xl text-center">
+                    <i class="fas fa-check-circle text-3xl text-green-500 mb-2"></i>
+                    <h4 class="font-black text-green-700 dark:text-green-400 text-lg">Warranty Active</h4>
+                    <p class="text-green-600 dark:text-green-500 font-bold text-sm">${daysRemaining > 365 ? years + ' Years' : daysRemaining + ' Days'} Remaining</p>
+                </div>
+            `;
+        } else {
+            statusHtml = `
+                <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl text-center">
+                    <i class="fas fa-exclamation-triangle text-3xl text-red-500 mb-2"></i>
+                    <h4 class="font-black text-red-700 dark:text-red-400 text-lg">Warranty Expired</h4>
+                    <p class="text-red-600 dark:text-red-500 font-bold text-sm">Expired on ${expDate.toLocaleDateString()}</p>
+                </div>
+            `;
+        }
+
+        resultBox.innerHTML = `
+            ${statusHtml}
+            <div class="mt-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-gray-700 text-sm">
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2 mb-2">
+                    <span class="text-gray-500 font-bold">Customer:</span>
+                    <span class="font-black dark:text-white">${data.customer_name}</span>
+                </div>
+                <div class="flex justify-between border-b dark:border-gray-700 pb-2 mb-2">
+                    <span class="text-gray-500 font-bold">Receipt No:</span>
+                    <span class="font-mono font-bold text-blue-600 dark:text-blue-400">${data.receipt_no}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500 font-bold">Purchased:</span>
+                    <span class="font-bold dark:text-white">${new Date(data.date).toLocaleDateString()}</span>
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        resultBox.innerHTML = `<div class="text-red-500 font-bold text-center text-sm">An error occurred. Try again.</div>`;
+    } finally {
+        btn.innerHTML = 'Verify Status';
+        btn.disabled = false;
+    }
+}
+
 export function openEventModal(dateStr) {
     document.getElementById('event-date').value = dateStr;
     document.getElementById('event-title').value = '';
