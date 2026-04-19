@@ -1,17 +1,15 @@
 import { initSupabase } from "./config.js";
-import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, updateDashboard } from "./ui.js";
+// Notice: We alias switchContext so we can wrap it with our filter logic
+import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
 import * as posModule from "./pos_module.js";
 
-// ============================================================================
-// 1. NAVIGATION SYSTEM
-// ============================================================================
-
+// --- NAVIGATION ---
 function setActiveNav(activeId) {
     const navs = [
-        'nav-dashboard', 
+        'nav-revenue', 
         'nav-pos', 
         'nav-showroom', 
         'nav-inventory', 
@@ -37,7 +35,7 @@ function hideAllSections() {
     const sections = [
         'dashboard-view', 
         'pos-view', 
-        'showroom-view',
+        'showroom-view', 
         'inventory-view', 
         'repairs-view', 
         'hr-view', 
@@ -53,43 +51,43 @@ function hideAllSections() {
     });
 }
 
-window.handleNavClick = async function(tabName) {
+window.handleNavClick = function(tabName) {
     hideAllSections();
     
     if (tabName === 'dashboard') { 
-        setActiveNav('nav-dashboard'); 
+        setActiveNav('nav-revenue'); 
         document.getElementById('dashboard-view').classList.remove('hidden'); 
         window.switchContext('past'); 
     }
     else if (tabName === 'pos') { 
         setActiveNav('nav-pos'); 
         document.getElementById('pos-view').classList.remove('hidden'); 
-        if (posModule.initPOS) await posModule.initPOS(); 
+        posModule.initPOS(); 
     }
     else if (tabName === 'showroom') { 
         setActiveNav('nav-showroom'); 
         document.getElementById('showroom-view').classList.remove('hidden'); 
-        if (posModule.loadShowroom) await posModule.loadShowroom(); 
+        posModule.loadShowroom(); 
     }
     else if (tabName === 'inventory') { 
         setActiveNav('nav-inventory'); 
         document.getElementById('inventory-view').classList.remove('hidden'); 
-        if (posModule.loadInventory) await posModule.loadInventory(); 
+        posModule.loadInventory(); 
     }
     else if (tabName === 'repairs') { 
         setActiveNav('nav-repairs'); 
         document.getElementById('repairs-view').classList.remove('hidden'); 
-        if (posModule.loadRepairs) await posModule.loadRepairs(); 
+        posModule.loadRepairs(); 
     }
     else if (tabName === 'hr') { 
         setActiveNav('nav-hr'); 
         document.getElementById('hr-view').classList.remove('hidden'); 
-        if (posModule.loadHR) await posModule.loadHR(); 
+        posModule.loadHR(); 
     }
     else if (tabName === 'calendar') { 
         setActiveNav('nav-calendar'); 
         document.getElementById('calendar-view').classList.remove('hidden'); 
-        if (posModule.initCalendar) await posModule.initCalendar(); 
+        posModule.initCalendar(); 
     }
     else if (tabName === 'data') { 
         setActiveNav('nav-data'); 
@@ -104,42 +102,51 @@ window.handleNavClick = async function(tabName) {
     }
 }
 
-// Intercept the context switch so we can apply filters when switching between Past and Predicted
-window.switchContext = (mode) => {
-    if (typeof uiSwitchContext === 'function') {
-        uiSwitchContext(mode);
-    }
+
+// --- MULTI-LEVEL FILTERING LOGIC (ADDED) ---
+window.populateYearDropdown = function(data) {
+    const yearSelect = document.getElementById('slicer-year');
+    if (!yearSelect || !data) return;
+
+    const uniqueYears = new Set();
+    data.forEach(row => {
+        const rowDate = row.Date || row.date || row._date;
+        if (rowDate) {
+            const d = new Date(rowDate);
+            if (!isNaN(d.getFullYear())) uniqueYears.add(d.getFullYear());
+        }
+    });
+
+    let html = '<option value="all">All Years</option>';
+    [...uniqueYears].sort((a,b) => b - a).forEach(year => {
+        html += `<option value="${year}">${year}</option>`;
+    });
     
-    // Give ui.js a moment to load the data into window.currentData, then apply our filters
-    setTimeout(() => {
-        window.handleFilterChange();
-    }, 200);
+    const currentSelection = yearSelect.value;
+    yearSelect.innerHTML = html;
+    if ([...uniqueYears].includes(parseInt(currentSelection))) {
+        yearSelect.value = currentSelection;
+    }
 };
 
-
-// ============================================================================
-// 2. ADVANCED DASHBOARD FILTERING & CHART RENDERING
-// ============================================================================
-
 window.handleFilterChange = function() {
-    // 1. Grab the live data array managed by ui.js
+    // Rely completely on ui.js for the data source
     const rawData = window.currentData || [];
 
     if (rawData.length === 0) {
-        console.warn("No data found in window.currentData");
-        forceUpdateDashboardUI([]);
+        updateDashboard([]);
         return;
     }
     
+    const yearSelect = document.getElementById('slicer-year');
     const monthSelect = document.getElementById('slicer-month');
     const daySelect = document.getElementById('slicer-day');
     
+    const yearVal = yearSelect ? yearSelect.value : 'all';
     const monthVal = monthSelect ? monthSelect.value : 'all';
     const dayVal = daySelect ? daySelect.value : '';
 
-    // 2. Filter the Data
     let filteredData = rawData.filter(row => {
-        // Handle various date column names from Excel
         const rowDate = row.Date || row.date || row._date;
         if (!rowDate) return false;
         
@@ -148,12 +155,8 @@ window.handleFilterChange = function() {
 
         let match = true;
 
-        // Filter by Month
-        if (monthVal !== 'all') {
-            match = match && (d.getMonth() === parseInt(monthVal));
-        }
-
-        // Filter by Exact Day
+        if (yearVal !== 'all') match = match && (d.getFullYear() === parseInt(yearVal));
+        if (monthVal !== 'all') match = match && (d.getMonth() === parseInt(monthVal));
         if (dayVal) {
             const localDateStr = d.getFullYear() + '-' + 
                                  String(d.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -164,98 +167,19 @@ window.handleFilterChange = function() {
         return match;
     });
 
-    // 3. Render the UI
-    forceUpdateDashboardUI(filteredData);
+    // Pass the safely filtered array back to ui.js to draw the charts properly!
+    updateDashboard(filteredData);
 };
 
 window.clearFilters = function() {
-    const monthSelect = document.getElementById('slicer-month');
-    const daySelect = document.getElementById('slicer-day');
-    
-    if (monthSelect) monthSelect.value = 'all';
-    if (daySelect) daySelect.value = '';
-    
+    if(document.getElementById('slicer-year')) document.getElementById('slicer-year').value = 'all';
+    if(document.getElementById('slicer-month')) document.getElementById('slicer-month').value = 'all';
+    if(document.getElementById('slicer-day')) document.getElementById('slicer-day').value = '';
     window.handleFilterChange();
 };
 
-/**
- * Safely calculates Revenue/Expenses and forces Chart.js to re-render
- */
-function forceUpdateDashboardUI(data) {
-    let totalRev = 0;
-    let totalExp = 0;
-    const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
 
-    const categoryExp = {};
-    const trendData = {};
-
-    data.forEach(row => {
-        // Robust checking for Excel column names
-        const rev = Number(row.Revenue || row.revenue || row.Total || row.total_amount || 0);
-        const exp = Number(row.Expense || row.expense_amount || row.Expenses || 0);
-        
-        totalRev += rev;
-        totalExp += exp;
-
-        // Group Categories for Pie Chart
-        if (exp > 0) {
-            const cat = row.Category || row.expense_desc || row.Description || 'General Expenses';
-            categoryExp[cat] = (categoryExp[cat] || 0) + exp;
-        } else if (rev > 0) {
-            categoryExp['Retail Sales'] = (categoryExp['Retail Sales'] || 0) + rev;
-        }
-
-        // Group Dates for Line/Bar Chart
-        const rowDate = row.Date || row.date || row._date;
-        if (rowDate) {
-            const d = new Date(rowDate);
-            const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            
-            if (!trendData[key]) trendData[key] = { rev: 0, exp: 0 };
-            trendData[key].rev += rev;
-            trendData[key].exp += exp;
-        }
-    });
-
-    // Update the Summary Cards
-    const revEl = document.getElementById('val-rev');
-    const expEl = document.getElementById('val-exp');
-    const profEl = document.getElementById('val-prof');
-
-    if (revEl) revEl.innerText = formatCurrency(totalRev);
-    if (expEl) expEl.innerText = formatCurrency(totalExp);
-    if (profEl) profEl.innerText = formatCurrency(totalRev - totalExp);
-
-    // Update Chart.js Canvases natively
-    if (window.Chart) {
-        const mainChart = Chart.getChart("mainChart");
-        if (mainChart) {
-            mainChart.data.labels = Object.keys(trendData);
-            if (mainChart.data.datasets.length > 0) {
-                mainChart.data.datasets[0].data = Object.values(trendData).map(t => t.rev);
-            }
-            if (mainChart.data.datasets.length > 1) {
-                mainChart.data.datasets[1].data = Object.values(trendData).map(t => t.exp);
-            }
-            mainChart.update();
-        }
-
-        const subChart = Chart.getChart("subChart");
-        if (subChart) {
-            subChart.data.labels = Object.keys(categoryExp);
-            if (subChart.data.datasets.length > 0) {
-                subChart.data.datasets[0].data = Object.values(categoryExp);
-            }
-            subChart.update();
-        }
-    }
-}
-
-
-// ============================================================================
-// 3. LIVE CLOCK & QUOTE SYSTEM
-// ============================================================================
-
+// --- LIVE CLOCK & QUOTE ---
 const quotes = [
     "Every ride is a tiny holiday.", 
     "Life is like riding a bicycle. To keep your balance, you must keep moving.", 
@@ -287,11 +211,56 @@ function startClock() {
     }
 }
 
+// --- EXPOSURES ---
+window.toggleAI = toggleAI; 
+window.clearAIChat = clearAIChat; 
+window.handleAIKey = handleUserQuery; 
+window.triggerAIQuery = triggerAIQuery; 
+window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
-// ============================================================================
-// 4. DATA SYNC & AI CLASSIFICATION
-// ============================================================================
+window.posModule = posModule;
 
+window.onload = function () {
+    try {
+        initSupabase();
+        startClock();
+        
+        window.handleLogin = handleLogin; 
+        window.handleLogout = handleLogout; 
+        window.handleResetPassword = handleResetPassword;
+        window.uploadToSupabase = uploadToSupabase;
+        window.clearDatabase = clearDatabase;
+        window.toggleTheme = toggleTheme; 
+        
+        window.switchContext = (mode) => { 
+            hideAllSections(); 
+            document.getElementById('dashboard-view').classList.remove('hidden'); 
+            setActiveNav('nav-revenue'); 
+            
+            // Execute original UI switch logic
+            uiSwitchContext(mode); 
+            
+            // Wait for ui.js to fetch data, then apply filters
+            setTimeout(() => {
+                if (window.currentData) {
+                    window.populateYearDropdown(window.currentData);
+                    window.handleFilterChange();
+                }
+            }, 300);
+        };
+        
+        // Map the filter to ensure UI dropdowns trigger our robust function
+        window.handleMonthChange = window.handleFilterChange; 
+        window.updateDashboard = updateDashboard;
+        
+        checkSession();
+    } catch (err) { 
+        console.error(err); 
+        alert("Startup Error: " + err.message); 
+    }
+};
+
+// Add this to the very bottom of js/app.js
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
     const file = fileInput.files[0];
@@ -300,11 +269,9 @@ window.uploadAIClassification = async () => {
         return alert("Please select the Industry_ABC_Classification.xlsx file first!");
     }
 
+    // Show loading screen
     const loader = document.getElementById('loader');
-    if(loader) {
-        loader.classList.remove('hidden');
-        setTimeout(() => loader.classList.remove('opacity-0'), 10);
-    }
+    if(loader) loader.classList.remove('hidden');
 
     const reader = new FileReader();
     
@@ -315,20 +282,28 @@ window.uploadAIClassification = async () => {
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
+            // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-            const supabaseClient = window.posModule.getSupabase ? window.posModule.getSupabase() : null;
+            
+            // --- THE BULLETPROOF FIX ---
+            // Dynamically load the config file to guarantee we get the database connection
+            const configModule = await import('./config.js');
+            const supabaseClient = configModule.getSupabase();
             
             if (!supabaseClient) {
                 throw new Error("Could not connect to Supabase database.");
             }
+            // ---------------------------
 
             let successCount = 0;
 
+            // Loop through the Excel rows and update Supabase
             for (let row of jsonRows) {
                 const partName = row['Spare Part Name'];
                 const aiClass = row['AI_Classification'];
 
                 if (partName && aiClass) {
+                    // Update the product in Supabase where the name matches exactly
                     const { error } = await supabaseClient.from('products')
                         .update({ ai_class: aiClass })
                         .eq('name', partName.trim());
@@ -341,13 +316,11 @@ window.uploadAIClassification = async () => {
                 }
             }
 
-            if(loader) {
-                loader.classList.add('opacity-0');
-                setTimeout(() => loader.classList.add('hidden'), 300);
-            }
+            // Hide loader and show success!
+            if(loader) loader.classList.add('hidden');
+            fileInput.value = ''; // Reset file input
             
-            fileInput.value = ''; 
-            
+            // Show success message
             const modal = document.getElementById('custom-modal');
             if (modal) {
                 document.getElementById('modal-title').innerText = "AI Sync Complete";
@@ -363,61 +336,16 @@ window.uploadAIClassification = async () => {
                 alert(`Successfully synced ${successCount} AI inventory labels!`);
             }
             
+            // Reload the inventory to show the badges instantly
             if (window.posModule && window.posModule.loadInventory) {
                 await window.posModule.loadInventory();
             }
 
         } catch (err) {
-            if(loader) {
-                loader.classList.add('opacity-0');
-                setTimeout(() => loader.classList.add('hidden'), 300);
-            }
+            if(loader) loader.classList.add('hidden');
             alert("Error processing Excel file: " + err.message);
         }
     };
     
     reader.readAsArrayBuffer(file);
-};
-
-
-// ============================================================================
-// 5. GLOBAL EXPOSURES & INITIALIZATION
-// ============================================================================
-
-window.toggleAI = toggleAI; 
-window.clearAIChat = clearAIChat; 
-window.handleAIKey = handleUserQuery; 
-window.triggerAIQuery = triggerAIQuery; 
-window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
-
-window.posModule = posModule;
-
-// Fallback just in case `onchange="window.handleMonthChange()"` was missed in HTML
-window.handleMonthChange = window.handleFilterChange;
-
-window.onload = async function () {
-    try {
-        initSupabase();
-        startClock();
-        
-        window.handleLogin = handleLogin; 
-        window.handleLogout = handleLogout; 
-        window.handleResetPassword = handleResetPassword;
-        window.uploadToSupabase = uploadToSupabase;
-        window.clearDatabase = clearDatabase;
-        window.toggleTheme = toggleTheme; 
-        
-        checkSession();
-        
-        // Give the UI time to build charts, then force fetch and filter the data
-        setTimeout(() => {
-            if (document.getElementById('dashboard-view') && !document.getElementById('dashboard-view').classList.contains('hidden')) {
-                 window.switchContext('past');
-            }
-        }, 500);
-
-    } catch (err) { 
-        console.error(err); 
-        alert("Startup Error: " + err.message); 
-    }
 };
