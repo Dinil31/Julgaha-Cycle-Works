@@ -2,241 +2,473 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Portal - CycleSense</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Employee Portal | CycleSense</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💼</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+<body class="text-slate-800 min-h-screen flex flex-col selection:bg-indigo-100 selection:text-indigo-900 relative">
 
-    <div id="login-view" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
-        <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-white text-2xl">
-            <i class="fas fa-id-badge"></i>
+    <div id="loader" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex justify-center items-center z-[100] hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center border border-slate-100">
+            <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-600 mb-3"></i>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Processing</p>
         </div>
-        <h1 class="text-2xl font-black text-gray-800 mb-1">Employee Portal</h1>
-        <p class="text-gray-500 mb-6 text-sm">Log in using your Worker ID (e.g. W2026001) and PIN.</p>
-
-        <form id="portal-login-form" class="space-y-4">
-            <input id="worker-id" type="text" placeholder="Worker ID (e.g. W2026001)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold uppercase tracking-widest" required>
-            <input id="worker-pin" type="password" placeholder="4-Digit PIN" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold tracking-[0.5em]" required>
-            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Secure Login</button>
-        </form>
-        <p id="login-error" class="text-red-500 text-xs mt-3 hidden"></p>
     </div>
 
-    <div id="dashboard-view" class="hidden max-w-2xl w-full bg-white p-6 md:p-8 rounded-2xl shadow-2xl">
-        
-        <div class="flex justify-between items-start mb-6 border-b pb-4">
-            <div>
-                <h2 class="text-2xl font-black text-gray-800" id="emp-name">Name</h2>
-                <p class="text-gray-500 text-sm">ID: <span id="emp-id" class="font-mono text-purple-600 font-bold"></span> | Daily Rate: <span id="emp-rate"></span></p>
+    <div id="pin-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 hidden opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="pin-modal-content">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="text-lg font-black text-slate-800 flex items-center gap-2"><i class="fas fa-key text-amber-500"></i> Change Secure PIN</h3>
+                <button onclick="closePinModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <div class="flex gap-2">
-                <button onclick="window.changePin()" class="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
+            <form id="pin-form" class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Current PIN</label>
+                    <input type="password" id="current-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-lg tracking-[0.3em] outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-center" required>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">New PIN</label>
+                    <input type="password" id="new-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-lg tracking-[0.3em] outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-center text-indigo-600" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition shadow-md shadow-indigo-500/20 active:scale-95">Update PIN</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="login-view" class="flex-grow flex flex-col justify-center items-center p-4 fade-in min-h-screen">
+        <div class="w-full max-w-sm bg-white rounded-3xl p-8 shadow-xl border border-slate-100">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-indigo-50 rounded-2xl mx-auto flex items-center justify-center mb-4 border border-indigo-100 text-indigo-600 text-2xl">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Employee Portal</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">CycleSense HR System</p>
+            </div>
+
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Worker ID</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-slate-400"></i>
+                        </div>
+                        <input type="text" id="worker-uid" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold text-lg uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="W2026..." required>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Secure PIN</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-slate-400"></i>
+                        </div>
+                        <input type="password" id="worker-pin" inputmode="numeric" pattern="[0-9]*" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-black tracking-[0.3em] text-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-center" placeholder="••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition shadow-lg shadow-indigo-600/20 active:scale-[0.98]">
+                    Log In
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="hidden flex-col flex-grow p-4 md:p-8 max-w-4xl mx-auto w-full fade-in">
+        
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+
+            <div>
+                <h1 id="dash-name" class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">Employee Name</h1>
+                <div class="flex items-center gap-3 text-sm font-medium text-slate-500 flex-wrap">
+                    <span class="font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-bold border border-indigo-100" id="dash-id">ID</span>
+                    <span class="hidden sm:inline text-slate-300">|</span>
+                    <span>Daily Rate: <span id="dash-rate" class="font-bold text-slate-700">LKR 0.00</span></span>
+                </div>
+            </div>
+
+            <div class="flex gap-3 w-full md:w-auto">
+                <button onclick="openPinModal()" class="flex-1 md:flex-none bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                     <i class="fas fa-key"></i> Change PIN
                 </button>
-                <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
+                <button onclick="logout()" class="flex-1 md:flex-none bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
         </div>
 
-        <div class="mb-4 flex gap-2 items-center">
-            <label class="font-bold text-gray-600 text-sm">Select Month:</label>
-            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold cursor-pointer" onchange="window.loadDashboard()">
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
-                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Full Days (<span id="count-full">0</span>)</span> 
-                    <span id="val-full" class="font-medium">0.00</span>
-                </div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Half Days (<span id="count-half">0</span>)</span> 
-                    <span id="val-half" class="font-medium">0.00</span>
-                </div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Short Leaves (<span id="count-short">0</span>)</span> 
-                    <span id="val-short" class="font-medium">0.00</span>
-                </div>
-                <div class="flex justify-between text-sm text-red-500 mb-1">
-                    <span>Time Penalties</span> 
-                    <span id="val-penalty" class="font-medium">- 0.00</span>
-                </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
-                    <span>Gross Earnings</span> 
-                    <span id="val-gross">0.00</span>
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-100 pb-4">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar text-indigo-500"></i> Payroll Summary
+                </h2>
+                <div class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200 w-full sm:w-auto">
+                    <label class="text-xs font-bold text-slate-500 pl-2 uppercase tracking-wider hidden sm:block">Select Month:</label>
+                    <input type="month" id="month-selector" class="bg-white border border-slate-200 text-slate-800 text-sm font-bold rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-auto" onchange="updateDashboardData()">
                 </div>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
-                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
-                <div class="flex justify-between text-sm mb-1 text-red-500">
-                    <span>Advances</span> 
-                    <span id="val-advances">- 0.00</span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                    <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-emerald-500"></i> Earnings
+                    </h3>
+                    <div class="space-y-2.5 text-sm font-medium text-slate-600">
+                        <div class="flex justify-between items-center"><span id="lbl-full">Full Days (0)</span><span id="val-full" class="font-bold text-slate-800">LKR 0.00</span></div>
+                        <div class="flex justify-between items-center"><span id="lbl-half">Half Days (0)</span><span id="val-half" class="font-bold text-slate-800">LKR 0.00</span></div>
+                        <div class="flex justify-between items-center"><span id="lbl-short">Short Leaves (0)</span><span id="val-short" class="font-bold text-slate-800">LKR 0.00</span></div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-200/60"><span class="text-red-500 font-bold">Time Penalties</span><span id="val-penalty" class="font-bold text-red-600">- LKR 0.00</span></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-4 pt-4 border-t-2 border-slate-200">
+                        <span class="font-black text-emerald-600">Gross Earnings</span>
+                        <span id="dash-gross" class="text-lg font-black text-emerald-600">LKR 0.00</span>
+                    </div>
                 </div>
-                <div class="flex justify-between text-sm mb-1 text-red-500">
-                    <span>EPF (8%)</span> 
-                    <span id="val-epf">- 0.00</span>
-                </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-blue-600 text-lg">
-                    <span>Net Payable</span> 
-                    <span id="val-net">0.00</span>
+
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col">
+                    <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="fas fa-minus-circle text-red-500"></i> Deductions
+                    </h3>
+                    <div class="space-y-2.5 text-sm font-medium text-slate-600 flex-grow">
+                        <div class="flex justify-between items-center"><span class="text-red-500">Advances Taken</span><span id="dash-advances" class="font-bold text-red-600">- LKR 0.00</span></div>
+                        <div class="flex justify-between items-center"><span class="text-red-500">EPF Statutory (8%)</span><span id="dash-epf" class="font-bold text-red-600">- LKR 0.00</span></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-4 pt-4 border-t-2 border-slate-200 bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <span class="font-black text-indigo-700 text-lg">Net Payable</span>
+                        <span id="dash-net" class="text-2xl font-black text-indigo-700">LKR 0.00</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <h3 class="font-bold text-gray-700 mb-2">Attendance Log</h3>
-        <div class="overflow-x-auto border border-gray-200 rounded-xl max-h-60 shadow-sm">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0 shadow-sm">
-                    <tr>
-                        <th class="p-3">Date</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">In</th>
-                        <th class="p-3">Out</th>
-                        <th class="p-3 text-red-500">Penalty</th>
-                    </tr>
-                </thead>
-                <tbody id="att-log"></tbody>
-            </table>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="flex border-b border-slate-100 bg-slate-50">
+                <button onclick="switchTab('attendance')" id="tab-attendance" class="flex-1 py-4 text-sm font-black text-indigo-600 border-b-2 border-indigo-600 transition bg-white flex justify-center items-center gap-2">
+                    <i class="far fa-calendar-check"></i> Attendance Log
+                </button>
+                <button onclick="switchTab('advances')" id="tab-advances" class="flex-1 py-4 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-700 hover:bg-slate-100 transition flex justify-center items-center gap-2">
+                    <i class="fas fa-hand-holding-usd"></i> Advances Log
+                </button>
+            </div>
+
+            <div id="list-attendance" class="p-0 overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">Date</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4 text-center">In</th>
+                            <th class="p-4 text-center">Out</th>
+                            <th class="p-4 text-right">Penalty</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-tbody" class="divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
+
+            <div id="list-advances" class="p-0 overflow-x-auto hidden">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-bold border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">Date Issued</th>
+                            <th class="p-4 text-right">Amount Deducted</th>
+                        </tr>
+                    </thead>
+                    <tbody id="advances-tbody" class="divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
         </div>
+        
+        <div class="text-center mt-8 pb-4">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Powered by CycleSense Cloud ERP</p>
+        </div>
+
     </div>
 
     <script type="module">
         import { getSupabase } from './js/config.js';
-        let currentUser = null;
 
-        const formatCurrency = (v) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(v || 0);
+        const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
 
-        document.getElementById('portal-login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const uid = document.getElementById('worker-id').value.trim().toUpperCase();
-            const pin = document.getElementById('worker-pin').value;
-            
-            const sb = getSupabase();
-            const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
-            
-            if (error || !data) {
-                document.getElementById('login-error').innerText = "Invalid ID or PIN. Please try again.";
-                document.getElementById('login-error').classList.remove('hidden');
-            } else {
-                currentUser = data;
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('dashboard-view').classList.remove('hidden');
-                
-                document.getElementById('emp-name').innerText = data.name;
-                document.getElementById('emp-id').innerText = data.worker_uid;
-                document.getElementById('emp-rate').innerText = formatCurrency(data.daily_salary);
-                
-                const now = new Date();
-                document.getElementById('month-selector').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
-                window.loadDashboard();
+        let currentWorker = null;
+
+        // Auto-Check Session & Init Date Picker
+        document.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
+            document.getElementById('month-selector').value = monthStr;
+            document.getElementById('month-selector').max = monthStr; // Prevent selecting future months
+
+            const savedWorker = sessionStorage.getItem('cycleSenseWorker');
+            if (savedWorker) {
+                currentWorker = JSON.parse(savedWorker);
+                showDashboard();
             }
         });
 
-        window.changePin = async () => {
-            const newPin = prompt("Enter your new 4-digit PIN:");
-            
-            if (!newPin || newPin.length !== 4 || isNaN(newPin) || parseInt(newPin) < 0) {
-                return alert("PIN must be exactly 4 numbers.");
-            }
-            
-            const sb = getSupabase();
-            const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
-            
-            if (error) {
-                alert("Failed to update PIN. " + error.message);
-            } else {
-                alert("PIN successfully updated!");
-            }
+        const showLoader = () => {
+            const l = document.getElementById('loader');
+            l.classList.remove('hidden');
+            setTimeout(() => l.classList.remove('opacity-0'), 10);
+        };
+        const hideLoader = () => {
+            const l = document.getElementById('loader');
+            l.classList.add('opacity-0');
+            setTimeout(() => l.classList.add('hidden'), 300);
         };
 
-        window.loadDashboard = async () => {
-            if (!currentUser) return;
-            const monthStr = document.getElementById('month-selector').value;
-            const [year, month] = monthStr.split('-');
-            
-            const startDate = `${monthStr}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        // Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
 
+            const uid = document.getElementById('worker-uid').value.toUpperCase().trim();
+            const pin = document.getElementById('worker-pin').value.trim();
             const sb = getSupabase();
-            
-            const { data: attData } = await sb.from('attendance')
-                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
-            
-            const { data: advData } = await sb.from('advances')
-                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate);
 
-            let full = 0, half = 0, short = 0, totalPenalty = 0;
-            const logTable = document.getElementById('att-log');
-            logTable.innerHTML = '';
+            try {
+                const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
+                if (error || !data) throw new Error("Invalid Worker ID or PIN.");
+
+                currentWorker = data;
+                sessionStorage.setItem('cycleSenseWorker', JSON.stringify(data));
+                document.getElementById('login-form').reset();
+                showDashboard();
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        // Dashboard Display
+        window.showDashboard = function() {
+            document.getElementById('login-view').classList.add('hidden');
+            const dash = document.getElementById('dashboard-view');
+            dash.classList.remove('hidden');
+            dash.classList.add('flex');
+
+            document.getElementById('dash-name').innerText = currentWorker.name;
+            document.getElementById('dash-id').innerText = currentWorker.worker_uid;
+            document.getElementById('dash-rate').innerText = formatCurrency(currentWorker.daily_salary);
+
+            updateDashboardData();
+        }
+
+        window.updateDashboardData = async function() {
+            showLoader();
+            const monthStr = document.getElementById('month-selector').value;
+            
+            try {
+                await fetchAndRenderData(currentWorker.id, monthStr, currentWorker.daily_salary);
+            } catch (err) {
+                alert("Error loading data: " + err.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function fetchAndRenderData(wId, monthStr, dailySalary) {
+            const sb = getSupabase();
+            const [year, month] = monthStr.split('-');
+            const startDate = `${monthStr}-01`;
+            
+            // Do not fetch future dates
+            const todayObj = new Date();
+            const isCurrentMonth = (parseInt(year) === todayObj.getFullYear() && parseInt(month) === (todayObj.getMonth() + 1));
+            const endDate = isCurrentMonth ? todayObj.toISOString().split('T')[0] : new Date(year, month, 0).toISOString().split('T')[0];
+
+            const { data: attData } = await sb.from('attendance').select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
+            const { data: advData } = await sb.from('advances').select('*').eq('worker_id', wId).gte('date', startDate).lte('date', endDate).order('date', {ascending: false});
+
+            // Math Logic
+            let full = 0, half = 0, short = 0, timePenalty = 0;
 
             if (attData) {
                 attData.forEach(a => {
-                    let dayPenalty = 0;
-                    
-                    if (a.status === 'Full Day') {
+                    if (a.status === 'Half Day') half++;
+                    else if (a.status === 'Short Leave') short++;
+                    else if (a.status === 'Full Day') {
                         full++;
                         if (a.in_time && a.out_time) {
-                            const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
-                            const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
-                            
+                            const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
+                            const inMins = parse(a.in_time); 
+                            const outMins = parse(a.out_time);
                             let missed = 0;
-                            if (inMins > 600) missed += (inMins - 600); // Late after 10:00
-                            if (outMins < 1020) missed += (1020 - outMins); // Early before 17:00
-                            
-                            if (missed > 0) {
-                                dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
-                                totalPenalty += dayPenalty;
-                            }
+                            if (inMins > 600) missed += (inMins - 600); // Late (10:00)
+                            if (outMins < 1020) missed += (1020 - outMins); // Early (17:00)
+                            if (missed > 0) timePenalty += (missed * (dailySalary / 420));
                         }
-                    } 
-                    else if (a.status === 'Half Day') { 
-                        half++; 
                     }
-                    else if (a.status === 'Short Leave') { 
-                        short++; 
-                    }
-
-                    logTable.innerHTML += `
-                        <tr class="border-b">
-                            <td class="p-3">${a.date}</td>
-                            <td class="p-3 font-bold">${a.status}</td>
-                            <td class="p-3">${a.in_time || '-'}</td>
-                            <td class="p-3">${a.out_time || '-'}</td>
-                            <td class="p-3 text-red-500 font-bold">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
-                        </tr>`;
                 });
             }
 
+            const grossFull = full * dailySalary;
+            const grossHalf = half * (dailySalary / 2);
+            const grossShort = short * dailySalary;
+            const grossEarnings = (grossFull + grossHalf + grossShort) - timePenalty;
+            
+            let totalAdvances = 0;
+            if (advData) totalAdvances = advData.reduce((sum, a) => sum + Number(a.amount), 0);
+            
+            const epfDeduction = grossEarnings > 0 ? grossEarnings * 0.08 : 0;
+            const netPay = grossEarnings - totalAdvances - epfDeduction;
+
+            // Update Breakdown Panel
+            document.getElementById('lbl-full').innerText = `Full Days (${full})`;
+            document.getElementById('val-full').innerText = formatCurrency(grossFull);
+            document.getElementById('lbl-half').innerText = `Half Days (${half})`;
+            document.getElementById('val-half').innerText = formatCurrency(grossHalf);
+            document.getElementById('lbl-short').innerText = `Short Leaves (${short})`;
+            document.getElementById('val-short').innerText = formatCurrency(grossShort);
+            document.getElementById('val-penalty').innerText = `- ${formatCurrency(timePenalty)}`;
+            document.getElementById('dash-gross').innerText = formatCurrency(grossEarnings);
+
+            document.getElementById('dash-advances').innerText = `- ${formatCurrency(totalAdvances)}`;
+            document.getElementById('dash-epf').innerText = `- ${formatCurrency(epfDeduction)}`;
+            document.getElementById('dash-net').innerText = formatCurrency(netPay);
+
+            // Render Attendance Table
+            const attTbody = document.getElementById('attendance-tbody');
             if (!attData || attData.length === 0) {
-                logTable.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-bold uppercase tracking-widest">No attendance records for this month.</td></tr>`;
+                attTbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-bold italic">No attendance records found for this month.</td></tr>`;
+            } else {
+                let attHtml = '';
+                attData.forEach(a => {
+                    let badge = '';
+                    let inT = a.in_time || '-';
+                    let outT = a.out_time || '-';
+                    let penVal = '-';
+                    
+                    if (a.status === 'Full Day') badge = `<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold text-[10px] uppercase">Full Day</span>`;
+                    else if (a.status === 'Half Day') badge = `<span class="bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold text-[10px] uppercase">Half Day</span>`;
+                    else if (a.status === 'Short Leave') badge = `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold text-[10px] uppercase">Short</span>`;
+                    else { badge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded font-bold text-[10px] uppercase">Absent</span>`; inT = '-'; outT = '-'; }
+
+                    if (a.status === 'Full Day' && a.in_time && a.out_time) {
+                        const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
+                        const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
+                        let missed = 0;
+                        if (inMins > 600) missed += (inMins - 600);
+                        if (outMins < 1020) missed += (1020 - outMins);
+                        if (missed > 0) {
+                            const penAmount = missed * (dailySalary / 420);
+                            penVal = `<span class="text-red-500 font-bold">- ${formatCurrency(penAmount)}</span>`;
+                        }
+                    }
+
+                    attHtml += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 font-bold text-slate-700">${a.date}</td>
+                            <td class="p-4">${badge}</td>
+                            <td class="p-4 text-center font-mono text-slate-500">${inT}</td>
+                            <td class="p-4 text-center font-mono text-slate-500">${outT}</td>
+                            <td class="p-4 text-right">${penVal}</td>
+                        </tr>
+                    `;
+                });
+                attTbody.innerHTML = attHtml;
             }
 
-            const baseEarn = (full * currentUser.daily_salary) + (short * currentUser.daily_salary) + (half * (currentUser.daily_salary / 2));
-            const gross = baseEarn - totalPenalty;
-            const advances = (advData || []).reduce((s, a) => s + Number(a.amount), 0);
-            const epf = gross > 0 ? gross * 0.08 : 0;
-            const net = gross - advances - epf;
+            // Render Advances Table
+            const advTbody = document.getElementById('advances-tbody');
+            if (!advData || advData.length === 0) {
+                advTbody.innerHTML = `<tr><td colspan="2" class="p-8 text-center text-slate-400 font-bold italic">No advances taken this month.</td></tr>`;
+            } else {
+                let advHtml = '';
+                advData.forEach(a => {
+                    advHtml += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 font-bold text-slate-700">${a.date}</td>
+                            <td class="p-4 text-right font-black text-red-500">- ${formatCurrency(a.amount)}</td>
+                        </tr>
+                    `;
+                });
+                advTbody.innerHTML = advHtml;
+            }
+        }
 
-            document.getElementById('count-full').innerText = full;
-            document.getElementById('val-full').innerText = formatCurrency(full * currentUser.daily_salary);
+        // Tab Switching
+        window.switchTab = function(tabName) {
+            const attList = document.getElementById('list-attendance');
+            const advList = document.getElementById('list-advances');
+            const attBtn = document.getElementById('tab-attendance');
+            const advBtn = document.getElementById('tab-advances');
+
+            if (tabName === 'attendance') {
+                attList.classList.remove('hidden'); advList.classList.add('hidden');
+                attBtn.className = "flex-1 py-4 text-sm font-black text-indigo-600 border-b-2 border-indigo-600 transition bg-white flex justify-center items-center gap-2";
+                advBtn.className = "flex-1 py-4 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-700 hover:bg-slate-100 transition flex justify-center items-center gap-2";
+            } else {
+                advList.classList.remove('hidden'); attList.classList.add('hidden');
+                advBtn.className = "flex-1 py-4 text-sm font-black text-indigo-600 border-b-2 border-indigo-600 transition bg-white flex justify-center items-center gap-2";
+                attBtn.className = "flex-1 py-4 text-sm font-bold text-slate-500 border-b-2 border-transparent hover:text-slate-700 hover:bg-slate-100 transition flex justify-center items-center gap-2";
+            }
+        }
+
+        // PIN Change Logic
+        window.openPinModal = function() {
+            document.getElementById('pin-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('pin-modal').classList.remove('opacity-0'), 10);
+        }
+        
+        window.closePinModal = function() {
+            document.getElementById('pin-modal').classList.add('opacity-0');
+            setTimeout(() => document.getElementById('pin-modal').classList.add('hidden'), 300);
+            document.getElementById('pin-form').reset();
+        }
+
+        document.getElementById('pin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currPin = document.getElementById('current-pin').value;
+            const newPin = document.getElementById('new-pin').value;
             
-            document.getElementById('count-half').innerText = half;
-            document.getElementById('val-half').innerText = formatCurrency(half * (currentUser.daily_salary / 2));
+            if (currPin !== currentWorker.pin) {
+                return alert("Current PIN is incorrect.");
+            }
             
-            document.getElementById('count-short').innerText = short;
-            document.getElementById('val-short').innerText = formatCurrency(short * currentUser.daily_salary);
+            showLoader();
+            const sb = getSupabase();
+            const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentWorker.id);
+            hideLoader();
             
-            document.getElementById('val-penalty').innerText = "- " + formatCurrency(totalPenalty);
-            document.getElementById('val-gross').innerText = formatCurrency(gross);
-            document.getElementById('val-advances').innerText = "- " + formatCurrency(advances);
-            document.getElementById('val-epf').innerText = "- " + formatCurrency(epf);
-            document.getElementById('val-net').innerText = formatCurrency(net);
+            if (error) {
+                alert("Error updating PIN: " + error.message);
+            } else {
+                currentWorker.pin = newPin;
+                sessionStorage.setItem('cycleSenseWorker', JSON.stringify(currentWorker));
+                closePinModal();
+                alert("PIN changed successfully!");
+            }
+        });
+
+        // Logout
+        window.logout = function() {
+            showLoader();
+            setTimeout(() => {
+                sessionStorage.removeItem('cycleSenseWorker');
+                currentWorker = null;
+                document.getElementById('dashboard-view').classList.remove('flex');
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('login-form').reset();
+                hideLoader();
+            }, 500);
         }
     </script>
 </body>
