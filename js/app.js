@@ -1,7 +1,7 @@
-import { initSupabase, getSupabase } from "./config.js";
-import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
+import { initSupabase } from "./config.js";
+import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
-import { uploadToSupabase, clearDatabase } from "./data.js"; 
+import { uploadToSupabase, clearDatabase, getRawData } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
 import * as posModule from "./pos_module.js";
 
@@ -59,11 +59,7 @@ window.handleNavClick = async function(tabName) {
     if (tabName === 'dashboard') { 
         setActiveNav('nav-dashboard'); 
         document.getElementById('dashboard-view').classList.remove('hidden'); 
-        
-        // Fetch fresh data for the dashboard and populate the advanced filters
-        await fetchDashboardData();
-        
-        if (typeof switchContext === 'function') switchContext('past'); 
+        window.switchContext('past'); 
     }
     else if (tabName === 'pos') { 
         setActiveNav('nav-pos'); 
@@ -108,46 +104,43 @@ window.handleNavClick = async function(tabName) {
     }
 }
 
+// Wrap the UI context switcher so we can trigger filters when switching between Past and Predicted
+window.switchContext = (mode) => {
+    // Call the original switchContext from ui.js
+    if (typeof uiSwitchContext === 'function') {
+        uiSwitchContext(mode);
+    }
+    
+    // Slight delay to ensure data.js has made the new array active
+    setTimeout(() => {
+        if (typeof getRawData === 'function') {
+            const rawData = getRawData() || [];
+            window.populateYearDropdown(rawData);
+            window.handleFilterChange();
+        }
+    }, 100);
+};
+
 
 // ============================================================================
 // 2. DASHBOARD ADVANCED FILTERING SYSTEM
 // ============================================================================
-
-window.currentDashboardData = []; // Store raw data globally for filtering
-
-async function fetchDashboardData() {
-    try {
-        const sb = getSupabase();
-        // Fetch all sales for the dashboard calculations
-        const { data: sales, error } = await sb.from('sales').select('*');
-        
-        if (error) throw error;
-        
-        window.currentDashboardData = sales || [];
-        
-        // Populate the Year dropdown based on actual data
-        window.populateYearDropdown(window.currentDashboardData);
-        
-        // Trigger the filter to update the UI cards and charts
-        window.handleFilterChange();
-
-    } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-    }
-}
 
 /**
  * Dynamically builds the Year dropdown based on the dates in the database
  */
 window.populateYearDropdown = function(data) {
     const yearSelect = document.getElementById('slicer-year');
-    if (!yearSelect) return;
+    if (!yearSelect || !data) return;
 
     const uniqueYears = new Set();
     data.forEach(row => {
-        const d = new Date(row.date || row._date);
-        if (!isNaN(d.getFullYear())) {
-            uniqueYears.add(d.getFullYear());
+        const rowDate = row._date || row.date;
+        if (rowDate) {
+            const d = new Date(rowDate);
+            if (!isNaN(d.getFullYear())) {
+                uniqueYears.add(d.getFullYear());
+            }
         }
     });
 
@@ -161,6 +154,7 @@ window.populateYearDropdown = function(data) {
     const currentSelection = yearSelect.value;
     yearSelect.innerHTML = html;
     
+    // Keep the selection if it still exists in the new dataset
     if ([...uniqueYears].includes(parseInt(currentSelection))) {
         yearSelect.value = currentSelection;
     }
@@ -168,61 +162,56 @@ window.populateYearDropdown = function(data) {
 
 /**
  * Main function to filter data by Year, Month, and Exact Day.
+ * It perfectly isolates the filtered array and sends it back to ui.js to update the charts.
  */
 window.handleFilterChange = function() {
-    if (!window.currentDashboardData) return; 
+    let rawData = [];
+    if (typeof getRawData === 'function') {
+        rawData = getRawData() || [];
+    }
+
+    if (rawData.length === 0) {
+        if (typeof updateDashboard === 'function') updateDashboard([]);
+        return;
+    }
     
     const yearVal = document.getElementById('slicer-year').value;
     const monthVal = document.getElementById('slicer-month').value;
     const dayVal = document.getElementById('slicer-day').value;
 
-    let filteredData = window.currentDashboardData;
+    let filteredData = rawData.filter(row => {
+        const rowDate = row._date || row.date;
+        if (!rowDate) return false;
+        
+        const d = new Date(rowDate);
+        if (isNaN(d.getTime())) return false;
 
-    // 1. Filter by Year
-    if (yearVal !== 'all') {
-        filteredData = filteredData.filter(row => {
-            const d = new Date(row.date || row._date);
-            return d.getFullYear() === parseInt(yearVal);
-        });
-    }
+        let match = true;
 
-    // 2. Filter by Month (0 = Jan, 11 = Dec)
-    if (monthVal !== 'all') {
-        filteredData = filteredData.filter(row => {
-            const d = new Date(row.date || row._date);
-            return d.getMonth() === parseInt(monthVal);
-        });
-    }
+        // 1. Filter by Year
+        if (yearVal !== 'all') {
+            match = match && (d.getFullYear() === parseInt(yearVal));
+        }
 
-    // 3. Filter by Exact Day (YYYY-MM-DD)
-    if (dayVal) {
-        filteredData = filteredData.filter(row => {
-            const d = new Date(row.date || row._date);
+        // 2. Filter by Month (0 = Jan, 11 = Dec)
+        if (monthVal !== 'all') {
+            match = match && (d.getMonth() === parseInt(monthVal));
+        }
+
+        // 3. Filter by Exact Day (YYYY-MM-DD)
+        if (dayVal) {
             const localDateStr = d.getFullYear() + '-' + 
                                  String(d.getMonth() + 1).padStart(2, '0') + '-' + 
                                  String(d.getDate()).padStart(2, '0');
-            return localDateStr === dayVal;
-        });
-    }
+            match = match && (localDateStr === dayVal);
+        }
 
-    // --- UPDATE UI CARDS ---
-    let totalRev = 0;
-    filteredData.forEach(sale => {
-        totalRev += Number(sale.total_amount || 0);
+        return match;
     });
 
-    const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
-    
-    const revEl = document.getElementById('val-rev');
-    const profEl = document.getElementById('val-prof');
-    
-    if (revEl) revEl.innerText = formatCurrency(totalRev);
-    // Simple profit estimation for demo (Assuming 30% margin)
-    if (profEl) profEl.innerText = formatCurrency(totalRev * 0.30);
-
-    // Call your Chart.js update function if it exists in ui.js
-    if (typeof window.updateDashboard === 'function') {
-        window.updateDashboard(filteredData);
+    // Pass the perfectly filtered data back to ui.js to update cards & charts!
+    if (typeof updateDashboard === 'function') {
+        updateDashboard(filteredData);
     }
 };
 
@@ -333,7 +322,6 @@ window.uploadAIClassification = async () => {
             
             fileInput.value = ''; 
             
-            // Show success message using Custom Modal
             const modal = document.getElementById('custom-modal');
             if (modal) {
                 document.getElementById('modal-title').innerText = "AI Sync Complete";
@@ -349,7 +337,6 @@ window.uploadAIClassification = async () => {
                 alert(`Successfully synced ${successCount} AI inventory labels!`);
             }
             
-            // Reload the inventory to show the new A/B/C badges
             if (window.posModule && window.posModule.loadInventory) {
                 await window.posModule.loadInventory();
             }
@@ -391,19 +378,14 @@ window.onload = async function () {
         window.clearDatabase = clearDatabase;
         window.toggleTheme = toggleTheme; 
         
-        window.switchContext = (mode) => { 
-            hideAllSections(); 
-            document.getElementById('dashboard-view').classList.remove('hidden'); 
-            setActiveNav('nav-dashboard'); 
-            if (typeof switchContext === 'function') switchContext(mode); 
-        };
-        
         checkSession();
         
-        // Initial fetch for dashboard data if the user is already logged in
-        if (sessionStorage.getItem('cycleSenseUser')) {
-            await fetchDashboardData();
-        }
+        // Let the system breathe before rendering the dashboard
+        setTimeout(() => {
+            if (document.getElementById('dashboard-view') && !document.getElementById('dashboard-view').classList.contains('hidden')) {
+                 window.switchContext('past');
+            }
+        }, 500);
 
     } catch (err) { 
         console.error(err); 
