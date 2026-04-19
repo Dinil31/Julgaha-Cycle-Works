@@ -133,6 +133,58 @@ function startClock() {
     }
 }
 
+// --- NEW ADVANCED FILTERING (Safely integrates with ui.js) ---
+window.handleFilterChange = function() {
+    // Rely on ui.js global data array
+    const rawData = window.currentData || [];
+    
+    if (rawData.length === 0) return;
+
+    const monthSelect = document.getElementById('slicer-month');
+    const daySelect = document.getElementById('slicer-day');
+    
+    const monthVal = monthSelect ? monthSelect.value : 'all';
+    const dayVal = daySelect ? daySelect.value : '';
+
+    const filteredData = rawData.filter(row => {
+        const dateStr = row.Date || row.date || row._date;
+        if (!dateStr) return false;
+        
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+
+        let match = true;
+
+        if (monthVal !== 'all') {
+            match = match && (d.getMonth() === parseInt(monthVal));
+        }
+
+        if (dayVal) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            match = match && (`${y}-${m}-${day}` === dayVal);
+        }
+
+        return match;
+    });
+
+    // Pass the safely filtered data back to ui.js to update the dashboard natively
+    if (typeof window.updateDashboard === 'function') {
+        window.updateDashboard(filteredData);
+    }
+};
+
+window.clearFilters = function() {
+    const monthSelect = document.getElementById('slicer-month');
+    const daySelect = document.getElementById('slicer-day');
+    
+    if (monthSelect) monthSelect.value = 'all';
+    if (daySelect) daySelect.value = '';
+    
+    window.handleFilterChange();
+};
+
 // --- EXPOSURES ---
 window.toggleAI = toggleAI; 
 window.clearAIChat = clearAIChat; 
@@ -161,7 +213,7 @@ window.onload = function () {
             switchContext(mode); 
         };
         
-        window.handleMonthChange = handleMonthChange; 
+        window.handleMonthChange = window.handleFilterChange; // Route old HTML calls to new filter
         window.updateDashboard = updateDashboard;
         
         checkSession();
@@ -171,7 +223,7 @@ window.onload = function () {
     }
 };
 
-// Add this to the very bottom of js/app.js
+// --- AI CLASSIFICATION SYNC ---
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
     const file = fileInput.files[0];
@@ -180,7 +232,6 @@ window.uploadAIClassification = async () => {
         return alert("Please select the Industry_ABC_Classification.xlsx file first!");
     }
 
-    // Show loading screen
     const loader = document.getElementById('loader');
     if(loader) loader.classList.remove('hidden');
 
@@ -193,10 +244,8 @@ window.uploadAIClassification = async () => {
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
             
-            // Dynamically load the config file to guarantee we get the database connection
             const configModule = await import('./config.js');
             const supabaseClient = configModule.getSupabase();
             
@@ -206,13 +255,11 @@ window.uploadAIClassification = async () => {
 
             let successCount = 0;
 
-            // Loop through the Excel rows and update Supabase
             for (let row of jsonRows) {
                 const partName = row['Spare Part Name'];
                 const aiClass = row['AI_Classification'];
 
                 if (partName && aiClass) {
-                    // Update the product in Supabase where the name matches exactly
                     const { error } = await supabaseClient.from('products')
                         .update({ ai_class: aiClass })
                         .eq('name', partName.trim());
@@ -225,11 +272,9 @@ window.uploadAIClassification = async () => {
                 }
             }
 
-            // Hide loader and show success!
             if(loader) loader.classList.add('hidden');
-            fileInput.value = ''; // Reset file input
+            fileInput.value = ''; 
             
-            // Show success message
             const modal = document.getElementById('custom-modal');
             if (modal) {
                 document.getElementById('modal-title').innerText = "AI Sync Complete";
@@ -245,7 +290,6 @@ window.uploadAIClassification = async () => {
                 alert(`Successfully synced ${successCount} AI inventory labels!`);
             }
             
-            // Reload the inventory to show the badges instantly
             if (window.posModule && window.posModule.loadInventory) {
                 await window.posModule.loadInventory();
             }
