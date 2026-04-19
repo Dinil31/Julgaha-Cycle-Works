@@ -1,16 +1,19 @@
-import { initSupabase } from "./config.js";
+import { initSupabase, getSupabase } from "./config.js";
 import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
 import * as posModule from "./pos_module.js";
 
-// --- NAVIGATION ---
+// ============================================================================
+// 1. NAVIGATION SYSTEM
+// ============================================================================
+
 function setActiveNav(activeId) {
     const navs = [
-        'nav-revenue', 
+        'nav-dashboard', 
         'nav-pos', 
-        'nav-showroom', // Added Showroom
+        'nav-showroom', 
         'nav-inventory', 
         'nav-repairs', 
         'nav-hr', 
@@ -34,7 +37,7 @@ function hideAllSections() {
     const sections = [
         'dashboard-view', 
         'pos-view', 
-        'showroom-view', // Added Showroom
+        'showroom-view',
         'inventory-view', 
         'repairs-view', 
         'hr-view', 
@@ -50,43 +53,47 @@ function hideAllSections() {
     });
 }
 
-window.handleNavClick = function(tabName) {
+window.handleNavClick = async function(tabName) {
     hideAllSections();
     
     if (tabName === 'dashboard') { 
-        setActiveNav('nav-revenue'); 
+        setActiveNav('nav-dashboard'); 
         document.getElementById('dashboard-view').classList.remove('hidden'); 
-        switchContext('past'); 
+        
+        // Fetch fresh data for the dashboard and populate the advanced filters
+        await fetchDashboardData();
+        
+        if (typeof switchContext === 'function') switchContext('past'); 
     }
     else if (tabName === 'pos') { 
         setActiveNav('nav-pos'); 
         document.getElementById('pos-view').classList.remove('hidden'); 
-        posModule.initPOS(); 
+        if (posModule.initPOS) await posModule.initPOS(); 
     }
-    else if (tabName === 'showroom') { // Added Showroom Logic
+    else if (tabName === 'showroom') { 
         setActiveNav('nav-showroom'); 
         document.getElementById('showroom-view').classList.remove('hidden'); 
-        posModule.loadShowroom(); 
+        if (posModule.loadShowroom) await posModule.loadShowroom(); 
     }
     else if (tabName === 'inventory') { 
         setActiveNav('nav-inventory'); 
         document.getElementById('inventory-view').classList.remove('hidden'); 
-        posModule.loadInventory(); 
+        if (posModule.loadInventory) await posModule.loadInventory(); 
     }
     else if (tabName === 'repairs') { 
         setActiveNav('nav-repairs'); 
         document.getElementById('repairs-view').classList.remove('hidden'); 
-        posModule.loadRepairs(); 
+        if (posModule.loadRepairs) await posModule.loadRepairs(); 
     }
     else if (tabName === 'hr') { 
         setActiveNav('nav-hr'); 
         document.getElementById('hr-view').classList.remove('hidden'); 
-        posModule.loadHR(); 
+        if (posModule.loadHR) await posModule.loadHR(); 
     }
     else if (tabName === 'calendar') { 
         setActiveNav('nav-calendar'); 
         document.getElementById('calendar-view').classList.remove('hidden'); 
-        posModule.initCalendar(); 
+        if (posModule.initCalendar) await posModule.initCalendar(); 
     }
     else if (tabName === 'data') { 
         setActiveNav('nav-data'); 
@@ -101,7 +108,139 @@ window.handleNavClick = function(tabName) {
     }
 }
 
-// --- LIVE CLOCK & QUOTE ---
+
+// ============================================================================
+// 2. DASHBOARD ADVANCED FILTERING SYSTEM
+// ============================================================================
+
+window.currentDashboardData = []; // Store raw data globally for filtering
+
+async function fetchDashboardData() {
+    try {
+        const sb = getSupabase();
+        // Fetch all sales for the dashboard calculations
+        const { data: sales, error } = await sb.from('sales').select('*');
+        
+        if (error) throw error;
+        
+        window.currentDashboardData = sales || [];
+        
+        // Populate the Year dropdown based on actual data
+        window.populateYearDropdown(window.currentDashboardData);
+        
+        // Trigger the filter to update the UI cards and charts
+        window.handleFilterChange();
+
+    } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+    }
+}
+
+/**
+ * Dynamically builds the Year dropdown based on the dates in the database
+ */
+window.populateYearDropdown = function(data) {
+    const yearSelect = document.getElementById('slicer-year');
+    if (!yearSelect) return;
+
+    const uniqueYears = new Set();
+    data.forEach(row => {
+        const d = new Date(row.date || row._date);
+        if (!isNaN(d.getFullYear())) {
+            uniqueYears.add(d.getFullYear());
+        }
+    });
+
+    let html = '<option value="all">All Years</option>';
+    
+    // Sort years highest to lowest (e.g., 2026, 2025, 2024)
+    [...uniqueYears].sort((a,b) => b - a).forEach(year => {
+        html += `<option value="${year}">${year}</option>`;
+    });
+    
+    const currentSelection = yearSelect.value;
+    yearSelect.innerHTML = html;
+    
+    if ([...uniqueYears].includes(parseInt(currentSelection))) {
+        yearSelect.value = currentSelection;
+    }
+};
+
+/**
+ * Main function to filter data by Year, Month, and Exact Day.
+ */
+window.handleFilterChange = function() {
+    if (!window.currentDashboardData) return; 
+    
+    const yearVal = document.getElementById('slicer-year').value;
+    const monthVal = document.getElementById('slicer-month').value;
+    const dayVal = document.getElementById('slicer-day').value;
+
+    let filteredData = window.currentDashboardData;
+
+    // 1. Filter by Year
+    if (yearVal !== 'all') {
+        filteredData = filteredData.filter(row => {
+            const d = new Date(row.date || row._date);
+            return d.getFullYear() === parseInt(yearVal);
+        });
+    }
+
+    // 2. Filter by Month (0 = Jan, 11 = Dec)
+    if (monthVal !== 'all') {
+        filteredData = filteredData.filter(row => {
+            const d = new Date(row.date || row._date);
+            return d.getMonth() === parseInt(monthVal);
+        });
+    }
+
+    // 3. Filter by Exact Day (YYYY-MM-DD)
+    if (dayVal) {
+        filteredData = filteredData.filter(row => {
+            const d = new Date(row.date || row._date);
+            const localDateStr = d.getFullYear() + '-' + 
+                                 String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+                                 String(d.getDate()).padStart(2, '0');
+            return localDateStr === dayVal;
+        });
+    }
+
+    // --- UPDATE UI CARDS ---
+    let totalRev = 0;
+    filteredData.forEach(sale => {
+        totalRev += Number(sale.total_amount || 0);
+    });
+
+    const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
+    
+    const revEl = document.getElementById('val-rev');
+    const profEl = document.getElementById('val-prof');
+    
+    if (revEl) revEl.innerText = formatCurrency(totalRev);
+    // Simple profit estimation for demo (Assuming 30% margin)
+    if (profEl) profEl.innerText = formatCurrency(totalRev * 0.30);
+
+    // Call your Chart.js update function if it exists in ui.js
+    if (typeof window.updateDashboard === 'function') {
+        window.updateDashboard(filteredData);
+    }
+};
+
+/**
+ * Resets all filters back to default
+ */
+window.clearFilters = function() {
+    document.getElementById('slicer-year').value = 'all';
+    document.getElementById('slicer-month').value = 'all';
+    document.getElementById('slicer-day').value = '';
+    window.handleFilterChange();
+};
+
+
+// ============================================================================
+// 3. LIVE CLOCK & QUOTE SYSTEM
+// ============================================================================
+
 const quotes = [
     "Every ride is a tiny holiday.", 
     "Life is like riding a bicycle. To keep your balance, you must keep moving.", 
@@ -133,45 +272,11 @@ function startClock() {
     }
 }
 
-// --- EXPOSURES ---
-window.toggleAI = toggleAI; 
-window.clearAIChat = clearAIChat; 
-window.handleAIKey = handleUserQuery; 
-window.triggerAIQuery = triggerAIQuery; 
-window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
-window.posModule = posModule;
+// ============================================================================
+// 4. DATA SYNC & AI CLASSIFICATION
+// ============================================================================
 
-window.onload = function () {
-    try {
-        initSupabase();
-        startClock();
-        
-        window.handleLogin = handleLogin; 
-        window.handleLogout = handleLogout; 
-        window.handleResetPassword = handleResetPassword;
-        window.uploadToSupabase = uploadToSupabase;
-        window.clearDatabase = clearDatabase;
-        window.toggleTheme = toggleTheme; 
-        
-        window.switchContext = (mode) => { 
-            hideAllSections(); 
-            document.getElementById('dashboard-view').classList.remove('hidden'); 
-            setActiveNav('nav-revenue'); 
-            switchContext(mode); 
-        };
-        
-        window.handleMonthChange = handleMonthChange; 
-        window.updateDashboard = updateDashboard;
-        
-        checkSession();
-    } catch (err) { 
-        console.error(err); 
-        alert("Startup Error: " + err.message); 
-    }
-};
-
-// Add this to the very bottom of js/app.js
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
     const file = fileInput.files[0];
@@ -180,9 +285,11 @@ window.uploadAIClassification = async () => {
         return alert("Please select the Industry_ABC_Classification.xlsx file first!");
     }
 
-    // Show loading screen
     const loader = document.getElementById('loader');
-    if(loader) loader.classList.remove('hidden');
+    if(loader) {
+        loader.classList.remove('hidden');
+        setTimeout(() => loader.classList.remove('opacity-0'), 10);
+    }
 
     const reader = new FileReader();
     
@@ -193,28 +300,20 @@ window.uploadAIClassification = async () => {
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-            
-            // --- THE BULLETPROOF FIX ---
-            // Dynamically load the config file to guarantee we get the database connection
-            const configModule = await import('./config.js');
-            const supabaseClient = configModule.getSupabase();
+            const supabaseClient = getSupabase();
             
             if (!supabaseClient) {
                 throw new Error("Could not connect to Supabase database.");
             }
-            // ---------------------------
 
             let successCount = 0;
 
-            // Loop through the Excel rows and update Supabase
             for (let row of jsonRows) {
                 const partName = row['Spare Part Name'];
                 const aiClass = row['AI_Classification'];
 
                 if (partName && aiClass) {
-                    // Update the product in Supabase where the name matches exactly
                     const { error } = await supabaseClient.from('products')
                         .update({ ai_class: aiClass })
                         .eq('name', partName.trim());
@@ -227,11 +326,14 @@ window.uploadAIClassification = async () => {
                 }
             }
 
-            // Hide loader and show success!
-            if(loader) loader.classList.add('hidden');
-            fileInput.value = ''; // Reset file input
+            if(loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 300);
+            }
             
-            // Show success message
+            fileInput.value = ''; 
+            
+            // Show success message using Custom Modal
             const modal = document.getElementById('custom-modal');
             if (modal) {
                 document.getElementById('modal-title').innerText = "AI Sync Complete";
@@ -247,16 +349,64 @@ window.uploadAIClassification = async () => {
                 alert(`Successfully synced ${successCount} AI inventory labels!`);
             }
             
-            // Reload the inventory to show the badges instantly
+            // Reload the inventory to show the new A/B/C badges
             if (window.posModule && window.posModule.loadInventory) {
                 await window.posModule.loadInventory();
             }
 
         } catch (err) {
-            if(loader) loader.classList.add('hidden');
+            if(loader) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 300);
+            }
             alert("Error processing Excel file: " + err.message);
         }
     };
     
     reader.readAsArrayBuffer(file);
+};
+
+
+// ============================================================================
+// 5. GLOBAL EXPOSURES & INITIALIZATION
+// ============================================================================
+
+window.toggleAI = toggleAI; 
+window.clearAIChat = clearAIChat; 
+window.handleAIKey = handleUserQuery; 
+window.triggerAIQuery = triggerAIQuery; 
+window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
+
+window.posModule = posModule;
+
+window.onload = async function () {
+    try {
+        initSupabase();
+        startClock();
+        
+        window.handleLogin = handleLogin; 
+        window.handleLogout = handleLogout; 
+        window.handleResetPassword = handleResetPassword;
+        window.uploadToSupabase = uploadToSupabase;
+        window.clearDatabase = clearDatabase;
+        window.toggleTheme = toggleTheme; 
+        
+        window.switchContext = (mode) => { 
+            hideAllSections(); 
+            document.getElementById('dashboard-view').classList.remove('hidden'); 
+            setActiveNav('nav-dashboard'); 
+            if (typeof switchContext === 'function') switchContext(mode); 
+        };
+        
+        checkSession();
+        
+        // Initial fetch for dashboard data if the user is already logged in
+        if (sessionStorage.getItem('cycleSenseUser')) {
+            await fetchDashboardData();
+        }
+
+    } catch (err) { 
+        console.error(err); 
+        alert("Startup Error: " + err.message); 
+    }
 };
