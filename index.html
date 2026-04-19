@@ -734,7 +734,9 @@
                     </div>
                     
                     <div class="flex items-center gap-2 flex-wrap">
-                       
+                        <select id="slicer-year" onchange="window.handleFilterChange()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Years</option>
+                        </select>
                         
                         <select id="slicer-month" onchange="window.handleFilterChange()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="all">All Months</option>
