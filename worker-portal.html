@@ -12,208 +12,169 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-        .fade-in { animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; } /* Clean slate-50 bg */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Custom Scrollbar for a cleaner look */
+        /* Subtle custom scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        .premium-shadow { box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); }
-        .glass-button { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
-        .glass-button:hover { background: rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+<body class="text-slate-800 min-h-screen flex flex-col selection:bg-blue-100 selection:text-blue-900">
 
-    <div id="loader" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-[100] hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-slate-100 transform scale-95 transition-transform duration-300">
-            <i class="fas fa-circle-notch fa-spin text-4xl text-indigo-600 mb-4"></i>
-            <p class="text-xs font-black text-slate-800 uppercase tracking-widest">Syncing Data...</p>
+    <div id="loader" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex justify-center items-center z-[100] hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center ring-1 ring-slate-200">
+            <i class="fas fa-circle-notch fa-spin text-3xl text-blue-600 mb-3"></i>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Processing</p>
         </div>
     </div>
 
-    <div id="pin-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 hidden opacity-0 transition-opacity duration-300 px-4">
-        <div class="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="pin-modal-content">
-            <div class="flex justify-between items-center mb-6">
-                <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-xl border border-amber-100">
-                    <i class="fas fa-unlock-alt"></i>
-                </div>
-                <button onclick="closePinModal()" class="text-slate-400 hover:text-red-500 transition bg-slate-50 w-8 h-8 rounded-full flex items-center justify-center"><i class="fas fa-times"></i></button>
+    <div id="pin-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-50 hidden opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl ring-1 ring-slate-200 transform scale-95 transition-transform duration-300" id="pin-modal-content">
+            <div class="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-key text-blue-500"></i> Change Secure PIN</h3>
+                <button onclick="closePinModal()" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-lg"></i></button>
             </div>
-            <h3 class="text-xl font-black text-slate-900 mb-1">Change PIN</h3>
-            <p class="text-xs text-slate-500 font-medium mb-6">Update your secure login credential.</p>
-            
-            <form id="pin-form" class="space-y-5">
+            <form id="pin-form" class="space-y-4">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Current PIN</label>
-                    <input type="password" id="current-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-center text-slate-700 shadow-inner" required>
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Current PIN</label>
+                    <input type="password" id="current-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-lg tracking-[0.3em] outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition text-center" required>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">New PIN</label>
-                    <input type="password" id="new-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3.5 bg-indigo-50/50 border border-indigo-200 rounded-2xl font-mono text-xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition text-center text-indigo-600 shadow-inner" required>
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">New PIN</label>
+                    <input type="password" id="new-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-lg tracking-[0.3em] outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition text-center text-blue-600 font-bold" required>
                 </div>
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-2xl transition shadow-xl shadow-slate-900/20 active:scale-[0.98] mt-2">Save New PIN</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-sm active:scale-95 mt-2">Update PIN</button>
             </form>
         </div>
     </div>
 
-    <div id="login-view" class="flex-grow flex flex-col justify-center items-center p-4 fade-in min-h-screen bg-slate-50 relative overflow-hidden">
-        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div class="w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 premium-shadow border border-slate-100 relative z-10 slide-up">
-            <div class="text-center mb-10">
-                <div class="w-20 h-20 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-[1.5rem] mx-auto flex items-center justify-center mb-6 shadow-xl shadow-indigo-600/30 border-4 border-white">
-                    <i class="fas fa-bicycle text-white text-3xl"></i>
+    <div id="login-view" class="flex-grow flex flex-col justify-center items-center p-4 fade-in min-h-screen">
+        <div class="w-full max-w-sm bg-white rounded-2xl p-8 shadow-sm ring-1 ring-slate-200">
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-blue-50 rounded-xl mx-auto flex items-center justify-center mb-4 ring-1 ring-blue-100 text-blue-600 text-2xl">
+                    <i class="fas fa-briefcase"></i>
                 </div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Employee Portal</h1>
-                <p class="text-slate-400 text-xs font-bold tracking-widest uppercase mt-2">CycleSense Cloud System</p>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">CycleSense Portal</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">Employee Authentication</p>
             </div>
 
-            <form id="login-form" class="space-y-6">
+            <form id="login-form" class="space-y-5">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Worker ID</label>
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Worker ID</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fas fa-user text-slate-400"></i>
                         </div>
-                        <input type="text" id="worker-uid" class="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 font-mono font-bold text-lg uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition placeholder-slate-300 shadow-inner" placeholder="W2026..." required>
+                        <input type="text" id="worker-uid" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold text-base uppercase outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition" placeholder="W2026..." required>
                     </div>
                 </div>
 
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Secure PIN</label>
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Secure PIN</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <i class="fas fa-lock text-slate-400"></i>
                         </div>
-                        <input type="password" id="worker-pin" inputmode="numeric" pattern="[0-9]*" class="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 font-mono font-black tracking-[0.4em] text-2xl outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-center placeholder-slate-300 shadow-inner" placeholder="••••" required>
+                        <input type="password" id="worker-pin" inputmode="numeric" pattern="[0-9]*" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono font-bold tracking-[0.3em] text-xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition text-center" placeholder="••••" required>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full pt-2">
-                    <div class="bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-2xl transition shadow-xl shadow-slate-900/20 active:scale-[0.98] flex justify-center items-center gap-2 text-lg">
-                        Authenticate <i class="fas fa-arrow-right text-sm opacity-80"></i>
-                    </div>
+                <button type="submit" class="w-full mt-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition shadow-sm active:scale-[0.98]">
+                    Log In
                 </button>
             </form>
         </div>
+        <div class="mt-8 text-center">
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">CycleSense Cloud ERP</p>
+        </div>
     </div>
 
-    <div id="dashboard-view" class="hidden flex-col flex-grow w-full relative fade-in">
+    <div id="dashboard-view" class="hidden flex-col flex-grow w-full fade-in">
         
-        <div class="bg-[#0f172a] pt-10 pb-32 px-6 md:px-12 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none transform translate-x-1/3 -translate-y-1/4"></div>
-            
-            <div class="max-w-5xl mx-auto relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div class="flex items-center gap-5">
-                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-indigo-500/30">
-                        <div class="w-full h-full bg-[#0f172a] rounded-full flex items-center justify-center">
-                            <i class="fas fa-user text-2xl text-indigo-400"></i>
-                        </div>
+        <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-bicycle text-blue-600 text-xl"></i>
+                        <span class="font-black text-slate-900 tracking-tight hidden sm:block">CycleSense</span>
                     </div>
-                    <div>
-                        <p class="text-indigo-300/70 text-[10px] font-bold uppercase tracking-widest mb-1">Welcome Back</p>
-                        <h1 id="dash-name" class="text-3xl font-black text-white tracking-tight leading-none mb-2">Employee Name</h1>
-                        <div class="flex items-center gap-2 text-sm font-medium">
-                            <span class="font-mono text-indigo-300 font-bold" id="dash-id">ID</span>
-                            <span class="text-slate-600">|</span>
-                            <span class="text-slate-300">Rate: <span id="dash-rate" class="font-bold text-white">LKR 0.00</span></span>
-                        </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openPinModal()" class="text-sm font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50">
+                            <i class="fas fa-key"></i> <span class="hidden sm:inline">Change PIN</span>
+                        </button>
+                        <div class="w-px h-5 bg-slate-200"></div>
+                        <button onclick="logout()" class="text-sm font-semibold text-red-600 hover:text-red-700 transition flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
+                        </button>
                     </div>
-                </div>
-
-                <div class="flex gap-3 w-full md:w-auto">
-                    <button onclick="openPinModal()" class="flex-1 md:flex-none glass-button text-white px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
-                        <i class="fas fa-key text-amber-400"></i> Change PIN
-                    </button>
-                    <button onclick="logout()" class="flex-1 md:flex-none glass-button text-white px-5 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 hover:bg-red-500/20 hover:border-red-500/50">
-                        <i class="fas fa-sign-out-alt text-red-400"></i> Logout
-                    </button>
                 </div>
             </div>
-        </div>
+        </nav>
 
-        <div class="max-w-5xl mx-auto w-full px-4 md:px-12 -mt-20 relative z-20 slide-up pb-12">
+        <div class="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-grow">
             
-            <div class="bg-white rounded-[2rem] p-6 md:p-8 premium-shadow border border-slate-100 mb-8">
+            <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                <div>
+                    <h1 id="dash-name" class="text-3xl font-black text-slate-900 tracking-tight mb-2">Employee Name</h1>
+                    <div class="flex items-center gap-3 text-sm">
+                        <span class="bg-blue-50 text-blue-700 border border-blue-200 font-mono font-bold px-2 py-0.5 rounded text-xs" id="dash-id">ID</span>
+                        <span class="text-slate-300">|</span>
+                        <span class="text-slate-500 font-medium">Daily Rate: <span id="dash-rate" class="font-bold text-slate-800">LKR 0.00</span></span>
+                    </div>
+                </div>
                 
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-slate-100 pb-5">
-                    <h2 class="text-xl font-black text-slate-800 flex items-center gap-3 tracking-tight">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg border border-blue-100">
-                            <i class="fas fa-file-invoice-dollar"></i>
-                        </div>
-                        Payroll Summary
-                    </h2>
-                    <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200 w-full sm:w-auto shadow-inner">
-                        <label class="text-[10px] font-black text-slate-400 pl-3 uppercase tracking-widest hidden sm:block">Period</label>
-                        <input type="month" id="month-selector" class="bg-white border border-slate-200 text-slate-800 text-sm font-black rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer w-full sm:w-auto shadow-sm transition" onchange="updateDashboardData()">
+                <div class="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
+                    <label class="text-xs font-bold text-slate-500 pl-3 uppercase tracking-wider hidden sm:block whitespace-nowrap">Payroll Month:</label>
+                    <input type="month" id="month-selector" class="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-bold rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-full sm:w-auto transition" onchange="updateDashboardData()">
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-8 overflow-hidden">
+                
+                <div class="bg-slate-900 p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-800">
+                    <div class="text-center sm:text-left">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1"><i class="fas fa-wallet text-blue-400 mr-1"></i> Estimated Net Payable</p>
+                        <p class="text-slate-300 text-xs">Transferred by the 25th of the month.</p>
+                    </div>
+                    <div class="text-center sm:text-right w-full sm:w-auto overflow-hidden">
+                        <h2 id="dash-net" class="text-4xl sm:text-5xl font-black text-white tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">LKR 0.00</h2>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
                     
-                    <div class="lg:col-span-7 space-y-6">
-                        
-                        <div>
-                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Earnings Calculation</h3>
-                            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3">
-                                <div class="flex justify-between items-center text-sm font-medium text-slate-600">
-                                    <span id="lbl-full" class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> Full Days (0)</span>
-                                    <span id="val-full" class="font-bold text-slate-800">LKR 0.00</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm font-medium text-slate-600">
-                                    <span id="lbl-half" class="flex items-center gap-2"><i class="fas fa-adjust text-amber-500"></i> Half Days (0)</span>
-                                    <span id="val-half" class="font-bold text-slate-800">LKR 0.00</span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm font-medium text-slate-600">
-                                    <span id="lbl-short" class="flex items-center gap-2"><i class="fas fa-clock text-blue-500"></i> Short Leaves (0)</span>
-                                    <span id="val-short" class="font-bold text-slate-800">LKR 0.00</span>
-                                </div>
-                                <div class="pt-3 border-t border-slate-200 flex justify-between items-center text-sm font-bold">
-                                    <span class="text-red-500">Time Penalties</span>
-                                    <span id="val-penalty" class="text-red-600 bg-red-50 px-2 py-0.5 rounded">- LKR 0.00</span>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-center px-5 py-3 mt-2">
-                                <span class="font-black text-slate-800 uppercase text-xs tracking-widest">Gross Earnings</span>
-                                <span id="dash-gross" class="text-lg font-black text-emerald-600">LKR 0.00</span>
+                    <div class="p-6 sm:p-8">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Earnings Breakdown</h3>
+                        <div class="space-y-3 text-sm font-medium text-slate-600">
+                            <div class="flex justify-between items-center"><span id="lbl-full" class="flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500 w-4"></i> Full Days (0)</span><span id="val-full" class="font-bold text-slate-800">LKR 0.00</span></div>
+                            <div class="flex justify-between items-center"><span id="lbl-half" class="flex items-center gap-2"><i class="fas fa-adjust text-amber-500 w-4"></i> Half Days (0)</span><span id="val-half" class="font-bold text-slate-800">LKR 0.00</span></div>
+                            <div class="flex justify-between items-center"><span id="lbl-short" class="flex items-center gap-2"><i class="fas fa-clock text-blue-500 w-4"></i> Short Leaves (0)</span><span id="val-short" class="font-bold text-slate-800">LKR 0.00</span></div>
+                            
+                            <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-sm font-bold">
+                                <span class="text-slate-500 flex items-center gap-2"><i class="fas fa-exclamation-circle text-red-400 w-4"></i> Time Penalties</span>
+                                <span id="val-penalty" class="text-red-600">- LKR 0.00</span>
                             </div>
                         </div>
-
-                        <div>
-                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Statutory & Advances</h3>
-                            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-3 text-sm font-medium">
-                                <div class="flex justify-between items-center">
-                                    <span class="text-slate-600">Advances Deducted</span>
-                                    <span id="dash-advances" class="font-bold text-red-600">- LKR 0.00</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <span class="text-slate-600">EPF Statutory (8%)</span>
-                                    <span id="dash-epf" class="font-bold text-yellow-600">- LKR 0.00</span>
-                                </div>
-                            </div>
+                        <div class="mt-6 pt-4 border-t-2 border-slate-100 flex justify-between items-center">
+                            <span class="font-black text-slate-800">Gross Earnings</span>
+                            <span id="dash-gross" class="text-lg font-black text-emerald-600">LKR 0.00</span>
                         </div>
                     </div>
 
-                    <div class="lg:col-span-5 flex flex-col">
-                        <div class="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[2rem] p-8 flex-grow flex flex-col justify-center relative overflow-hidden shadow-xl shadow-indigo-600/20">
-                            <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl text-white"><i class="fas fa-wallet"></i></div>
-                            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xNSkiLz48L3N2Zz4=')] opacity-50"></div>
-                            
-                            <div class="relative z-10 text-center">
-                                <span class="bg-white/20 text-white backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 inline-block border border-white/20 shadow-inner">
-                                    Est. Net Payable
-                                </span>
-                                <h2 id="dash-net" class="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg break-words">LKR 0.00</h2>
-                                <p class="text-indigo-200 text-xs font-medium mt-4">Transferred by the 25th of the month.</p>
+                    <div class="p-6 sm:p-8 bg-slate-50/50">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Statutory & Deductions</h3>
+                        <div class="space-y-3 text-sm font-medium text-slate-600">
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-2"><i class="fas fa-hand-holding-usd text-red-400 w-4"></i> Advances Taken</span>
+                                <span id="dash-advances" class="font-bold text-red-600">- LKR 0.00</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center gap-2"><i class="fas fa-piggy-bank text-yellow-500 w-4"></i> EPF Statutory (8%)</span>
+                                <span id="dash-epf" class="font-bold text-red-600">- LKR 0.00</span>
                             </div>
                         </div>
                     </div>
@@ -221,53 +182,47 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-[2rem] premium-shadow border border-slate-100 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
                 
-                <div class="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-2">
-                    <button onclick="switchTab('attendance')" id="tab-attendance" class="flex-1 py-3.5 text-sm font-black text-indigo-700 bg-white rounded-xl shadow-sm border border-slate-200 transition flex justify-center items-center gap-2">
-                        <i class="far fa-calendar-check text-indigo-500"></i> Attendance Log
+                <div class="flex border-b border-slate-200 bg-slate-50">
+                    <button onclick="switchTab('attendance')" id="tab-attendance" class="flex-1 py-4 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition bg-white flex justify-center items-center gap-2">
+                        <i class="far fa-calendar-check"></i> Attendance Log
                     </button>
-                    <button onclick="switchTab('advances')" id="tab-advances" class="flex-1 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition flex justify-center items-center gap-2">
-                        <i class="fas fa-hand-holding-usd text-slate-400"></i> Advances History
+                    <button onclick="switchTab('advances')" id="tab-advances" class="flex-1 py-4 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex justify-center items-center gap-2">
+                        <i class="fas fa-money-bill-wave"></i> Advances History
                     </button>
                 </div>
 
-                <div id="list-attendance" class="p-0 overflow-x-auto min-h-[300px]">
+                <div id="list-attendance" class="p-0 overflow-x-auto min-h-[250px]">
                     <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-white text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-100">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
                             <tr>
-                                <th class="p-5">Date</th>
-                                <th class="p-5">Status</th>
-                                <th class="p-5 text-center">In Time</th>
-                                <th class="p-5 text-center">Out Time</th>
-                                <th class="p-5 text-right">Penalty</th>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4 text-center">Time In</th>
+                                <th class="px-6 py-4 text-center">Time Out</th>
+                                <th class="px-6 py-4 text-right">Penalty</th>
                             </tr>
                         </thead>
-                        <tbody id="attendance-tbody" class="divide-y divide-slate-50">
+                        <tbody id="attendance-tbody" class="divide-y divide-slate-100">
                             </tbody>
                     </table>
                 </div>
 
-                <div id="list-advances" class="p-0 overflow-x-auto min-h-[300px] hidden">
+                <div id="list-advances" class="p-0 overflow-x-auto min-h-[250px] hidden">
                     <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-white text-slate-400 text-[10px] uppercase tracking-widest font-black border-b border-slate-100">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest font-bold border-b border-slate-200">
                             <tr>
-                                <th class="p-5">Date Issued</th>
-                                <th class="p-5 text-right">Amount Deducted</th>
+                                <th class="px-6 py-4">Date Issued</th>
+                                <th class="px-6 py-4 text-right">Amount Deducted</th>
                             </tr>
                         </thead>
-                        <tbody id="advances-tbody" class="divide-y divide-slate-50">
+                        <tbody id="advances-tbody" class="divide-y divide-slate-100">
                             </tbody>
                     </table>
                 </div>
             </div>
             
-            <div class="text-center mt-10">
-                <span class="bg-slate-200 text-slate-500 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                    Powered by CycleSense Cloud ERP
-                </span>
-            </div>
-
         </div>
     </div>
 
@@ -403,13 +358,13 @@
             const netPay = grossEarnings - totalAdvances - epfDeduction;
 
             // Update Breakdown Panel
-            document.getElementById('lbl-full').innerHTML = `<i class="fas fa-check-circle text-emerald-500 mr-1"></i> Full Days (${full})`;
+            document.getElementById('lbl-full').innerHTML = `<i class="fas fa-check-circle text-emerald-500 w-4"></i> Full Days (${full})`;
             document.getElementById('val-full').innerText = formatCurrency(grossFull);
             
-            document.getElementById('lbl-half').innerHTML = `<i class="fas fa-adjust text-amber-500 mr-1"></i> Half Days (${half})`;
+            document.getElementById('lbl-half').innerHTML = `<i class="fas fa-adjust text-amber-500 w-4"></i> Half Days (${half})`;
             document.getElementById('val-half').innerText = formatCurrency(grossHalf);
             
-            document.getElementById('lbl-short').innerHTML = `<i class="fas fa-clock text-blue-500 mr-1"></i> Short Leaves (${short})`;
+            document.getElementById('lbl-short').innerHTML = `<i class="fas fa-clock text-blue-500 w-4"></i> Short Leaves (${short})`;
             document.getElementById('val-short').innerText = formatCurrency(grossShort);
             
             document.getElementById('val-penalty').innerText = `- ${formatCurrency(timePenalty)}`;
@@ -422,7 +377,7 @@
             // Render Attendance Table
             const attTbody = document.getElementById('attendance-tbody');
             if (!attData || attData.length === 0) {
-                attTbody.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-slate-400 font-bold bg-slate-50/50"><i class="far fa-calendar-times text-3xl mb-3 block opacity-50"></i>No attendance recorded yet.</td></tr>`;
+                attTbody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium bg-slate-50"><i class="far fa-calendar-times text-2xl mb-2 block opacity-50"></i>No attendance recorded yet.</td></tr>`;
             } else {
                 let attHtml = '';
                 attData.forEach(a => {
@@ -431,11 +386,11 @@
                     let outT = a.out_time || '-';
                     let penVal = '-';
                     
-                    // Styled perfectly to match the Inventory Badge aesthetic
-                    if (a.status === 'Full Day') badge = `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-widest">Full Day</span>`;
-                    else if (a.status === 'Half Day') badge = `<span class="bg-amber-100 text-amber-700 border border-amber-200 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-widest">Half Day</span>`;
-                    else if (a.status === 'Short Leave') badge = `<span class="bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-widest">Short Leave</span>`;
-                    else { badge = `<span class="bg-red-100 text-red-700 border border-red-200 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-widest">Absent</span>`; inT = '-'; outT = '-'; }
+                    // Unified Professional Badges
+                    if (a.status === 'Full Day') badge = `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider">Full Day</span>`;
+                    else if (a.status === 'Half Day') badge = `<span class="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider">Half Day</span>`;
+                    else if (a.status === 'Short Leave') badge = `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider">Short Leave</span>`;
+                    else { badge = `<span class="bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-md font-bold text-[10px] uppercase tracking-wider">Absent</span>`; inT = '-'; outT = '-'; }
 
                     if (a.status === 'Full Day' && a.in_time && a.out_time) {
                         const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
@@ -445,17 +400,17 @@
                         if (outMins < 1020) missed += (1020 - outMins);
                         if (missed > 0) {
                             const penAmount = missed * (dailySalary / 420);
-                            penVal = `<span class="text-red-600 bg-red-50 px-2 py-1 rounded font-bold text-xs border border-red-100 shadow-sm">- ${formatCurrency(penAmount)}</span>`;
+                            penVal = `<span class="text-red-600 font-bold">- ${formatCurrency(penAmount)}</span>`;
                         }
                     }
 
                     attHtml += `
-                        <tr class="hover:bg-slate-50 transition duration-200 group">
-                            <td class="p-5 font-bold text-slate-800">${a.date}</td>
-                            <td class="p-5">${badge}</td>
-                            <td class="p-5 text-center font-mono font-bold text-slate-500 group-hover:text-indigo-600 transition">${inT}</td>
-                            <td class="p-5 text-center font-mono font-bold text-slate-500 group-hover:text-indigo-600 transition">${outT}</td>
-                            <td class="p-5 text-right">${penVal}</td>
+                        <tr class="hover:bg-slate-50 transition duration-150">
+                            <td class="px-6 py-4 font-semibold text-slate-800">${a.date}</td>
+                            <td class="px-6 py-4">${badge}</td>
+                            <td class="px-6 py-4 text-center font-mono text-slate-600">${inT}</td>
+                            <td class="px-6 py-4 text-center font-mono text-slate-600">${outT}</td>
+                            <td class="px-6 py-4 text-right">${penVal}</td>
                         </tr>
                     `;
                 });
@@ -465,14 +420,14 @@
             // Render Advances Table
             const advTbody = document.getElementById('advances-tbody');
             if (!advData || advData.length === 0) {
-                advTbody.innerHTML = `<tr><td colspan="2" class="p-12 text-center text-slate-400 font-bold bg-slate-50/50"><i class="fas fa-hand-holding-usd text-3xl mb-3 block opacity-50"></i>No advances taken.</td></tr>`;
+                advTbody.innerHTML = `<tr><td colspan="2" class="px-6 py-12 text-center text-slate-400 font-medium bg-slate-50"><i class="fas fa-hand-holding-usd text-2xl mb-2 block opacity-50"></i>No advances taken this month.</td></tr>`;
             } else {
                 let advHtml = '';
                 advData.forEach(a => {
                     advHtml += `
-                        <tr class="hover:bg-slate-50 transition duration-200">
-                            <td class="p-5 font-bold text-slate-800"><i class="far fa-calendar-alt text-slate-400 mr-2"></i> ${a.date}</td>
-                            <td class="p-5 text-right font-black text-red-500 text-lg">- ${formatCurrency(a.amount)}</td>
+                        <tr class="hover:bg-slate-50 transition duration-150">
+                            <td class="px-6 py-4 font-semibold text-slate-800">${a.date}</td>
+                            <td class="px-6 py-4 text-right font-bold text-red-600">- ${formatCurrency(a.amount)}</td>
                         </tr>
                     `;
                 });
@@ -489,12 +444,12 @@
 
             if (tabName === 'attendance') {
                 attList.classList.remove('hidden'); advList.classList.add('hidden');
-                attBtn.className = "flex-1 py-3.5 text-sm font-black text-indigo-700 bg-white rounded-xl shadow-sm border border-slate-200 transition flex justify-center items-center gap-2";
-                advBtn.className = "flex-1 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl border border-transparent transition flex justify-center items-center gap-2";
+                attBtn.className = "flex-1 py-4 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition bg-white flex justify-center items-center gap-2";
+                advBtn.className = "flex-1 py-4 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex justify-center items-center gap-2";
             } else {
                 advList.classList.remove('hidden'); attList.classList.add('hidden');
-                advBtn.className = "flex-1 py-3.5 text-sm font-black text-indigo-700 bg-white rounded-xl shadow-sm border border-slate-200 transition flex justify-center items-center gap-2";
-                attBtn.className = "flex-1 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl border border-transparent transition flex justify-center items-center gap-2";
+                advBtn.className = "flex-1 py-4 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition bg-white flex justify-center items-center gap-2";
+                attBtn.className = "flex-1 py-4 text-sm font-medium text-slate-500 border-b-2 border-transparent hover:text-slate-800 hover:bg-slate-100 transition flex justify-center items-center gap-2";
             }
         }
 
