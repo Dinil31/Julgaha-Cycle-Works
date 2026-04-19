@@ -727,14 +727,39 @@
             
             <div id="dashboard-view" class="fade-in">
                 
-                <div class="flex gap-3 mb-6 justify-end flex-wrap bg-white dark:bg-darkcard p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="flex gap-3 mb-6 justify-between items-center flex-wrap bg-white dark:bg-darkcard p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <div class="flex bg-gray-100 dark:bg-slate-800 rounded-lg p-1">
                         <button onclick="window.switchContext('past')" id="btn-past" class="px-5 py-1.5 bg-slate-800 text-white rounded-md shadow text-sm font-bold transition">Past Records</button>
                         <button onclick="window.switchContext('predicted')" id="btn-pred" class="px-5 py-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white rounded-md text-sm font-bold transition">AI Predictions</button>
                     </div>
-                    <select id="slicer-month" onchange="window.handleMonthChange()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="all">All Months</option>
-                    </select>
+                    
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="slicer-year" onchange="window.updateDashboard()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Years</option>
+                        </select>
+                        
+                        <select id="slicer-month" onchange="window.updateDashboard()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Months</option>
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+
+                        <input type="date" id="slicer-date" onchange="window.updateDashboard()" class="p-2 bg-gray-50 border border-gray-200 rounded-lg dark:bg-slate-700 dark:text-white dark:border-gray-600 text-sm font-bold cursor-pointer outline-none focus:ring-2 focus:ring-blue-500">
+                        
+                        <button onclick="document.getElementById('slicer-year').value='all'; document.getElementById('slicer-month').value='all'; document.getElementById('slicer-date').value=''; window.updateDashboard();" class="p-2.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white border border-red-100 rounded-lg text-sm font-bold transition shadow-sm" title="Clear Filters">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -1417,19 +1442,9 @@
                 </div>
                 <div class="text-center mt-2">
                     <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">
-                <i class="fas fa-cogs text-purple-400"></i> CycleSense Deterministic Engine
+                <i class="fas fa-cogs text-purple-400"></i> CycleSense Determin Engine
             </span>
                 </div>
-            </div>
-        </div>
-
-        <div id="loader" class="fixed inset-0 glass-overlay flex items-center justify-center hidden z-[100] backdrop-blur-md">
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-2xl flex flex-col items-center border border-gray-200 dark:border-gray-700">
-                <div class="relative">
-                    <i class="fas fa-bicycle text-5xl text-blue-500 animate-ride absolute"></i>
-                    <i class="fas fa-circle-notch fa-spin text-6xl text-gray-200 dark:text-gray-700"></i>
-                </div>
-                <p class="mt-4 font-black text-gray-600 dark:text-gray-300 tracking-widest uppercase text-xs animate-pulse">Processing...</p>
             </div>
         </div>
 
