@@ -10,7 +10,7 @@ function setActiveNav(activeId) {
     const navs = [
         'nav-revenue', 
         'nav-pos', 
-        'nav-showroom', 
+        'nav-showroom', // Added Showroom
         'nav-inventory', 
         'nav-repairs', 
         'nav-hr', 
@@ -34,7 +34,7 @@ function hideAllSections() {
     const sections = [
         'dashboard-view', 
         'pos-view', 
-        'showroom-view', 
+        'showroom-view', // Added Showroom
         'inventory-view', 
         'repairs-view', 
         'hr-view', 
@@ -63,7 +63,7 @@ window.handleNavClick = function(tabName) {
         document.getElementById('pos-view').classList.remove('hidden'); 
         posModule.initPOS(); 
     }
-    else if (tabName === 'showroom') { 
+    else if (tabName === 'showroom') { // Added Showroom Logic
         setActiveNav('nav-showroom'); 
         document.getElementById('showroom-view').classList.remove('hidden'); 
         posModule.loadShowroom(); 
@@ -161,7 +161,6 @@ window.onload = function () {
             switchContext(mode); 
         };
         
-        // Expose ui.js filtering functions to the HTML elements
         window.handleMonthChange = handleMonthChange; 
         window.updateDashboard = updateDashboard;
         
@@ -172,7 +171,7 @@ window.onload = function () {
     }
 };
 
-// --- AI CLASSIFICATION UPLOAD FIX ---
+// Add this to the very bottom of js/app.js
 window.uploadAIClassification = async () => {
     const fileInput = document.getElementById('file-ai-class');
     const file = fileInput.files[0];
@@ -181,6 +180,7 @@ window.uploadAIClassification = async () => {
         return alert("Please select the Industry_ABC_Classification.xlsx file first!");
     }
 
+    // Show loading screen
     const loader = document.getElementById('loader');
     if(loader) loader.classList.remove('hidden');
 
@@ -193,22 +193,28 @@ window.uploadAIClassification = async () => {
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
+            // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
             
+            // --- THE BULLETPROOF FIX ---
+            // Dynamically load the config file to guarantee we get the database connection
             const configModule = await import('./config.js');
             const supabaseClient = configModule.getSupabase();
             
             if (!supabaseClient) {
                 throw new Error("Could not connect to Supabase database.");
             }
+            // ---------------------------
 
             let successCount = 0;
 
+            // Loop through the Excel rows and update Supabase
             for (let row of jsonRows) {
                 const partName = row['Spare Part Name'];
                 const aiClass = row['AI_Classification'];
 
                 if (partName && aiClass) {
+                    // Update the product in Supabase where the name matches exactly
                     const { error } = await supabaseClient.from('products')
                         .update({ ai_class: aiClass })
                         .eq('name', partName.trim());
@@ -221,9 +227,11 @@ window.uploadAIClassification = async () => {
                 }
             }
 
+            // Hide loader and show success!
             if(loader) loader.classList.add('hidden');
-            fileInput.value = ''; 
+            fileInput.value = ''; // Reset file input
             
+            // Show success message
             const modal = document.getElementById('custom-modal');
             if (modal) {
                 document.getElementById('modal-title').innerText = "AI Sync Complete";
@@ -239,6 +247,7 @@ window.uploadAIClassification = async () => {
                 alert(`Successfully synced ${successCount} AI inventory labels!`);
             }
             
+            // Reload the inventory to show the badges instantly
             if (window.posModule && window.posModule.loadInventory) {
                 await window.posModule.loadInventory();
             }
