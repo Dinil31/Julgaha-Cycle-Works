@@ -2,242 +2,436 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Portal - CycleSense</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Employee Portal | CycleSense</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪪</text></svg>">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom Glassmorphism styles */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .bg-animated-gradient {
+            background: linear-gradient(-45deg, #4f46e5, #7c3aed, #2563eb, #0ea5e9);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
-    <div id="login-view" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
-        <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-white text-2xl">
-            <i class="fas fa-id-badge"></i>
+    <div id="loader" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-center items-center z-[100] hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white p-6 rounded-3xl shadow-2xl flex flex-col items-center transform scale-95 transition-transform duration-300">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-indigo-600 mb-3"></i>
+            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Processing...</p>
         </div>
-        <h1 class="text-2xl font-black text-gray-800 mb-1">Employee Portal</h1>
-        <p class="text-gray-500 mb-6 text-sm">Log in using your Worker ID (e.g. W2026001) and PIN.</p>
-
-        <form id="portal-login-form" class="space-y-4">
-            <input id="worker-id" type="text" placeholder="Worker ID (e.g. W2026001)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold uppercase tracking-widest" required>
-            <input id="worker-pin" type="password" placeholder="4-Digit PIN" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold tracking-[0.5em]" required>
-            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Secure Login</button>
-        </form>
-        <p id="login-error" class="text-red-500 text-xs mt-3 hidden"></p>
     </div>
 
-    <div id="dashboard-view" class="hidden max-w-2xl w-full bg-white p-6 md:p-8 rounded-2xl shadow-2xl">
+    <div id="login-view" class="flex-grow flex flex-col justify-center items-center p-6 bg-animated-gradient relative overflow-hidden fade-in">
         
-        <div class="flex justify-between items-start mb-6 border-b pb-4">
-            <div>
-                <h2 class="text-2xl font-black text-gray-800" id="emp-name">Name</h2>
-                <p class="text-gray-500 text-sm">ID: <span id="emp-id" class="font-mono text-purple-600 font-bold"></span> | Daily Rate: <span id="emp-rate"></span></p>
+        <div class="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="absolute bottom-10 left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+
+        <div class="w-full max-w-sm glass-card rounded-[2.5rem] p-8 shadow-2xl relative z-10 slide-up">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-500/30 transform -translate-y-12 mb-[-2rem] border-4 border-white">
+                    <i class="fas fa-id-badge text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-4">Employee Portal</h1>
+                <p class="text-slate-500 text-sm font-medium mt-1">Julgaha Cycle Works</p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="window.changePin()" class="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
-                    <i class="fas fa-key"></i> Change PIN
+
+            <form id="login-form" class="space-y-5">
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2">Worker ID</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-slate-400"></i>
+                        </div>
+                        <input type="text" id="worker-uid" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 font-mono font-bold text-lg uppercase outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner placeholder-slate-300" placeholder="W2026..." required>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2">Secure PIN</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-slate-400"></i>
+                        </div>
+                        <input type="password" id="worker-pin" inputmode="numeric" pattern="[0-9]*" class="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-indigo-600 font-mono font-black tracking-[0.3em] text-xl outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner placeholder-slate-300" placeholder="••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full mt-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-slate-900/20 flex justify-center items-center gap-2 transform active:scale-[0.98]">
+                    Secure Login <i class="fas fa-arrow-right text-sm"></i>
                 </button>
-                <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+            </form>
+            
+            <div class="mt-8 text-center border-t border-slate-100 pt-4">
+                <p class="text-[10px] text-slate-400 font-medium">Forgot your PIN? Please contact the shop manager.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="hidden flex-col min-h-screen pb-20">
+        
+        <div class="bg-indigo-600 text-white px-6 pt-12 pb-24 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 opacity-10 text-9xl transform translate-x-4 -translate-y-4">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            
+            <div class="flex justify-between items-start relative z-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border-2 border-white/50 shadow-inner">
+                        <i class="fas fa-user text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-indigo-200 text-xs font-bold uppercase tracking-widest mb-0.5">Welcome Back,</p>
+                        <h2 id="dash-name" class="text-2xl font-black tracking-tight leading-none">Employee Name</h2>
+                        <p id="dash-id" class="text-indigo-200 text-sm font-mono mt-1"></p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="w-10 h-10 bg-indigo-700/50 hover:bg-indigo-800 text-white rounded-full flex items-center justify-center transition backdrop-blur-sm border border-indigo-500/50">
+                    <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
         </div>
 
-        <div class="mb-4 flex gap-2 items-center">
-            <label class="font-bold text-gray-600 text-sm">Select Month:</label>
-            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold cursor-pointer" onchange="window.loadDashboard()">
-        </div>
+        <div class="container mx-auto px-4 -mt-16 relative z-20 flex-grow max-w-2xl slide-up">
+            
+            <div class="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fas fa-wallet text-emerald-500"></i> Current Month
+                    </h3>
+                    <span id="dash-month" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-lg text-xs font-bold font-mono"></span>
+                </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
-                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Full Days (<span id="count-full">0</span>)</span> 
-                    <span id="val-full" class="font-medium">0.00</span>
+                <div class="text-center py-4 bg-emerald-50 rounded-2xl border border-emerald-100 mb-6 relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 opacity-[0.05] text-6xl text-emerald-600"><i class="fas fa-money-bill-wave"></i></div>
+                    <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest mb-1 relative z-10">Est. Net Salary Payable</p>
+                    <h1 id="dash-net" class="text-4xl md:text-5xl font-black text-emerald-700 tracking-tight relative z-10">LKR 0.00</h1>
                 </div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Half Days (<span id="count-half">0</span>)</span> 
-                    <span id="val-half" class="font-medium">0.00</span>
-                </div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Short Leaves (<span id="count-short">0</span>)</span> 
-                    <span id="val-short" class="font-medium">0.00</span>
-                </div>
-                <div class="flex justify-between text-sm text-red-500 mb-1">
-                    <span>Time Penalties</span> 
-                    <span id="val-penalty" class="font-medium">- 0.00</span>
-                </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
-                    <span>Gross Earnings</span> 
-                    <span id="val-gross">0.00</span>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Accrued Gross</p>
+                        <p id="dash-gross" class="text-lg font-black text-slate-800">LKR 0.00</p>
+                    </div>
+                    <div class="bg-red-50 p-4 rounded-2xl border border-red-100">
+                        <p class="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-1">Advances Deducted</p>
+                        <p id="dash-advances" class="text-lg font-black text-red-600">- LKR 0.00</p>
+                    </div>
+                    <div class="col-span-2 bg-yellow-50 p-4 rounded-2xl border border-yellow-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-yellow-600 font-bold uppercase tracking-widest mb-1">EPF Deduction (8%)</p>
+                            <p id="dash-epf" class="text-base font-black text-yellow-700">- LKR 0.00</p>
+                        </div>
+                        <i class="fas fa-piggy-bank text-2xl text-yellow-500/50"></i>
+                    </div>
                 </div>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
-                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
-                <div class="flex justify-between text-sm mb-1 text-red-500">
-                    <span>Advances</span> 
-                    <span id="val-advances">- 0.00</span>
-                </div>
-                <div class="flex justify-between text-sm mb-1 text-red-500">
-                    <span>EPF (8%)</span> 
-                    <span id="val-epf">- 0.00</span>
-                </div>
-                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-blue-600 text-lg">
-                    <span>Net Payable</span> 
-                    <span id="val-net">0.00</span>
-                </div>
+            <div class="flex gap-2 mb-4 bg-slate-200/50 p-1.5 rounded-2xl backdrop-blur-sm">
+                <button onclick="switchTab('attendance')" id="tab-attendance" class="flex-1 bg-white text-slate-800 shadow-sm py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2">
+                    <i class="far fa-calendar-check text-blue-500"></i> Attendance
+                </button>
+                <button onclick="switchTab('advances')" id="tab-advances" class="flex-1 text-slate-500 hover:text-slate-800 py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2">
+                    <i class="fas fa-hand-holding-usd text-red-500"></i> Advances
+                </button>
             </div>
-        </div>
 
-        <h3 class="font-bold text-gray-700 mb-2">Attendance Log</h3>
-        <div class="overflow-x-auto border border-gray-200 rounded-xl max-h-60 shadow-sm">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0 shadow-sm">
-                    <tr>
-                        <th class="p-3">Date</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3">In</th>
-                        <th class="p-3">Out</th>
-                        <th class="p-3 text-red-500">Penalty</th>
-                    </tr>
-                </thead>
-                <tbody id="att-log"></tbody>
-            </table>
+            <div id="list-attendance" class="space-y-3 pb-6">
+                </div>
+
+            <div id="list-advances" class="space-y-3 pb-6 hidden">
+                </div>
+
         </div>
     </div>
 
     <script type="module">
         import { getSupabase } from './js/config.js';
-        let currentUser = null;
 
-        const formatCurrency = (v) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(v || 0);
+        // Initialize Formatters
+        const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
 
-        document.getElementById('portal-login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const uid = document.getElementById('worker-id').value.trim().toUpperCase();
-            const pin = document.getElementById('worker-pin').value;
-            
-            const sb = getSupabase();
-            const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
-            
-            if (error || !data) {
-                document.getElementById('login-error').innerText = "Invalid ID or PIN. Please try again.";
-                document.getElementById('login-error').classList.remove('hidden');
-            } else {
-                currentUser = data;
-                document.getElementById('login-view').classList.add('hidden');
-                document.getElementById('dashboard-view').classList.remove('hidden');
-                
-                document.getElementById('emp-name').innerText = data.name;
-                document.getElementById('emp-id').innerText = data.worker_uid;
-                document.getElementById('emp-rate').innerText = formatCurrency(data.daily_salary);
-                
-                const now = new Date();
-                document.getElementById('month-selector').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
-                window.loadDashboard();
+        let currentWorker = null;
+
+        // Auto-Check Session
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedWorker = sessionStorage.getItem('cycleSenseWorker');
+            if (savedWorker) {
+                currentWorker = JSON.parse(savedWorker);
+                showDashboard();
             }
         });
 
-        window.changePin = async () => {
-            const newPin = prompt("Enter your new 4-digit PIN:");
-            
-            if (!newPin || newPin.length !== 4 || isNaN(newPin) || parseInt(newPin) < 0) {
-                return alert("PIN must be exactly 4 numbers.");
-            }
-            
-            const sb = getSupabase();
-            const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
-            
-            if (error) {
-                alert("Failed to update PIN. " + error.message);
-            } else {
-                alert("PIN successfully updated!");
-            }
+        // UI Helpers
+        const showLoader = () => {
+            const l = document.getElementById('loader');
+            l.classList.remove('hidden');
+            setTimeout(() => l.classList.remove('opacity-0'), 10);
+        };
+        const hideLoader = () => {
+            const l = document.getElementById('loader');
+            l.classList.add('opacity-0');
+            setTimeout(() => l.classList.add('hidden'), 300);
         };
 
-        window.loadDashboard = async () => {
-            if (!currentUser) return;
-            const monthStr = document.getElementById('month-selector').value;
-            const [year, month] = monthStr.split('-');
-            
-            const startDate = `${monthStr}-01`;
-            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+        // Login Logic
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
 
+            const uid = document.getElementById('worker-uid').value.toUpperCase().trim();
+            const pin = document.getElementById('worker-pin').value.trim();
             const sb = getSupabase();
-            
-            const { data: attData } = await sb.from('attendance')
-                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
-            
-            const { data: advData } = await sb.from('advances')
-                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate);
 
-            let full = 0, half = 0, short = 0, totalPenalty = 0;
-            const logTable = document.getElementById('att-log');
-            logTable.innerHTML = '';
+            try {
+                const { data, error } = await sb.from('workers')
+                    .select('*')
+                    .eq('worker_uid', uid)
+                    .eq('pin', pin)
+                    .single();
+
+                if (error || !data) throw new Error("Invalid Worker ID or PIN.");
+
+                currentWorker = data;
+                sessionStorage.setItem('cycleSenseWorker', JSON.stringify(data));
+                
+                document.getElementById('login-form').reset();
+                showDashboard();
+
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        // Dashboard Generation
+        async function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            const dash = document.getElementById('dashboard-view');
+            dash.classList.remove('hidden');
+            dash.classList.add('flex');
+
+            // Populate Static Header Data
+            document.getElementById('dash-name').innerText = currentWorker.name;
+            document.getElementById('dash-id').innerText = currentWorker.worker_uid;
+
+            const now = new Date();
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
+            const formattedMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            document.getElementById('dash-month').innerText = formattedMonth;
+
+            // Fetch and Calculate Data
+            showLoader();
+            try {
+                await fetchAndRenderData(currentWorker.id, monthStr, currentWorker.daily_salary);
+            } catch (err) {
+                alert("Error loading dashboard data: " + err.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function fetchAndRenderData(wId, monthStr, dailySalary) {
+            const sb = getSupabase();
+            const [year, month] = monthStr.split('-');
+            const startDate = `${monthStr}-01`;
+            
+            // Get end of month or today, whichever is earlier, to not over-calculate expected days
+            const todayStr = new Date().toISOString().split('T')[0];
+            const endDate = todayStr; 
+
+            // Fetch Data
+            const { data: attData } = await sb.from('attendance')
+                .select('*')
+                .eq('worker_id', wId)
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .order('date', {ascending: false}); // Newest first
+
+            const { data: advData } = await sb.from('advances')
+                .select('*')
+                .eq('worker_id', wId)
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .order('date', {ascending: false});
+
+            // 1. Math Engine (Same as pos_module.js)
+            let full = 0, half = 0, short = 0, timePenalty = 0;
 
             if (attData) {
                 attData.forEach(a => {
-                    let dayPenalty = 0;
-                    
-                    if (a.status === 'Full Day') {
+                    if (a.status === 'Half Day') half++;
+                    else if (a.status === 'Short Leave') short++;
+                    else if (a.status === 'Full Day') {
                         full++;
                         if (a.in_time && a.out_time) {
-                            const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
-                            const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
-                            
+                            const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
+                            const inMins = parse(a.in_time); 
+                            const outMins = parse(a.out_time);
                             let missed = 0;
-                            if (inMins > 600) missed += (inMins - 600); // Late after 10:00
-                            if (outMins < 1020) missed += (1020 - outMins); // Early before 17:00
-                            
-                            if (missed > 0) {
-                                dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
-                                totalPenalty += dayPenalty;
-                            }
+                            if (inMins > 600) missed += (inMins - 600); // Late
+                            if (outMins < 1020) missed += (1020 - outMins); // Early leave
+                            if (missed > 0) timePenalty += (missed * (dailySalary / 420));
                         }
-                    } 
-                    else if (a.status === 'Half Day') { 
-                        half++; 
                     }
-                    else if (a.status === 'Short Leave') { 
-                        short++; 
-                    }
-
-                    logTable.innerHTML += `
-                        <tr class="border-b">
-                            <td class="p-3">${a.date}</td>
-                            <td class="p-3 font-bold">${a.status}</td>
-                            <td class="p-3">${a.in_time || '-'}</td>
-                            <td class="p-3">${a.out_time || '-'}</td>
-                            <td class="p-3 text-red-500 font-bold">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
-                        </tr>`;
                 });
             }
 
+            const baseGross = (full * dailySalary) + (short * dailySalary) + (half * (dailySalary / 2));
+            const grossEarnings = baseGross - timePenalty;
+            
+            let totalAdvances = 0;
+            if (advData) totalAdvances = advData.reduce((sum, a) => sum + Number(a.amount), 0);
+            
+            const epfDeduction = grossEarnings > 0 ? grossEarnings * 0.08 : 0;
+            const netPay = grossEarnings - totalAdvances - epfDeduction;
+
+            // 2. Update UI Summary
+            document.getElementById('dash-gross').innerText = formatCurrency(grossEarnings);
+            document.getElementById('dash-advances').innerText = "- " + formatCurrency(totalAdvances);
+            document.getElementById('dash-epf').innerText = "- " + formatCurrency(epfDeduction);
+            document.getElementById('dash-net').innerText = formatCurrency(netPay);
+
+            // 3. Render Attendance List
+            const attList = document.getElementById('list-attendance');
             if (!attData || attData.length === 0) {
-                logTable.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-bold uppercase tracking-widest">No attendance records for this month.</td></tr>`;
+                attList.innerHTML = `<div class="bg-white p-8 rounded-3xl text-center border border-slate-100 shadow-sm"><i class="far fa-calendar-times text-3xl text-slate-300 mb-2"></i><p class="text-sm font-bold text-slate-500">No attendance logged yet.</p></div>`;
+            } else {
+                let attHtml = '';
+                attData.forEach(a => {
+                    let badgeClass = '';
+                    let badgeText = '';
+                    let timeText = '';
+                    
+                    if (a.status === 'Full Day') {
+                        badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-200'; badgeText = 'Full Day';
+                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
+                    } else if (a.status === 'Half Day') {
+                        badgeClass = 'bg-yellow-100 text-yellow-700 border-yellow-200'; badgeText = 'Half Day';
+                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
+                    } else if (a.status === 'Short Leave') {
+                        badgeClass = 'bg-blue-100 text-blue-700 border-blue-200'; badgeText = 'Short Leave';
+                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
+                    } else {
+                        badgeClass = 'bg-red-100 text-red-700 border-red-200'; badgeText = 'Absent';
+                        timeText = 'Did not report';
+                    }
+
+                    // Format Date nicely
+                    const dObj = new Date(a.date);
+                    const dayNum = dObj.getDate();
+                    const dayName = dObj.toLocaleDateString('en-US', { weekday: 'short' });
+
+                    attHtml += `
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                            <div class="bg-slate-50 border border-slate-100 rounded-xl w-14 h-14 flex flex-col items-center justify-center flex-shrink-0 shadow-inner">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">${dayName}</span>
+                                <span class="text-lg font-black text-slate-800 leading-none">${dayNum}</span>
+                            </div>
+                            <div class="flex-grow">
+                                <h4 class="font-bold text-slate-800 text-sm mb-1">${badgeText}</h4>
+                                <p class="text-xs font-mono font-bold text-slate-500 bg-slate-50 inline-block px-2 py-1 rounded border border-slate-100">${timeText}</p>
+                            </div>
+                            <div>
+                                <span class="${badgeClass} px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest border">Status</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                attList.innerHTML = attHtml;
             }
 
-            const baseEarn = (full * currentUser.daily_salary) + (short * currentUser.daily_salary) + (half * (currentUser.daily_salary / 2));
-            const gross = baseEarn - totalPenalty;
-            const advances = (advData || []).reduce((s, a) => s + Number(a.amount), 0);
-            const epf = gross > 0 ? gross * 0.08 : 0;
-            const net = gross - advances - epf;
-
-            document.getElementById('count-full').innerText = full;
-            document.getElementById('val-full').innerText = formatCurrency(full * currentUser.daily_salary);
-            
-            document.getElementById('count-half').innerText = half;
-            document.getElementById('val-half').innerText = formatCurrency(half * (currentUser.daily_salary / 2));
-            
-            document.getElementById('count-short').innerText = short;
-            document.getElementById('val-short').innerText = formatCurrency(short * currentUser.daily_salary);
-            
-            document.getElementById('val-penalty').innerText = "- " + formatCurrency(totalPenalty);
-            document.getElementById('val-gross').innerText = formatCurrency(gross);
-            document.getElementById('val-advances').innerText = "- " + formatCurrency(advances);
-            document.getElementById('val-epf').innerText = "- " + formatCurrency(epf);
-            document.getElementById('val-net').innerText = formatCurrency(net);
+            // 4. Render Advances List
+            const advList = document.getElementById('list-advances');
+            if (!advData || advData.length === 0) {
+                advList.innerHTML = `<div class="bg-white p-8 rounded-3xl text-center border border-slate-100 shadow-sm"><i class="fas fa-receipt text-3xl text-slate-300 mb-2"></i><p class="text-sm font-bold text-slate-500">No advances taken.</p></div>`;
+            } else {
+                let advHtml = '';
+                advData.forEach(a => {
+                    const dObj = new Date(a.date);
+                    advHtml += `
+                        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center border border-red-100">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-0.5">Advance Payment</p>
+                                    <p class="text-sm font-bold text-slate-800">${dObj.toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-black text-red-600 text-lg">- ${formatCurrency(a.amount)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                advList.innerHTML = advHtml;
+            }
         }
+
+        // Tab Switching Logic
+        window.switchTab = function(tabName) {
+            const attList = document.getElementById('list-attendance');
+            const advList = document.getElementById('list-advances');
+            const attBtn = document.getElementById('tab-attendance');
+            const advBtn = document.getElementById('tab-advances');
+
+            if (tabName === 'attendance') {
+                attList.classList.remove('hidden');
+                advList.classList.add('hidden');
+                attBtn.className = "flex-1 bg-white text-slate-800 shadow-sm py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2";
+                advBtn.className = "flex-1 text-slate-500 hover:text-slate-800 py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2";
+            } else {
+                advList.classList.remove('hidden');
+                attList.classList.add('hidden');
+                advBtn.className = "flex-1 bg-white text-slate-800 shadow-sm py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2";
+                attBtn.className = "flex-1 text-slate-500 hover:text-slate-800 py-2.5 rounded-xl text-sm font-bold transition duration-300 flex justify-center items-center gap-2";
+            }
+        }
+
+        // Logout
+        window.logout = function() {
+            sessionStorage.removeItem('cycleSenseWorker');
+            currentWorker = null;
+            document.getElementById('dashboard-view').classList.remove('flex');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        }
+
     </script>
 </body>
 </html>
