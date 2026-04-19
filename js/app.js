@@ -112,46 +112,19 @@ window.switchContext = (mode) => {
     
     // Give data.js a tiny fraction of a second to fetch the active array, then filter and render
     setTimeout(() => {
-        if (typeof getRawData === 'function') {
-            const rawData = getRawData() || [];
-            window.populateYearDropdown(rawData);
-            window.handleFilterChange();
-        }
+        window.handleFilterChange();
     }, 150);
 };
 
 
 // ============================================================================
-// 2. ADVANCED DASHBOARD FILTERING & CHART RENDERING
+// 2. DASHBOARD FILTERING & CHART RENDERING
 // ============================================================================
 
-window.populateYearDropdown = function(data) {
-    const yearSelect = document.getElementById('slicer-year');
-    if (!yearSelect || !data) return;
-
-    const uniqueYears = new Set();
-    data.forEach(row => {
-        const rowDate = row._date || row.date;
-        if (rowDate) {
-            const d = new Date(rowDate);
-            if (!isNaN(d.getFullYear())) uniqueYears.add(d.getFullYear());
-        }
-    });
-
-    let html = '<option value="all">All Years</option>';
-    
-    [...uniqueYears].sort((a,b) => b - a).forEach(year => {
-        html += `<option value="${year}">${year}</option>`;
-    });
-    
-    const currentSelection = yearSelect.value;
-    yearSelect.innerHTML = html;
-    
-    if ([...uniqueYears].includes(parseInt(currentSelection))) {
-        yearSelect.value = currentSelection;
-    }
-};
-
+/**
+ * Main function to filter data by Month and Exact Day.
+ * It safely extracts the raw data, filters it, and redraws the UI.
+ */
 window.handleFilterChange = function() {
     let rawData = [];
     if (typeof getRawData === 'function') {
@@ -163,9 +136,11 @@ window.handleFilterChange = function() {
         return;
     }
     
-    const yearVal = document.getElementById('slicer-year').value;
-    const monthVal = document.getElementById('slicer-month').value;
-    const dayVal = document.getElementById('slicer-day').value;
+    const monthSelect = document.getElementById('slicer-month');
+    const daySelect = document.getElementById('slicer-day');
+    
+    const monthVal = monthSelect ? monthSelect.value : 'all';
+    const dayVal = daySelect ? daySelect.value : '';
 
     let filteredData = rawData.filter(row => {
         const rowDate = row._date || row.date;
@@ -176,14 +151,12 @@ window.handleFilterChange = function() {
 
         let match = true;
 
-        if (yearVal !== 'all') {
-            match = match && (d.getFullYear() === parseInt(yearVal));
-        }
-
+        // 1. Filter by Month ONLY (0 = Jan, 11 = Dec) - Ignores the Year!
         if (monthVal !== 'all') {
             match = match && (d.getMonth() === parseInt(monthVal));
         }
 
+        // 2. Filter by Exact Day (YYYY-MM-DD)
         if (dayVal) {
             const localDateStr = d.getFullYear() + '-' + 
                                  String(d.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -198,10 +171,16 @@ window.handleFilterChange = function() {
     forceUpdateDashboardUI(filteredData);
 };
 
+/**
+ * Resets all filters back to default
+ */
 window.clearFilters = function() {
-    document.getElementById('slicer-year').value = 'all';
-    document.getElementById('slicer-month').value = 'all';
-    document.getElementById('slicer-day').value = '';
+    const monthSelect = document.getElementById('slicer-month');
+    const daySelect = document.getElementById('slicer-day');
+    
+    if (monthSelect) monthSelect.value = 'all';
+    if (daySelect) daySelect.value = '';
+    
     window.handleFilterChange();
 };
 
@@ -422,7 +401,7 @@ window.triggerAISend = () => handleUserQuery({ key: 'Enter' });
 
 window.posModule = posModule;
 
-// Fallback just in case `onchange="window.handleMonthChange()"` was missed in HTML
+// Map the dropdown onChange events to our robust filtering function
 window.handleMonthChange = window.handleFilterChange;
 
 window.onload = async function () {
