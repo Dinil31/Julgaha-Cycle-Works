@@ -2,446 +2,242 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Employee Portal | CycleSense</title>
-    
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪪</text></svg>">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - CycleSense</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
-        .slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Ambient Floating Lantern Animation */
-        .float-slow { animation: float 15s ease-in-out infinite; }
-        .float-fast { animation: float 10s ease-in-out infinite reverse; }
-        @keyframes float {
-            0% { transform: translateY(0) scale(1); opacity: 0.15; }
-            50% { transform: translateY(-30px) scale(1.1); opacity: 0.3; }
-            100% { transform: translateY(0) scale(1); opacity: 0.15; }
-        }
-        
-        /* Dark Glassmorphism */
-        .dark-glass {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .glow-text {
-            text-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
-        }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
 </head>
-<body class="bg-[#020617] text-slate-300 min-h-screen flex flex-col selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden relative">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
 
-    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div class="absolute top-[10%] left-[10%] w-64 h-64 bg-amber-500/20 rounded-full blur-[80px] float-slow"></div>
-        <div class="absolute bottom-[20%] right-[10%] w-80 h-80 bg-orange-600/20 rounded-full blur-[100px] float-fast"></div>
-        <div class="absolute top-[40%] left-[60%] w-48 h-48 bg-yellow-400/10 rounded-full blur-[60px] float-slow"></div>
-    </div>
-
-    <div id="loader" class="fixed inset-0 bg-[#020617]/80 backdrop-blur-md flex justify-center items-center z-[100] hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-slate-900 p-8 rounded-[2rem] shadow-2xl border border-slate-800 flex flex-col items-center transform scale-95 transition-transform duration-300 ring-1 ring-amber-500/20">
-            <i class="fas fa-sun fa-spin text-4xl text-amber-500 mb-4 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]"></i>
-            <p class="text-xs font-black text-amber-500 uppercase tracking-[0.2em] glow-text">Authenticating...</p>
+    <div id="login-view" class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl text-center">
+        <div class="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg text-white text-2xl">
+            <i class="fas fa-id-badge"></i>
         </div>
+        <h1 class="text-2xl font-black text-gray-800 mb-1">Employee Portal</h1>
+        <p class="text-gray-500 mb-6 text-sm">Log in using your Worker ID (e.g. W2026001) and PIN.</p>
+
+        <form id="portal-login-form" class="space-y-4">
+            <input id="worker-id" type="text" placeholder="Worker ID (e.g. W2026001)" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold uppercase tracking-widest" required>
+            <input id="worker-pin" type="password" placeholder="4-Digit PIN" class="w-full p-3 border rounded-xl bg-gray-50 text-center font-bold tracking-[0.5em]" required>
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-lg transition">Secure Login</button>
+        </form>
+        <p id="login-error" class="text-red-500 text-xs mt-3 hidden"></p>
     </div>
 
-    <div id="login-view" class="flex-grow flex flex-col justify-center items-center p-6 relative z-10 fade-in min-h-screen">
+    <div id="dashboard-view" class="hidden max-w-2xl w-full bg-white p-6 md:p-8 rounded-2xl shadow-2xl">
         
-        <div class="w-full max-w-md dark-glass rounded-[2.5rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-10 slide-up border-t border-amber-500/20">
-            <div class="text-center mb-10 mt-2">
-                <div class="w-20 h-20 bg-gradient-to-b from-amber-400 to-orange-600 rounded-full mx-auto flex items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.4)] mb-6 border-4 border-slate-900">
-                    <i class="fas fa-bicycle text-3xl text-slate-900"></i>
-                </div>
-                <h1 class="text-3xl font-black text-white tracking-tight mb-1 glow-text">CycleSense</h1>
-                <p class="text-amber-500 text-xs font-black uppercase tracking-[0.2em]">Employee Portal</p>
+        <div class="flex justify-between items-start mb-6 border-b pb-4">
+            <div>
+                <h2 class="text-2xl font-black text-gray-800" id="emp-name">Name</h2>
+                <p class="text-gray-500 text-sm">ID: <span id="emp-id" class="font-mono text-purple-600 font-bold"></span> | Daily Rate: <span id="emp-rate"></span></p>
             </div>
-
-            <form id="login-form" class="space-y-6">
-                <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-2">
-                        <i class="fas fa-user-shield text-amber-500"></i> Worker ID
-                    </label>
-                    <input type="text" id="worker-uid" class="w-full px-5 py-4 bg-slate-900/80 border border-slate-700 rounded-2xl text-white font-mono font-bold text-lg uppercase outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all placeholder-slate-600 shadow-inner" placeholder="W2026..." required>
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-2">
-                        <i class="fas fa-key text-amber-500"></i> Secure PIN
-                    </label>
-                    <input type="password" id="worker-pin" inputmode="numeric" pattern="[0-9]*" class="w-full px-5 py-4 bg-slate-900/80 border border-slate-700 rounded-2xl text-amber-400 font-mono font-black tracking-[0.4em] text-2xl outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all placeholder-slate-600 shadow-inner text-center" placeholder="••••" required>
-                </div>
-
-                <button type="submit" class="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black py-4 rounded-2xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] flex justify-center items-center gap-3 text-lg transform active:scale-[0.98]">
-                    Authenticate <i class="fas fa-arrow-right"></i>
+            <div class="flex gap-2">
+                <button onclick="window.changePin()" class="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
+                    <i class="fas fa-key"></i> Change PIN
                 </button>
-            </form>
-            
-            <div class="mt-8 text-center border-t border-slate-800 pt-6">
-                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                    <i class="fas fa-info-circle"></i> Authorized Personnel Only
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <div id="dashboard-view" class="hidden flex-col min-h-screen pb-20 relative z-10">
-        
-        <div class="px-6 pt-12 pb-24 relative overflow-hidden">
-            <div class="flex justify-between items-start relative z-10 max-w-2xl mx-auto">
-                <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 shadow-lg relative">
-                        <div class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-[#020617] shadow-[0_0_10px_rgba(245,158,11,0.8)]"></div>
-                        <i class="fas fa-user text-xl text-amber-500"></i>
-                    </div>
-                    <div>
-                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Welcome Back</p>
-                        <h2 id="dash-name" class="text-xl font-black text-white tracking-tight leading-none glow-text">Employee Name</h2>
-                        <p id="dash-id" class="text-amber-500/70 text-xs font-mono font-bold mt-1 tracking-wider"></p>
-                    </div>
-                </div>
-                <button onclick="logout()" class="w-12 h-12 bg-slate-800/50 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-full flex items-center justify-center transition border border-slate-700 hover:border-red-500/50" title="Secure Logout">
-                    <i class="fas fa-sign-out-alt"></i>
+                <button onclick="location.reload()" class="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-bold px-3 py-2 rounded-lg transition shadow-sm">
+                    <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
             </div>
         </div>
 
-        <div class="container mx-auto px-4 -mt-16 relative z-20 flex-grow max-w-2xl slide-up">
-            
-            <div class="dark-glass rounded-[2rem] p-6 shadow-2xl mb-6 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent pointer-events-none"></div>
+        <div class="mb-4 flex gap-2 items-center">
+            <label class="font-bold text-gray-600 text-sm">Select Month:</label>
+            <input type="month" id="month-selector" class="border p-2 rounded-lg bg-gray-50 text-sm font-bold cursor-pointer" onchange="window.loadDashboard()">
+        </div>
 
-                <div class="flex justify-between items-center mb-6 relative z-10">
-                    <h3 class="text-xs font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
-                        <i class="fas fa-calendar-alt text-amber-500"></i> Payroll Period
-                    </h3>
-                    <span id="dash-month" class="bg-slate-800 border border-slate-700 text-amber-400 px-3 py-1 rounded-md text-[10px] font-black font-mono tracking-widest uppercase"></span>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Earnings</h3>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>Full Days (<span id="count-full">0</span>)</span> 
+                    <span id="val-full" class="font-medium">0.00</span>
                 </div>
-
-                <div class="text-center py-6 bg-slate-900/80 rounded-2xl border border-slate-800 mb-6 relative overflow-hidden shadow-inner group">
-                    <div class="absolute -right-4 -bottom-6 opacity-10 text-8xl text-amber-500 group-hover:scale-110 transition duration-500"><i class="fas fa-coins"></i></div>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mb-2 relative z-10 flex items-center justify-center gap-2">
-                        <i class="fas fa-bolt text-amber-500"></i> Est. Net Salary Payable
-                    </p>
-                    <h1 id="dash-net" class="text-4xl md:text-5xl font-black text-white tracking-tight relative z-10 glow-text">LKR 0.00</h1>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>Half Days (<span id="count-half">0</span>)</span> 
+                    <span id="val-half" class="font-medium">0.00</span>
                 </div>
-
-                <div class="grid grid-cols-2 gap-3 relative z-10">
-                    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 flex justify-between">
-                            Accrued Gross <i class="fas fa-plus text-emerald-500"></i>
-                        </p>
-                        <p id="dash-gross" class="text-lg font-black text-white">LKR 0.00</p>
-                    </div>
-                    <div class="bg-red-950/20 p-4 rounded-xl border border-red-900/30">
-                        <p class="text-[10px] text-red-400/80 font-bold uppercase tracking-widest mb-1 flex justify-between">
-                            Advances <i class="fas fa-minus text-red-500"></i>
-                        </p>
-                        <p id="dash-advances" class="text-lg font-black text-red-400">- LKR 0.00</p>
-                    </div>
-                    <div class="col-span-2 bg-yellow-950/20 p-4 rounded-xl border border-yellow-900/30 flex justify-between items-center">
-                        <div>
-                            <p class="text-[10px] text-yellow-500/80 font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
-                                EPF Deduction (8%) <i class="fas fa-piggy-bank"></i>
-                            </p>
-                            <p id="dash-epf" class="text-base font-black text-yellow-500">- LKR 0.00</p>
-                        </div>
-                    </div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>Short Leaves (<span id="count-short">0</span>)</span> 
+                    <span id="val-short" class="font-medium">0.00</span>
+                </div>
+                <div class="flex justify-between text-sm text-red-500 mb-1">
+                    <span>Time Penalties</span> 
+                    <span id="val-penalty" class="font-medium">- 0.00</span>
+                </div>
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-green-600">
+                    <span>Gross Earnings</span> 
+                    <span id="val-gross">0.00</span>
                 </div>
             </div>
 
-            <div class="flex gap-2 mb-6 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-inner">
-                <button onclick="switchTab('attendance')" id="tab-attendance" class="flex-1 bg-slate-800 text-amber-500 border border-slate-700 shadow-md py-3 rounded-xl text-xs font-black uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2">
-                    <i class="far fa-calendar-check"></i> Attendance
-                </button>
-                <button onclick="switchTab('advances')" id="tab-advances" class="flex-1 text-slate-500 hover:text-slate-300 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2">
-                    <i class="fas fa-hand-holding-usd"></i> Advances
-                </button>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-inner">
+                <h3 class="font-bold text-gray-700 mb-2 border-b pb-1">Deductions</h3>
+                <div class="flex justify-between text-sm mb-1 text-red-500">
+                    <span>Advances</span> 
+                    <span id="val-advances">- 0.00</span>
+                </div>
+                <div class="flex justify-between text-sm mb-1 text-red-500">
+                    <span>EPF (8%)</span> 
+                    <span id="val-epf">- 0.00</span>
+                </div>
+                <div class="flex justify-between font-bold mt-2 pt-2 border-t border-gray-200 text-blue-600 text-lg">
+                    <span>Net Payable</span> 
+                    <span id="val-net">0.00</span>
+                </div>
             </div>
+        </div>
 
-            <div id="list-attendance" class="space-y-3 pb-6 fade-in">
-                </div>
-
-            <div id="list-advances" class="space-y-3 pb-6 hidden fade-in">
-                </div>
-
+        <h3 class="font-bold text-gray-700 mb-2">Attendance Log</h3>
+        <div class="overflow-x-auto border border-gray-200 rounded-xl max-h-60 shadow-sm">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-100 text-xs uppercase text-gray-600 sticky top-0 shadow-sm">
+                    <tr>
+                        <th class="p-3">Date</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3">In</th>
+                        <th class="p-3">Out</th>
+                        <th class="p-3 text-red-500">Penalty</th>
+                    </tr>
+                </thead>
+                <tbody id="att-log"></tbody>
+            </table>
         </div>
     </div>
 
     <script type="module">
         import { getSupabase } from './js/config.js';
+        let currentUser = null;
 
-        // Initialize Formatters
-        const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val || 0);
+        const formatCurrency = (v) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(v || 0);
 
-        let currentWorker = null;
-
-        // Auto-Check Session
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedWorker = sessionStorage.getItem('cycleSenseWorker');
-            if (savedWorker) {
-                currentWorker = JSON.parse(savedWorker);
-                showDashboard();
-            }
-        });
-
-        // UI Helpers
-        const showLoader = () => {
-            const l = document.getElementById('loader');
-            l.classList.remove('hidden');
-            setTimeout(() => l.classList.remove('opacity-0'), 10);
-        };
-        const hideLoader = () => {
-            const l = document.getElementById('loader');
-            l.classList.add('opacity-0');
-            setTimeout(() => l.classList.add('hidden'), 300);
-        };
-
-        // Login Logic
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('portal-login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            showLoader();
-
-            const uid = document.getElementById('worker-uid').value.toUpperCase().trim();
-            const pin = document.getElementById('worker-pin').value.trim();
+            const uid = document.getElementById('worker-id').value.trim().toUpperCase();
+            const pin = document.getElementById('worker-pin').value;
+            
             const sb = getSupabase();
-
-            try {
-                const { data, error } = await sb.from('workers')
-                    .select('*')
-                    .eq('worker_uid', uid)
-                    .eq('pin', pin)
-                    .single();
-
-                if (error || !data) throw new Error("Authentication Failed. Invalid Worker ID or PIN.");
-
-                currentWorker = data;
-                sessionStorage.setItem('cycleSenseWorker', JSON.stringify(data));
+            const { data, error } = await sb.from('workers').select('*').eq('worker_uid', uid).eq('pin', pin).single();
+            
+            if (error || !data) {
+                document.getElementById('login-error').innerText = "Invalid ID or PIN. Please try again.";
+                document.getElementById('login-error').classList.remove('hidden');
+            } else {
+                currentUser = data;
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('dashboard-view').classList.remove('hidden');
                 
-                document.getElementById('login-form').reset();
+                document.getElementById('emp-name').innerText = data.name;
+                document.getElementById('emp-id').innerText = data.worker_uid;
+                document.getElementById('emp-rate').innerText = formatCurrency(data.daily_salary);
                 
-                // Add a small artificial delay so the user sees the "Authenticating..." animation
-                setTimeout(() => {
-                    showDashboard();
-                }, 800);
-
-            } catch (err) {
-                alert(err.message);
-                hideLoader();
+                const now = new Date();
+                document.getElementById('month-selector').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
+                window.loadDashboard();
             }
         });
 
-        // Dashboard Generation
-        async function showDashboard() {
-            document.getElementById('login-view').classList.add('hidden');
-            const dash = document.getElementById('dashboard-view');
-            dash.classList.remove('hidden');
-            dash.classList.add('flex');
-
-            // Populate Static Header Data
-            document.getElementById('dash-name').innerText = currentWorker.name;
-            document.getElementById('dash-id').innerText = currentWorker.worker_uid;
-
-            const now = new Date();
-            const monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
-            const formattedMonth = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        window.changePin = async () => {
+            const newPin = prompt("Enter your new 4-digit PIN:");
             
-            document.getElementById('dash-month').innerText = formattedMonth;
-
-            try {
-                await fetchAndRenderData(currentWorker.id, monthStr, currentWorker.daily_salary);
-            } catch (err) {
-                alert("Error loading dashboard data: " + err.message);
-            } finally {
-                hideLoader();
+            if (!newPin || newPin.length !== 4 || isNaN(newPin) || parseInt(newPin) < 0) {
+                return alert("PIN must be exactly 4 numbers.");
             }
-        }
-
-        async function fetchAndRenderData(wId, monthStr, dailySalary) {
-            const sb = getSupabase();
-            const [year, month] = monthStr.split('-');
-            const startDate = `${monthStr}-01`;
             
-            // Get end of month or today, whichever is earlier, to not over-calculate expected days
-            const todayStr = new Date().toISOString().split('T')[0];
-            const endDate = todayStr; 
+            const sb = getSupabase();
+            const { error } = await sb.from('workers').update({ pin: newPin }).eq('id', currentUser.id);
+            
+            if (error) {
+                alert("Failed to update PIN. " + error.message);
+            } else {
+                alert("PIN successfully updated!");
+            }
+        };
 
-            // Fetch Data
+        window.loadDashboard = async () => {
+            if (!currentUser) return;
+            const monthStr = document.getElementById('month-selector').value;
+            const [year, month] = monthStr.split('-');
+            
+            const startDate = `${monthStr}-01`;
+            const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+            const sb = getSupabase();
+            
             const { data: attData } = await sb.from('attendance')
-                .select('*')
-                .eq('worker_id', wId)
-                .gte('date', startDate)
-                .lte('date', endDate)
-                .order('date', {ascending: false}); // Newest first
-
+                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate).order('date', {ascending: true});
+            
             const { data: advData } = await sb.from('advances')
-                .select('*')
-                .eq('worker_id', wId)
-                .gte('date', startDate)
-                .lte('date', endDate)
-                .order('date', {ascending: false});
+                .select('*').eq('worker_id', currentUser.id).gte('date', startDate).lte('date', endDate);
 
-            // 1. Math Engine (Same as pos_module.js)
-            let full = 0, half = 0, short = 0, timePenalty = 0;
+            let full = 0, half = 0, short = 0, totalPenalty = 0;
+            const logTable = document.getElementById('att-log');
+            logTable.innerHTML = '';
 
             if (attData) {
                 attData.forEach(a => {
-                    if (a.status === 'Half Day') half++;
-                    else if (a.status === 'Short Leave') short++;
-                    else if (a.status === 'Full Day') {
-                        full++;
-                        if (a.in_time && a.out_time) {
-                            const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
-                            const inMins = parse(a.in_time); 
-                            const outMins = parse(a.out_time);
-                            let missed = 0;
-                            if (inMins > 600) missed += (inMins - 600); // Late
-                            if (outMins < 1020) missed += (1020 - outMins); // Early leave
-                            if (missed > 0) timePenalty += (missed * (dailySalary / 420));
-                        }
-                    }
-                });
-            }
-
-            const baseGross = (full * dailySalary) + (short * dailySalary) + (half * (dailySalary / 2));
-            const grossEarnings = baseGross - timePenalty;
-            
-            let totalAdvances = 0;
-            if (advData) totalAdvances = advData.reduce((sum, a) => sum + Number(a.amount), 0);
-            
-            const epfDeduction = grossEarnings > 0 ? grossEarnings * 0.08 : 0;
-            const netPay = grossEarnings - totalAdvances - epfDeduction;
-
-            // 2. Update UI Summary
-            document.getElementById('dash-gross').innerText = formatCurrency(grossEarnings);
-            document.getElementById('dash-advances').innerText = "- " + formatCurrency(totalAdvances);
-            document.getElementById('dash-epf').innerText = "- " + formatCurrency(epfDeduction);
-            document.getElementById('dash-net').innerText = formatCurrency(netPay);
-
-            // 3. Render Attendance List
-            const attList = document.getElementById('list-attendance');
-            if (!attData || attData.length === 0) {
-                attList.innerHTML = `<div class="dark-glass p-8 rounded-3xl text-center border border-slate-800"><i class="far fa-calendar-times text-4xl text-slate-700 mb-3 block"></i><p class="text-xs font-bold text-slate-500 uppercase tracking-widest">No attendance logged yet.</p></div>`;
-            } else {
-                let attHtml = '';
-                attData.forEach(a => {
-                    let badgeClass = '';
-                    let badgeText = '';
-                    let timeText = '';
+                    let dayPenalty = 0;
                     
                     if (a.status === 'Full Day') {
-                        badgeClass = 'bg-emerald-950/50 text-emerald-400 border-emerald-900'; badgeText = 'Full Day';
-                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
-                    } else if (a.status === 'Half Day') {
-                        badgeClass = 'bg-amber-950/50 text-amber-400 border-amber-900'; badgeText = 'Half Day';
-                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
-                    } else if (a.status === 'Short Leave') {
-                        badgeClass = 'bg-blue-950/50 text-blue-400 border-blue-900'; badgeText = 'Short Leave';
-                        timeText = `${a.in_time || '--:--'} → ${a.out_time || '--:--'}`;
-                    } else {
-                        badgeClass = 'bg-red-950/50 text-red-400 border-red-900'; badgeText = 'Absent';
-                        timeText = 'Did not report';
+                        full++;
+                        if (a.in_time && a.out_time) {
+                            const inMins = parseInt(a.in_time.split(':')[0]) * 60 + parseInt(a.in_time.split(':')[1]);
+                            const outMins = parseInt(a.out_time.split(':')[0]) * 60 + parseInt(a.out_time.split(':')[1]);
+                            
+                            let missed = 0;
+                            if (inMins > 600) missed += (inMins - 600); // Late after 10:00
+                            if (outMins < 1020) missed += (1020 - outMins); // Early before 17:00
+                            
+                            if (missed > 0) {
+                                dayPenalty = missed * (currentUser.daily_salary / 420); // 420 mins = 7 hrs
+                                totalPenalty += dayPenalty;
+                            }
+                        }
+                    } 
+                    else if (a.status === 'Half Day') { 
+                        half++; 
+                    }
+                    else if (a.status === 'Short Leave') { 
+                        short++; 
                     }
 
-                    const dObj = new Date(a.date);
-                    const dayNum = dObj.getDate();
-                    const dayName = dObj.toLocaleDateString('en-US', { weekday: 'short' });
-
-                    attHtml += `
-                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex items-center gap-4">
-                            <div class="bg-slate-950 border border-slate-800 rounded-xl w-14 h-14 flex flex-col items-center justify-center flex-shrink-0">
-                                <span class="text-[10px] font-bold text-amber-500 uppercase leading-none mb-1">${dayName}</span>
-                                <span class="text-lg font-black text-white leading-none">${dayNum}</span>
-                            </div>
-                            <div class="flex-grow">
-                                <h4 class="font-bold text-white text-sm mb-1">${badgeText}</h4>
-                                <p class="text-xs font-mono font-bold text-slate-500 bg-slate-950 inline-block px-2 py-1 rounded border border-slate-800">${timeText}</p>
-                            </div>
-                            <div>
-                                <span class="${badgeClass} px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border">Status</span>
-                            </div>
-                        </div>
-                    `;
+                    logTable.innerHTML += `
+                        <tr class="border-b">
+                            <td class="p-3">${a.date}</td>
+                            <td class="p-3 font-bold">${a.status}</td>
+                            <td class="p-3">${a.in_time || '-'}</td>
+                            <td class="p-3">${a.out_time || '-'}</td>
+                            <td class="p-3 text-red-500 font-bold">${dayPenalty > 0 ? formatCurrency(dayPenalty) : '-'}</td>
+                        </tr>`;
                 });
-                attList.innerHTML = attHtml;
             }
 
-            // 4. Render Advances List
-            const advList = document.getElementById('list-advances');
-            if (!advData || advData.length === 0) {
-                advList.innerHTML = `<div class="dark-glass p-8 rounded-3xl text-center border border-slate-800"><i class="fas fa-hand-holding-usd text-4xl text-slate-700 mb-3 block"></i><p class="text-xs font-bold text-slate-500 uppercase tracking-widest">No advances taken.</p></div>`;
-            } else {
-                let advHtml = '';
-                advData.forEach(a => {
-                    const dObj = new Date(a.date);
-                    advHtml += `
-                        <div class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
-                            <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-xl bg-red-950/30 text-red-500 flex items-center justify-center border border-red-900/50">
-                                    <i class="fas fa-arrow-down"></i>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Advance Record</p>
-                                    <p class="text-sm font-bold text-white">${dObj.toLocaleDateString()}</p>
-                                </div>
-                            </div>
-                            <div class="text-right bg-slate-950 px-3 py-2 rounded-xl border border-slate-800">
-                                <p class="font-black text-red-400 text-sm">- ${formatCurrency(a.amount)}</p>
-                            </div>
-                        </div>
-                    `;
-                });
-                advList.innerHTML = advHtml;
+            if (!attData || attData.length === 0) {
+                logTable.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500 font-bold uppercase tracking-widest">No attendance records for this month.</td></tr>`;
             }
+
+            const baseEarn = (full * currentUser.daily_salary) + (short * currentUser.daily_salary) + (half * (currentUser.daily_salary / 2));
+            const gross = baseEarn - totalPenalty;
+            const advances = (advData || []).reduce((s, a) => s + Number(a.amount), 0);
+            const epf = gross > 0 ? gross * 0.08 : 0;
+            const net = gross - advances - epf;
+
+            document.getElementById('count-full').innerText = full;
+            document.getElementById('val-full').innerText = formatCurrency(full * currentUser.daily_salary);
+            
+            document.getElementById('count-half').innerText = half;
+            document.getElementById('val-half').innerText = formatCurrency(half * (currentUser.daily_salary / 2));
+            
+            document.getElementById('count-short').innerText = short;
+            document.getElementById('val-short').innerText = formatCurrency(short * currentUser.daily_salary);
+            
+            document.getElementById('val-penalty').innerText = "- " + formatCurrency(totalPenalty);
+            document.getElementById('val-gross').innerText = formatCurrency(gross);
+            document.getElementById('val-advances').innerText = "- " + formatCurrency(advances);
+            document.getElementById('val-epf').innerText = "- " + formatCurrency(epf);
+            document.getElementById('val-net').innerText = formatCurrency(net);
         }
-
-        // Tab Switching Logic
-        window.switchTab = function(tabName) {
-            const attList = document.getElementById('list-attendance');
-            const advList = document.getElementById('list-advances');
-            const attBtn = document.getElementById('tab-attendance');
-            const advBtn = document.getElementById('tab-advances');
-
-            if (tabName === 'attendance') {
-                attList.classList.remove('hidden');
-                advList.classList.add('hidden');
-                attBtn.className = "flex-1 bg-slate-800 text-amber-500 border border-slate-700 shadow-md py-3 rounded-xl text-xs font-black uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2";
-                advBtn.className = "flex-1 text-slate-500 hover:text-slate-300 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2";
-            } else {
-                advList.classList.remove('hidden');
-                attList.classList.add('hidden');
-                advBtn.className = "flex-1 bg-slate-800 text-amber-500 border border-slate-700 shadow-md py-3 rounded-xl text-xs font-black uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2";
-                attBtn.className = "flex-1 text-slate-500 hover:text-slate-300 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition duration-300 flex justify-center items-center gap-2";
-            }
-        }
-
-        // Logout
-        window.logout = function() {
-            showLoader();
-            setTimeout(() => {
-                sessionStorage.removeItem('cycleSenseWorker');
-                currentWorker = null;
-                document.getElementById('dashboard-view').classList.remove('flex');
-                document.getElementById('dashboard-view').classList.add('hidden');
-                document.getElementById('login-view').classList.remove('hidden');
-                hideLoader();
-            }, 800);
-        }
-
     </script>
 </body>
 </html>
