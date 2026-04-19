@@ -1,6 +1,5 @@
 import { initSupabase } from "./config.js";
-// Notice: We alias switchContext so we can wrap it with our filter logic
-import { switchContext as uiSwitchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
+import { switchContext, renderComingSoon, toggleTheme, toggleLang, handleMonthChange, updateDashboard } from "./ui.js";
 import { handleLogin, handleLogout, handleResetPassword, checkSession } from "./auth.js";
 import { uploadToSupabase, clearDatabase } from "./data.js"; 
 import { toggleAI, handleUserQuery, clearAIChat, triggerAIQuery } from "./ai.js";
@@ -57,7 +56,7 @@ window.handleNavClick = function(tabName) {
     if (tabName === 'dashboard') { 
         setActiveNav('nav-revenue'); 
         document.getElementById('dashboard-view').classList.remove('hidden'); 
-        window.switchContext('past'); 
+        switchContext('past'); 
     }
     else if (tabName === 'pos') { 
         setActiveNav('nav-pos'); 
@@ -101,83 +100,6 @@ window.handleNavClick = function(tabName) {
         }
     }
 }
-
-
-// --- MULTI-LEVEL FILTERING LOGIC (ADDED) ---
-window.populateYearDropdown = function(data) {
-    const yearSelect = document.getElementById('slicer-year');
-    if (!yearSelect || !data) return;
-
-    const uniqueYears = new Set();
-    data.forEach(row => {
-        const rowDate = row.Date || row.date || row._date;
-        if (rowDate) {
-            const d = new Date(rowDate);
-            if (!isNaN(d.getFullYear())) uniqueYears.add(d.getFullYear());
-        }
-    });
-
-    let html = '<option value="all">All Years</option>';
-    [...uniqueYears].sort((a,b) => b - a).forEach(year => {
-        html += `<option value="${year}">${year}</option>`;
-    });
-    
-    const currentSelection = yearSelect.value;
-    yearSelect.innerHTML = html;
-    if ([...uniqueYears].includes(parseInt(currentSelection))) {
-        yearSelect.value = currentSelection;
-    }
-};
-
-window.handleFilterChange = function() {
-    // Rely completely on ui.js for the data source
-    const rawData = window.currentData || [];
-
-    if (rawData.length === 0) {
-        updateDashboard([]);
-        return;
-    }
-    
-    const yearSelect = document.getElementById('slicer-year');
-    const monthSelect = document.getElementById('slicer-month');
-    const daySelect = document.getElementById('slicer-day');
-    
-    const yearVal = yearSelect ? yearSelect.value : 'all';
-    const monthVal = monthSelect ? monthSelect.value : 'all';
-    const dayVal = daySelect ? daySelect.value : '';
-
-    let filteredData = rawData.filter(row => {
-        const rowDate = row.Date || row.date || row._date;
-        if (!rowDate) return false;
-        
-        const d = new Date(rowDate);
-        if (isNaN(d.getTime())) return false;
-
-        let match = true;
-
-        if (yearVal !== 'all') match = match && (d.getFullYear() === parseInt(yearVal));
-        if (monthVal !== 'all') match = match && (d.getMonth() === parseInt(monthVal));
-        if (dayVal) {
-            const localDateStr = d.getFullYear() + '-' + 
-                                 String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-                                 String(d.getDate()).padStart(2, '0');
-            match = match && (localDateStr === dayVal);
-        }
-
-        return match;
-    });
-
-    // Pass the safely filtered array back to ui.js to draw the charts properly!
-    updateDashboard(filteredData);
-};
-
-window.clearFilters = function() {
-    if(document.getElementById('slicer-year')) document.getElementById('slicer-year').value = 'all';
-    if(document.getElementById('slicer-month')) document.getElementById('slicer-month').value = 'all';
-    if(document.getElementById('slicer-day')) document.getElementById('slicer-day').value = '';
-    window.handleFilterChange();
-};
-
 
 // --- LIVE CLOCK & QUOTE ---
 const quotes = [
@@ -236,21 +158,10 @@ window.onload = function () {
             hideAllSections(); 
             document.getElementById('dashboard-view').classList.remove('hidden'); 
             setActiveNav('nav-revenue'); 
-            
-            // Execute original UI switch logic
-            uiSwitchContext(mode); 
-            
-            // Wait for ui.js to fetch data, then apply filters
-            setTimeout(() => {
-                if (window.currentData) {
-                    window.populateYearDropdown(window.currentData);
-                    window.handleFilterChange();
-                }
-            }, 300);
+            switchContext(mode); 
         };
         
-        // Map the filter to ensure UI dropdowns trigger our robust function
-        window.handleMonthChange = window.handleFilterChange; 
+        window.handleMonthChange = handleMonthChange; 
         window.updateDashboard = updateDashboard;
         
         checkSession();
@@ -285,7 +196,6 @@ window.uploadAIClassification = async () => {
             // Convert Excel to JSON array
             const jsonRows = XLSX.utils.sheet_to_json(worksheet);
             
-            // --- THE BULLETPROOF FIX ---
             // Dynamically load the config file to guarantee we get the database connection
             const configModule = await import('./config.js');
             const supabaseClient = configModule.getSupabase();
@@ -293,7 +203,6 @@ window.uploadAIClassification = async () => {
             if (!supabaseClient) {
                 throw new Error("Could not connect to Supabase database.");
             }
-            // ---------------------------
 
             let successCount = 0;
 
