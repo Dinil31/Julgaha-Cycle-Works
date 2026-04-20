@@ -1735,120 +1735,90 @@ export async function markAttendance(e) {
     }
 }
 export async function addAdvance(event) {
-  event.preventDefault();
-  const form = event.target;
-  const formData = new FormData(form);
-  
-  const worker_id = formData.get("worker_id");
-  const dateStr = formData.get("date");
-  const amount = parseFloat(formData.get("amount"));
-  
-  if (!worker_id || !dateStr || isNaN(amount) || amount <= 0) {
-      await showCustomConfirm("Error", "Please fill all fields correctly.", "danger");
-      return;
-  }
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    const worker_id = formData.get("worker_id");
+    const dateStr = formData.get("date");
+    const amount = parseFloat(formData.get("amount"));
+    
+    if (!worker_id || !dateStr || isNaN(amount) || amount <= 0) {
+        await showCustomConfirm("Error", "Please fill all fields correctly.", "danger");
+        return;
+    }
 
-  const sb = getSupabase();
-  if (!sb) return;
+    const sb = getSupabase();
+    if (!sb) return;
 
-  // --- NEW VALIDATION LOGIC START ---
-  
-  // 1. Get the worker's daily salary
-  const { data: workerData, error: workerErr } = await sb.from('workers').select('daily_salary').eq('id', worker_id).single();
-  if (workerErr || !workerData) {
-      await showCustomConfirm("Error", "Could not verify worker details.", "danger");
-      return;
-  }
-  const dailySalary = parseFloat(workerData.daily_salary) || 0;
+    document.getElementById('loader').classList.remove('hidden');
 
-  // 2. Get the month start date for calculation
-  const [year, month] = dateStr.split('-');
-  const startDate = `${year}-${month}-01`;
+    try {
+        // SECURITY CHECK: Re-run calculations to ensure the request is valid
+        const { data: workerData } = await sb.from('workers').select('daily_salary').eq('id', worker_id).single();
+        const dailySalary = parseFloat(workerData.daily_salary) || 0;
+        const [year, month] = dateStr.split('-');
+        const startDate = `${year}-${month}-01`;
 
-  // 3. Calculate total accrued gross salary for the month up to the selected date
-  const { data: attData, error: attErr } = await sb.from('attendance')
-      .select('*')
-      .eq('worker_id', worker_id)
-      .gte('date', startDate)
-      .lte('date', dateStr); // Only calculate up to the date of the advance
-      
-  if (attErr) {
-      await showCustomConfirm("Error", "Could not verify attendance records.", "danger");
-      return;
-  }
+        const { data: attData } = await sb.from('attendance').select('*').eq('worker_id', worker_id).gte('date', startDate).lte('date', dateStr);
+        let accruedGross = 0;
+        if (attData) {
+            attData.forEach(a => {
+                if (a.status === 'Full Day') {
+                    let earned = dailySalary;
+                    if (a.in_time && a.out_time) {
+                        const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
+                        const inMins = parse(a.in_time); const outMins = parse(a.out_time);
+                        let missed = 0;
+                        if (inMins > 600) missed += (inMins - 600); 
+                        if (outMins < 1020) missed += (1020 - outMins);
+                        if (missed > 0) earned -= (missed * (dailySalary / 420));
+                    }
+                    accruedGross += Math.max(0, earned);
+                }
+                else if (a.status === 'Half Day') accruedGross += (dailySalary / 2);
+                else if (a.status === 'Short Leave') accruedGross += (dailySalary * 0.75);
+            });
+        }
 
-  let accruedGross = 0;
-  if (attData) {
-      attData.forEach(a => {
-          if (a.status === 'Full Day') {
-              let earned = dailySalary;
-              // Apply time penalties if applicable
-              if (a.in_time && a.out_time) {
-                  const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
-                  const inMins = parse(a.in_time); 
-                  const outMins = parse(a.out_time);
-                  let missed = 0;
-                  if (inMins > 600) missed += (inMins - 600); // 10:00 AM
-                  if (outMins < 1020) missed += (1020 - outMins); // 5:00 PM
-                  if (missed > 0) {
-                      earned -= (missed * (dailySalary / 420)); // Assuming 7 hour workday (420 mins)
-                  }
-              }
-              accruedGross += Math.max(0, earned);
-          }
-          else if (a.status === 'Half Day') accruedGross += (dailySalary / 2);
-          else if (a.status === 'Short Leave') accruedGross += (dailySalary * 0.75); // Adjust based on your policy
-      });
-  }
+        const netAccrued = accruedGross * 0.92; // Deduct 8% EPF
 
-  // 4. Calculate total advances ALREADY taken this month
-  const { data: existingAdvances, error: advErr } = await sb.from('advances')
-      .select('amount')
-      .eq('worker_id', worker_id)
-      .gte('date', startDate)
-      .lte('date', dateStr); // Include any taken today or earlier this month
-      
-  let totalPriorAdvances = 0;
-  if (existingAdvances) {
-      existingAdvances.forEach(adv => totalPriorAdvances += parseFloat(adv.amount) || 0);
-  }
+        const { data: existingAdvances } = await sb.from('advances').select('amount').eq('worker_id', worker_id).gte('date', startDate).lte('date', dateStr);
+        let totalPriorAdvances = 0;
+        if (existingAdvances) {
+            existingAdvances.forEach(adv => totalPriorAdvances += parseFloat(adv.amount) || 0);
+        }
 
-  // 5. Calculate available balance
-  const availableBalance = accruedGross - totalPriorAdvances;
+        // 50% Rule Validation
+        let maxLimit = (netAccrued - totalPriorAdvances) * 0.50;
+        if (maxLimit < 0) maxLimit = 0;
 
-  // 6. Perform the block!
-  if (amount > availableBalance) {
-      const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
-      
-      await showCustomConfirm(
-          "Advance Denied", 
-          `This advance exceeds the employee's available earned balance.\n\nAccrued This Month: ${formatCurrency(accruedGross)}\nPrior Advances: ${formatCurrency(totalPriorAdvances)}\nMax Available: ${formatCurrency(availableBalance)}`, 
-          "danger"
-      );
-      return; // Stop the form submission!
-  }
-  
-  // --- NEW VALIDATION LOGIC END ---
+        if (amount > maxLimit) {
+            const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
+            document.getElementById('loader').classList.add('hidden');
+            await showCustomConfirm(
+                "Limit Exceeded", 
+                `Requested: ${formatCurrency(amount)}\n\nMax Eligible Advance is 50% of remaining Net Salary.\n\nAccrued Gross: ${formatCurrency(accruedGross)}\nAfter EPF (8%): ${formatCurrency(netAccrued)}\nPrior Advances: ${formatCurrency(totalPriorAdvances)}\n\nMaximum Allowed: ${formatCurrency(maxLimit)}`, 
+                "danger"
+            );
+            return; 
+        }
 
-  document.getElementById('loader').classList.remove('hidden');
+        // If perfectly valid, insert into database
+        const { error } = await sb.from('advances').insert([{ worker_id, date: dateStr, amount }]);
+        if (error) throw error;
+        
+        await showCustomConfirm("Advance Issued", "Advance payment recorded successfully.", "success-green");
+        form.reset();
+        
+        // Refresh the UI limit after saving
+        calculateAdvanceLimit();
 
-  try {
-      const { error } = await sb.from('advances').insert([{ worker_id, date: dateStr, amount }]);
-      if (error) throw error;
-      
-      await showCustomConfirm("Advance Issued", "Advance payment recorded successfully.", "success-green");
-      form.reset();
-      
-      // Update the UI if needed
-      if (typeof updateAdminAttendanceView === 'function') {
-          updateAdminAttendanceView();
-      }
-      
-  } catch (err) {
-      await showCustomConfirm("Error", err.message, "danger");
-  } finally {
-      document.getElementById('loader').classList.add('hidden');
-  }
+    } catch (err) {
+        await showCustomConfirm("Error", err.message, "danger");
+    } finally {
+        document.getElementById('loader').classList.add('hidden');
+    }
 }
 
 export async function calculateWorkerSalary(wId, monthStr) {
@@ -2222,5 +2192,93 @@ export async function checkInternalWarranty(e) {
     } finally {
         btn.innerHTML = 'Verify Status';
         btn.disabled = false;
+    }
+}
+
+
+export async function calculateAdvanceLimit() {
+    const workerSelect = document.getElementById('hr-adv-worker');
+    const dateInput = document.getElementById('hr-adv-date');
+    const displayEl = document.getElementById('adv-limit-display');
+    const amountInput = document.getElementById('hr-adv-amount');
+
+    if (!workerSelect || !dateInput || !displayEl) return;
+
+    const worker_id = workerSelect.value;
+    const dateStr = dateInput.value;
+
+    if (!worker_id || !dateStr) {
+        displayEl.innerText = "LKR 0.00";
+        if (amountInput) amountInput.placeholder = "0.00";
+        return;
+    }
+
+    const sb = getSupabase();
+    if (!sb) return;
+
+    // 1. Get the worker's daily salary
+    const { data: workerData } = await sb.from('workers').select('daily_salary').eq('id', worker_id).single();
+    if (!workerData) return;
+    const dailySalary = parseFloat(workerData.daily_salary) || 0;
+
+    // 2. Get the month start date
+    const [year, month] = dateStr.split('-');
+    const startDate = `${year}-${month}-01`;
+
+    // 3. Calculate total accrued gross salary up to this specific date
+    const { data: attData } = await sb.from('attendance')
+        .select('*')
+        .eq('worker_id', worker_id)
+        .gte('date', startDate)
+        .lte('date', dateStr);
+        
+    let accruedGross = 0;
+    if (attData) {
+        attData.forEach(a => {
+            if (a.status === 'Full Day') {
+                let earned = dailySalary;
+                if (a.in_time && a.out_time) {
+                    const parse = t => { const [h,m] = t.split(':').map(Number); return h * 60 + m; };
+                    const inMins = parse(a.in_time); 
+                    const outMins = parse(a.out_time);
+                    let missed = 0;
+                    if (inMins > 600) missed += (inMins - 600); // Late after 10:00 AM
+                    if (outMins < 1020) missed += (1020 - outMins); // Early before 5:00 PM
+                    if (missed > 0) earned -= (missed * (dailySalary / 420)); 
+                }
+                accruedGross += Math.max(0, earned);
+            }
+            else if (a.status === 'Half Day') accruedGross += (dailySalary / 2);
+            else if (a.status === 'Short Leave') accruedGross += (dailySalary * 0.75);
+        });
+    }
+
+    // 4. Deduct mandatory 8% EPF (ETF 3% is employer contribution)
+    const netAccrued = accruedGross * 0.92;
+
+    // 5. Subtract any advances already taken earlier this month
+    const { data: existingAdvances } = await sb.from('advances')
+        .select('amount')
+        .eq('worker_id', worker_id)
+        .gte('date', startDate)
+        .lte('date', dateStr);
+        
+    let totalPriorAdvances = 0;
+    if (existingAdvances) {
+        existingAdvances.forEach(adv => totalPriorAdvances += parseFloat(adv.amount) || 0);
+    }
+
+    // 6. The Safe Limit: 50% of the remaining earned net salary
+    let maxLimit = (netAccrued - totalPriorAdvances) * 0.50;
+    if (maxLimit < 0) maxLimit = 0;
+
+    // Update the UI
+    const formatCurrency = (val) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR' }).format(val);
+    displayEl.innerText = formatCurrency(maxLimit);
+    
+    // Automatically set the HTML max attribute so they can't type a higher number
+    if (amountInput) {
+        amountInput.max = maxLimit.toFixed(2);
+        amountInput.placeholder = `Max: ${maxLimit.toFixed(2)}`;
     }
 }
