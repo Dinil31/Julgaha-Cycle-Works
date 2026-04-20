@@ -1218,32 +1218,41 @@
                             </form>
                         </div>
 
-                        <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-red-100 dark:border-red-900/30">
-                            <h2 class="text-xl font-black mb-4 dark:text-white border-b pb-2 dark:border-gray-700 flex items-center gap-2">
-                                <i class="fas fa-hand-holding-usd text-red-500"></i> Issue Advance Payment
-                            </h2>
-                            <form onsubmit="window.posModule.addAdvance(event)" class="space-y-4">
-                                <div>
-                                    <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Select Employee</label>
-                                    <select id="hr-adv-worker" name="worker_id" class="w-full mt-1 p-3 rounded-xl border border-gray-200 dark:bg-slate-800 dark:border-gray-600 dark:text-white font-bold outline-none focus:border-red-500 cursor-pointer shadow-sm" required></select>
-                                </div>
-                                
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Date</label>
-                                        <input id="hr-adv-date" name="date" type="date" class="w-full mt-1 p-3 rounded-xl border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white font-bold text-sm cursor-pointer outline-none focus:border-red-500" required>
-                                    </div>
-                                    <div class="relative">
-                                        <label class="text-[10px] uppercase font-black text-red-500 ml-1">Advance Amount</label>
-                                        <div class="absolute bottom-[13px] left-3 text-red-400 font-bold text-sm">Rs.</div>
-                                        <input name="amount" type="number" min="0" oninput="this.value = Math.abs(this.value)" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-3 rounded-xl border border-red-200 bg-red-50 dark:bg-slate-700 dark:border-red-900/50 dark:text-white font-black text-red-600 outline-none focus:ring-2 focus:ring-red-400 shadow-inner" required>
-                                    </div>
-                                </div>
-                                <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg shadow-red-500/30 flex items-center justify-center gap-2">
-                                    <i class="fas fa-coins"></i> Disburse Advance
-                                </button>
-                            </form>
-                        </div>
+                      <div class="bg-white dark:bg-darkcard p-6 md:p-8 rounded-3xl shadow-lg border border-red-100 dark:border-red-900/30">
+    <h2 class="text-xl font-black mb-4 dark:text-white border-b pb-2 dark:border-gray-700 flex items-center gap-2">
+        <i class="fas fa-hand-holding-usd text-red-500"></i> Issue Advance Payment
+    </h2>
+    <form onsubmit="window.posModule.addAdvance(event)" class="space-y-4">
+        <div>
+            <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Select Employee</label>
+            <select id="hr-adv-worker" name="worker_id" onchange="window.posModule.calculateAdvanceLimit()" class="w-full mt-1 p-3 rounded-xl border border-gray-200 dark:bg-slate-800 dark:border-gray-600 dark:text-white font-bold outline-none focus:border-red-500 cursor-pointer shadow-sm" required></select>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="text-[10px] uppercase font-bold text-gray-500 ml-1">Date</label>
+                <input id="hr-adv-date" name="date" type="date" onchange="window.posModule.calculateAdvanceLimit()" class="w-full mt-1 p-3 rounded-xl border border-gray-200 dark:bg-slate-700 dark:border-gray-600 dark:text-white font-bold text-sm cursor-pointer outline-none focus:border-red-500" required>
+            </div>
+            <div class="relative">
+                <label class="text-[10px] uppercase font-black text-red-500 ml-1">Advance Amount</label>
+                <div class="absolute bottom-[13px] left-3 text-red-400 font-bold text-sm">Rs.</div>
+                <input name="amount" id="hr-adv-amount" type="number" step="0.01" min="0" oninput="this.value = Math.abs(this.value)" placeholder="0.00" class="w-full mt-1 pl-10 pr-3 py-3 rounded-xl border border-red-200 bg-red-50 dark:bg-slate-700 dark:border-red-900/50 dark:text-white font-black text-red-600 outline-none focus:ring-2 focus:ring-red-400 shadow-inner" required>
+            </div>
+        </div>
+
+        <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4 mt-2 shadow-inner">
+            <div class="flex justify-between items-center">
+                <span class="text-xs text-blue-800 dark:text-blue-400 font-bold uppercase tracking-widest"><i class="fas fa-shield-alt text-blue-500 mr-1"></i> Eligible Limit (50%)</span>
+                <span id="adv-limit-display" class="text-lg font-black text-blue-700 dark:text-blue-300">LKR 0.00</span>
+            </div>
+            <p class="text-[10px] text-blue-600 dark:text-blue-500 mt-1 font-medium">Calculated after 8% EPF deduction and prior advances.</p>
+        </div>
+
+        <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl transition shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 mt-4">
+            <i class="fas fa-coins"></i> Disburse Advance
+        </button>
+    </form>
+</div>
                     </div>
                 </div>
 
