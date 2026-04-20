@@ -1715,23 +1715,91 @@ export async function deleteWorker(id) {
     } 
 }
 
-export async function markAttendance(e) {
-    e.preventDefault(); 
+export async function handleLiveClock(type) {
+    const workerSelect = document.getElementById('hr-att-worker');
+    const dateInput = document.getElementById('hr-att-date');
+    const statusSelect = document.getElementById('hr-att-status');
+
+    const worker_id = workerSelect ? workerSelect.value : null;
+    let dateStr = dateInput ? dateInput.value : null;
+    const status = statusSelect ? statusSelect.value : 'Full Day';
+
+    if (!worker_id) {
+        await showCustomConfirm("Error", "Please select an Employee first.", "danger");
+        return;
+    }
+
+    // Auto-fill today's date if they left it blank
+    const now = new Date();
+    if (!dateStr) {
+        dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        if (dateInput) dateInput.value = dateStr;
+    }
+
+    // Capture exact current time in HH:MM format (24-hour)
+    const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
     const sb = getSupabase();
-    const form = new FormData(e.target); 
-    const wId = form.get('worker_id'); const d = form.get('date');
-    
-    await sb.from('attendance').delete().match({ worker_id: wId, date: d });
-    const { error } = await sb.from('attendance').insert({ 
-        worker_id: wId, date: d, status: form.get('status'), in_time: form.get('in_time'), out_time: form.get('out_time') 
-    });
-    
-    if (error) alert("Database Error: " + error.message);
-    else { 
-        e.target.reset(); 
-        document.getElementById('hr-att-date').value = new Date().toISOString().split('T')[0]; 
-        await loadHRDashboardSummary(); 
-        showCustomConfirm("Attendance Logged", "The daily log has been updated successfully.", "success-green"); 
+    if (!sb) return;
+
+    document.getElementById('loader').classList.remove('hidden');
+
+    try {
+        // 1. Check if the employee already clocked in today
+        const { data: existingRecord, error: fetchErr } = await sb
+            .from('attendance')
+            .select('*')
+            .eq('worker_id', worker_id)
+            .eq('date', dateStr)
+            .maybeSingle();
+
+        if (fetchErr) throw fetchErr;
+
+        let actionText = "";
+
+        if (existingRecord) {
+            // 2A. Update the existing record (e.g., they are clocking out in the evening)
+            const updatePayload = { status: status };
+            
+            if (type === 'in') {
+                updatePayload.in_time = currentTime;
+                actionText = `Clocked IN at ${currentTime}`;
+            } else {
+                updatePayload.out_time = currentTime;
+                actionText = `Clocked OUT at ${currentTime}`;
+            }
+
+            const { error: updateErr } = await sb.from('attendance').update(updatePayload).eq('id', existingRecord.id);
+            if (updateErr) throw updateErr;
+
+        } else {
+            // 2B. Create a brand new record (e.g., they are clocking in for the morning)
+            const insertPayload = {
+                worker_id: worker_id,
+                date: dateStr,
+                status: status,
+                in_time: type === 'in' ? currentTime : null,
+                out_time: type === 'out' ? currentTime : null
+            };
+            
+            actionText = type === 'in' ? `Clocked IN at ${currentTime}` : `Clocked OUT at ${currentTime}`;
+
+            const { error: insertErr } = await sb.from('attendance').insert([insertPayload]);
+            if (insertErr) throw insertErr;
+        }
+
+        // Show exact time in a pop-up confirmation
+        await showCustomConfirm("Time Captured!", actionText, "success-green");
+        
+        // Refresh the attendance table list below it
+        if (typeof window.posModule.updateAdminAttendanceView === 'function') {
+            window.posModule.updateAdminAttendanceView();
+        }
+
+    } catch (err) {
+        await showCustomConfirm("Error", err.message, "danger");
+    } finally {
+        document.getElementById('loader').classList.add('hidden');
     }
 }
 export async function addAdvance(event) {
