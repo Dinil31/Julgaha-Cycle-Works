@@ -87,8 +87,7 @@ export function showCustomConfirm(title, message, type = "confirm") {
       btnNo.style.display = "none"; 
     } else if (type === "success-red") {
       iconBg.classList.add("bg-red-100", "pulse-red");
-      icon.className = "fas fa-trash-check text-3xl text-red-600"; 
-      if (!icon.className.includes("fa-")) icon.className = "fas fa-check text-3xl text-red-600";
+      icon.className = "fas fa-check text-3xl text-red-600"; 
       btnYes.className = "w-full px-5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold shadow-lg shadow-red-500/30 transform hover:scale-105 transition";
       btnYes.innerText = "Done";
       btnNo.style.display = "none"; 
@@ -121,22 +120,18 @@ export function showCustomPrompt(title, message, placeholder = "") {
     const inputEl = document.getElementById("modal-input-field");
     const btnYes = document.getElementById("input-btn-confirm");
     const btnNo = document.getElementById("input-btn-cancel");
-    
     titleEl.innerText = title;
     msgEl.innerText = message;
     inputEl.placeholder = placeholder;
     inputEl.value = "";
-    
     modal.classList.remove("hidden");
     box.classList.add("animate-pop-in");
     inputEl.focus();
-    
     const close = (val) => {
       modal.classList.add("hidden");
       box.classList.remove("animate-pop-in");
       resolve(val);
     };
-    
     btnYes.onclick = () => close(inputEl.value);
     btnNo.onclick = () => close(null);
     inputEl.onkeydown = (e) => {
@@ -170,15 +165,14 @@ export function switchContext(mode) {
   currentMode = mode;
   const toggleContainer = document.getElementById("btn-past")?.parentElement;
   if (toggleContainer) toggleContainer.style.display = mode === "service" ? "none" : "flex";
-  
   const btnPast = document.getElementById("btn-past");
   const btnPred = document.getElementById("btn-pred");
   const activeClass = "px-4 py-1 bg-slate-800 text-white rounded shadow transition-all";
   const inactiveClass = "px-4 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700 rounded transition-all";
-  
   if (btnPast) btnPast.className = mode === "past" ? activeClass : inactiveClass;
   if (btnPred) btnPred.className = mode === "predicted" ? activeClass : inactiveClass;
   
+  // This tells data.js to fetch the new table from Supabase
   setActiveContext(mode);
 }
 
@@ -201,52 +195,27 @@ function setText(id, text) {
   if (el) el.innerText = text;
 }
 
-// --- DYNAMICALLY BUILD SLICERS WITH CORRECT NUMERICAL VALUES ---
+// --- POPULATE YEAR SLICER ---
 export function populateSlicers() {
   const rawData = getRawData();
   const yearSelect = document.getElementById("slicer-year");
-  const monthSelect = document.getElementById("slicer-month");
   
-  if (!rawData || rawData.length === 0) return;
+  if (!yearSelect || !rawData) return;
 
   const uniqueYears = new Set();
-  const uniqueMonths = new Set();
-
-  // Extract available years and months from database
   rawData.forEach((r) => {
-    if (r._date) {
-        uniqueYears.add(r._date.getFullYear());
-        uniqueMonths.add(r._date.getMonth()); // 0 to 11
-    }
+    if (r._date) uniqueYears.add(r._date.getFullYear());
   });
 
-  // 1. Build Year Dropdown
-  if (yearSelect) {
-      const currentYear = yearSelect.value;
-      yearSelect.innerHTML = '<option value="all">All Years</option>';
-      [...uniqueYears].sort((a, b) => b - a).forEach((y) => {
-        yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
-      });
-      if ([...uniqueYears].includes(parseInt(currentYear))) {
-        yearSelect.value = currentYear;
-      }
-  }
-
-  // 2. Build Month Dropdown (Matching numerical values to names)
-  if (monthSelect) {
-      const currentMonth = monthSelect.value;
-      monthSelect.innerHTML = '<option value="all">All Months</option>';
-      
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      
-      [...uniqueMonths].sort((a, b) => a - b).forEach((mIndex) => {
-        // IMPORTANT: Value is the number (e.g., "7"), Text is "August"
-        monthSelect.innerHTML += `<option value="${mIndex}">${monthNames[mIndex]}</option>`;
-      });
-      
-      if ([...uniqueMonths].includes(parseInt(currentMonth))) {
-        monthSelect.value = currentMonth;
-      }
+  const currentYear = yearSelect.value;
+  yearSelect.innerHTML = '<option value="all">All Years</option>';
+  
+  [...uniqueYears].sort((a, b) => b - a).forEach((y) => {
+    yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+  });
+  
+  if ([...uniqueYears].includes(parseInt(currentYear))) {
+    yearSelect.value = currentYear;
   }
 }
 
@@ -259,33 +228,36 @@ export function toggleTheme() {
   updateDashboard();
 }
 
-// --- ADVANCED DASHBOARD FILTERING ---
+// --- ADVANCED DASHBOARD FILTERING LOGIC ---
 export function updateDashboard() {
   const rawData = getRawData();
   const activeTable = getActiveTable();
 
-  // Get values from UI inputs (Handle multiple possible IDs just in case)
+  // Get values from HTML slicers
   const y = document.getElementById("slicer-year")?.value || "all";
   const m = document.getElementById("slicer-month")?.value || "all";
-  const dStr = document.getElementById("slicer-date")?.value || document.getElementById("slicer-day")?.value || "";
+  const dStr = document.getElementById("slicer-date")?.value || "";
 
+  // Securely filter data
   let filtered = rawData.filter((r) => {
     if (!r._date) return false;
 
-    // 1. Exact Date overrides Year/Month
+    // 1. Exact Date (overrides year/month)
     if (dStr) {
-        const localDateStr = r._date.getFullYear() + '-' + String(r._date.getMonth() + 1).padStart(2, '0') + '-' + String(r._date.getDate()).padStart(2, '0');
-        if (localDateStr !== dStr) return false;
-    } else {
-        // 2. Filter by Year & Month
-        if (y !== "all" && r._date.getFullYear().toString() !== y) return false;
-        if (m !== "all" && r._date.getMonth().toString() !== m) return false;
+      const localDateStr = r._date.getFullYear() + '-' + String(r._date.getMonth() + 1).padStart(2, '0') + '-' + String(r._date.getDate()).padStart(2, '0');
+      return localDateStr === dStr;
     }
+
+    // 2. Year Filter
+    if (y !== "all" && r._date.getFullYear().toString() !== y) return false;
+    
+    // 3. Month Filter (HTML sends 0 for Jan, 11 for Dec, which perfectly matches JS getMonth())
+    if (m !== "all" && r._date.getMonth().toString() !== m) return false;
 
     return true;
   });
 
-  // If a specific month is selected (and no exact day), show days on the chart instead of the whole year
+  // If viewing all months, show year-month trend. If viewing a specific month, show daily trend.
   const isSummaryView = (m === "all" && !dStr);
 
   if (activeTable === "service_logs") {
@@ -306,18 +278,18 @@ function renderFinancialDashboard(data, isYearView) {
   const cats = {};
   
   data.forEach((r) => {
-    const rv = parseFloat(r.revenue) || parseFloat(r.total_amount) || 0;
+    const rv = parseFloat(r.revenue) || 0;
     const ex = parseFloat(r.expense_amount) || 0;
     rev += rv;
     exp += ex;
     
     let k;
     if (!isYearView) {
-        k = r._date.getDate(); // Group by Day (1, 2, 3...)
+        k = r._date.getDate(); // Use Day number for X-axis (1, 2, 3...)
     } else {
-        const y = r._date.getFullYear();
-        const m = String(r._date.getMonth() + 1).padStart(2, "0");
-        k = `${y}-${m}`; // Group by Year-Month (2024-10)
+      const y = r._date.getFullYear();
+      const m = String(r._date.getMonth() + 1).padStart(2, "0");
+      k = `${y}-${m}`; // Use YYYY-MM for X-axis
     }
     
     if (!comps[k]) comps[k] = { r: 0, e: 0 };
@@ -331,22 +303,15 @@ function renderFinancialDashboard(data, isYearView) {
   });
 
   const fmt = (v) =>
-    isYearView
+    isYearView && v >= 1000000
       ? (v / 1000000).toFixed(2) + "M"
-      : new Intl.NumberFormat("en-LK", {
-          style: "currency",
-          currency: "LKR",
-        }).format(v);
-        
-  const elRev = document.getElementById("val-rev");
-  const elExp = document.getElementById("val-exp");
-  const elProf = document.getElementById("val-prof");
-  
-  if (elRev) elRev.innerText = fmt(rev);
-  if (elExp) elExp.innerText = fmt(exp);
-  if (elProf) elProf.innerText = fmt(rev - exp);
+      : new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR" }).format(v);
+      
+  document.getElementById("val-rev").innerText = fmt(rev);
+  document.getElementById("val-exp").innerText = fmt(exp);
+  document.getElementById("val-prof").innerText = fmt(rev - exp);
 
-  // FIX: Ensure Days (1, 2, 10, 11) sort numerically, and Dates (2024-10) sort alphabetically
+  // Safely sort labels so Days sort numerically, but Months sort alphabetically
   const labels = Object.keys(comps).sort((a, b) => {
       if (!isNaN(a) && !isNaN(b)) return Number(a) - Number(b);
       return a.localeCompare(b);
@@ -359,21 +324,11 @@ function renderFinancialDashboard(data, isYearView) {
     maintainAspectRatio: false,
     plugins: {
       legend: { labels: { color: "#9ca3af" } },
-      title: {
-        display: true,
-        text: "Revenue & Expenses Trend",
-        color: "#6b7280",
-      },
+      title: { display: true, text: "Revenue & Expenses Trend", color: "#6b7280" },
     },
     scales: {
-      x: {
-        ticks: { color: "#9ca3af" },
-        title: { display: true, text: "Time Period", color: "#9ca3af" },
-      },
-      y: {
-        ticks: { color: "#9ca3af" },
-        title: { display: true, text: "Amount (LKR)", color: "#9ca3af" },
-      },
+      x: { ticks: { color: "#9ca3af" }, title: { display: true, text: "Time Period", color: "#9ca3af" } },
+      y: { ticks: { color: "#9ca3af" }, title: { display: true, text: "Amount (LKR)", color: "#9ca3af" } },
     },
   };
 
@@ -385,20 +340,8 @@ function renderFinancialDashboard(data, isYearView) {
         data: {
           labels: labels,
           datasets: [
-            {
-              label: t["kpi-rev"] || "Revenue",
-              data: dsRev,
-              borderColor: "#3b82f6",
-              backgroundColor: "rgba(59,130,246,0.1)",
-              fill: true,
-            },
-            {
-              label: t["kpi-exp"] || "Expenses",
-              data: dsExp,
-              borderColor: "#ef4444",
-              backgroundColor: "rgba(239,68,68,0.1)",
-              fill: true,
-            },
+            { label: t["kpi-rev"] || "Revenue", data: dsRev, borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.1)", fill: true, tension: 0.3 },
+            { label: t["kpi-exp"] || "Expenses", data: dsExp, borderColor: "#ef4444", backgroundColor: "rgba(239,68,68,0.1)", fill: true, tension: 0.3 },
           ],
         },
         options: commonOptions,
@@ -413,37 +356,17 @@ function renderFinancialDashboard(data, isYearView) {
           type: "doughnut",
           data: {
             labels: Object.keys(cats),
-            datasets: [
-              {
-                data: Object.values(cats),
-                backgroundColor: ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6"],
-              },
-            ],
+            datasets: [{ data: Object.values(cats), backgroundColor: ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6"] }],
           },
-          options: {
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { position: "right", labels: { color: "#9ca3af" } },
-              title: { display: true, text: "Expense Breakdown", color: "#6b7280" },
-            },
-          },
+          options: { maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { color: "#9ca3af" } }, title: { display: true, text: "Expense Breakdown", color: "#6b7280" } } },
         });
       } else {
         const profitData = labels.map((k) => comps[k].r - comps[k].e);
         const profitColors = profitData.map((p) => p >= 0 ? "#10b981" : "#ef4444");
         charts.sub = new Chart(ctx2, {
           type: "bar",
-          data: {
-            labels: labels,
-            datasets: [{ label: "Profit", data: profitData, backgroundColor: profitColors, borderRadius: 2 }],
-          },
-          options: {
-            ...commonOptions,
-            plugins: {
-              legend: { display: false },
-              title: { display: true, text: "Net Profit", color: "#6b7280" },
-            },
-          },
+          data: { labels: labels, datasets: [{ label: "Profit", data: profitData, backgroundColor: profitColors, borderRadius: 2 }] },
+          options: { ...commonOptions, plugins: { legend: { display: false }, title: { display: true, text: "Net Profit", color: "#6b7280" } } },
         });
       }
   }
